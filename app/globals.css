@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --nua-primary: 30 173 184;
+    --nua-accent: 15 90 142;
+    --nua-neutral: 245 247 250;
+    --nua-dark: 42 51 66;
+
+    /* Variables necesarias para el MenuBar */
+    --foreground: 222.2 84% 4.9%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --border: 214.3 31.8% 91.4%;
+  }
+
+  .dark {
+    --foreground: 210 40% 98%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --border: 217.2 32.6% 17.5%;
+  }
+}
+
+body {
+  @apply bg-nua-neutral text-nua-dark;
+}
+
+.sidebar-item {
+  @apply flex items-center gap-3 px-4 py-2 rounded-md text-sm font-medium transition-colors;
+}
+
+.sidebar-item.active {
+  @apply bg-nua-primary text-white;
+}
+
+.sidebar-item:not(.active) {
+  @apply text-gray-600 hover:bg-gray-100;
+}
+
+.card {
+  @apply bg-white rounded-lg shadow-sm p-4;
+}
+
+/* Añadimos soporte para gradientes radiales que necesita el MenuBar */
+@layer utilities {
+  .bg-gradient-radial {
+    background-image: radial-gradient(var(--tw-gradient-stops));
+  }
+}

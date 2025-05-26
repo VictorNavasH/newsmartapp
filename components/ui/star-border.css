@@ -1,0 +1,86 @@
+.star-border-container {
+  display: inline-block;
+  padding: 2px 0;
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  width: 100%;
+  transition: transform 0.2s ease;
+}
+
+.star-border-container:hover {
+  transform: translateY(-2px);
+}
+
+.border-gradient-bottom,
+.border-gradient-top {
+  position: absolute;
+  width: 350%;
+  height: 60%;
+  opacity: 0;
+  border-radius: 50%;
+  transition: opacity 0.3s ease;
+  z-index: 0;
+}
+
+.border-gradient-bottom {
+  bottom: -15px;
+  right: -250%;
+}
+
+.border-gradient-top {
+  top: -15px;
+  left: -250%;
+}
+
+/* Mostrar y animar los gradientes solo en hover */
+.star-border-container:hover .border-gradient-bottom {
+  opacity: 0.9;
+  animation: star-movement-bottom 5s linear infinite alternate;
+}
+
+.star-border-container:hover .border-gradient-top {
+  opacity: 0.9;
+  animation: star-movement-top 5s linear infinite alternate;
+}
+
+.inner-content {
+  position: relative;
+  background: white;
+  border: 1px solid #eaeaea;
+  color: inherit;
+  font-size: 16px;
+  text-align: left;
+  padding: 16px;
+  border-radius: 8px;
+  z-index: 1;
+  height: 100%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.star-border-container:hover .inner-content {
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+@keyframes star-movement-bottom {
+  0% {
+    transform: translate(0%, 0%);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(-100%, 0%);
+    opacity: 0.5;
+  }
+}
+
+@keyframes star-movement-top {
+  0% {
+    transform: translate(0%, 0%);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(100%, 0%);
+    opacity: 0.5;
+  }
+}
