@@ -3,6 +3,10 @@
 import { useState } from "react"
 import PageHeader from "@/components/page-header"
 import { MenuBar } from "@/components/menu-bar"
+// Importar el componente de Datos Base
+import { DatosBaseContent } from "@/components/configuracion/datos-base-content"
+// Importar el componente de Conexiones
+import { ConexionesContent } from "@/components/configuracion/conexiones-content"
 
 // Componentes para cada subpágina
 const GeneralContent = () => (
@@ -25,25 +29,11 @@ const DatosOperativosContent = () => (
   </div>
 )
 
-const DatosBaseContent = () => (
-  <div>
-    <h2 className="text-lg font-medium text-nua-title mb-4">Datos Base</h2>
-    <p>
-      Contenido de la subpágina <strong>Datos Base</strong> aquí. Esta sección permite configurar los datos base y
-      parámetros fundamentales del sistema.
-    </p>
-  </div>
-)
+// Reemplazar la función DatosBaseContent existente con:
+const DatosBaseContentWrapper = () => <DatosBaseContent />
 
-const ConexionesContent = () => (
-  <div>
-    <h2 className="text-lg font-medium text-nua-title mb-4">Conexiones</h2>
-    <p>
-      Contenido de la subpágina <strong>Conexiones</strong> aquí. Esta sección permite configurar las conexiones con
-      servicios externos e integraciones.
-    </p>
-  </div>
-)
+// Reemplazar la función ConexionesContent existente con:
+const ConexionesContentWrapper = () => <ConexionesContent />
 
 export default function Configuracion() {
   // Estado para controlar qué pestaña está activa
@@ -57,9 +47,9 @@ export default function Configuracion() {
       case "operativos":
         return <DatosOperativosContent />
       case "base":
-        return <DatosBaseContent />
+        return <DatosBaseContentWrapper />
       case "conexiones":
-        return <ConexionesContent />
+        return <ConexionesContentWrapper />
       default:
         return <GeneralContent />
     }

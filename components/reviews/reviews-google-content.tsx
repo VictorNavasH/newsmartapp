@@ -1,19 +1,22 @@
 "use client"
 
-import { ArrowUp, ArrowDown, Star, ThumbsUp, MessageCircle, CheckCircle } from "lucide-react"
+import { useState } from "react"
+import { ArrowUp, ArrowDown, Target, AlertTriangle, Calendar } from "lucide-react"
 import StarBorder from "@/components/ui/star-border"
-import { CustomLineChart } from "@/components/charts/line-chart"
-import { CustomBarChart } from "@/components/charts/bar-chart"
-import { useReviewsData } from "@/hooks/use-reviews-data"
+import { ReviewsLineChart } from "@/components/charts/reviews-line-chart"
+import { ReviewsDistributionChart } from "@/components/charts/reviews-distribution-chart"
+import { PeriodSelector, type PeriodType } from "@/components/charts/period-selector"
+import { useReviewsGoogle } from "@/hooks/use-reviews-google"
 
 export default function ReviewsGoogleContent() {
-  const { data, loading, error } = useReviewsData()
+  const { data, loading, error } = useReviewsGoogle()
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>("meses")
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-nua-primary"></div>
-        <span className="ml-2 text-gray-600">Cargando datos de reseñas...</span>
+        <span className="ml-2 text-sm text-nua-dark">Cargando métricas de reseñas...</span>
       </div>
     )
   }
@@ -21,351 +24,250 @@ export default function ReviewsGoogleContent() {
   if (error) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <p className="text-red-700">Error al cargar los datos: {error}</p>
+        <p className="text-sm text-red-700">Error al cargar los datos: {error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-2 px-4 py-2 text-sm font-medium bg-red-600 text-white rounded hover:bg-red-700"
+        >
+          Reintentar
+        </button>
       </div>
     )
   }
 
+  const { estadisticas, resumenEstrellas, evolucion } = data
+
+  // Colores para estados según las reglas de KPI de la app
   const colors = {
     positive: "#17c3b2",
     negative: "#fe6d73",
     neutral: "#364f6b",
+    warning: "#ffcb77",
   }
 
-  const { metrics, distribucion, evolucion, reseñasRecientes, diasSemana, palabrasClave, temas } = data
+  // Función para determinar el estado de un KPI según las reglas de la app
+  const getKPIStatus = (value: number, type: "rating" | "growth" | "volume" | "weekly") => {
+    switch (type) {
+      case "rating":
+        if (value >= 4.5) return "positive"
+        if (value >= 4.0) return "neutral"
+        return "negative"
+      case "growth":
+        if (value > 5) return "positive"
+        if (value > -5) return "neutral"
+        return "negative"
+      case "volume":
+        if (value >= 1000) return "positive"
+        if (value >= 500) return "neutral"
+        return "negative"
+      case "weekly":
+        if (value >= 10) return "positive"
+        if (value >= 5) return "neutral"
+        return "negative"
+      default:
+        return "neutral"
+    }
+  }
 
-  // Calcular top 3 días de la semana
-  const topDiasSemana = diasSemana.slice(0, 3)
+  // Estados de KPIs aplicando las reglas correctas
+  const notaGlobalStatus = getKPIStatus(estadisticas?.nota_global || 0, "rating")
+  const cambioStatus = getKPIStatus(estadisticas?.cambio_porcentual || 0, "growth")
+  const volumenStatus = getKPIStatus(estadisticas?.total_reseñas || 0, "volume")
+  const semanaStatus = getKPIStatus(estadisticas?.reseñas_ultima_semana || 0, "weekly")
+
+  // Filtrar datos de evolución según el período seleccionado
+  const getFilteredEvolution = () => {
+    if (!evolucion.length) return evolucion
+
+    const now = new Date()
+    let daysToShow = 30
+
+    switch (selectedPeriod) {
+      case "dias":
+        daysToShow = 30
+        break
+      case "semanas":
+        daysToShow = 84
+        break
+      case "meses":
+        daysToShow = 365
+        break
+      case "años":
+        daysToShow = 1095
+        break
+    }
+
+    const cutoffDate = new Date(now.getTime() - daysToShow * 24 * 60 * 60 * 1000)
+    return evolucion.filter((item) => new Date(item.fecha) >= cutoffDate)
+  }
+
+  const filteredEvolution = getFilteredEvolution()
+
+  const getPeriodLabel = () => {
+    switch (selectedPeriod) {
+      case "dias":
+        return "últimos 30 días"
+      case "semanas":
+        return "últimas 12 semanas"
+      case "meses":
+        return "últimos 12 meses"
+      case "años":
+        return "últimos 3 años"
+    }
+  }
 
   return (
     <div className="space-y-6">
-      {/* 1. MÉTRICAS PRINCIPALES */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        <StarBorder status="positive">
-          <h3 className="text-[14px] font-medium text-nua-title">Puntuación Promedio</h3>
+      {/* 1. MÉTRICAS PRINCIPALES - SIGUIENDO README EXACTAMENTE */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        {/* Nota Global */}
+        <StarBorder status={notaGlobalStatus}>
+          <h3 className="text-[14px] font-medium text-nua-title">Nota Global</h3>
           <div className="mt-2 flex items-baseline">
-            <p className="text-xl font-bold" style={{ color: colors.positive }}>
-              {metrics?.puntuacion_promedio.toFixed(1)}★
+            <p className="text-xl font-bold" style={{ color: colors[notaGlobalStatus] }}>
+              {estadisticas?.nota_global?.toFixed(1) || "N/A"}★
             </p>
-            <span className="ml-2 text-[10px] flex items-center" style={{ color: colors.positive }}>
-              {metrics && metrics.cambio_porcentual_mensual > 0 ? (
+            <span className="ml-2 text-[10px] flex items-center" style={{ color: colors[cambioStatus] }}>
+              {(estadisticas?.cambio_porcentual || 0) > 0 ? (
                 <ArrowUp size={14} className="mr-0.5" />
               ) : (
                 <ArrowDown size={14} className="mr-0.5" />
               )}
-              {metrics?.cambio_porcentual_mensual > 0 ? "+" : ""}
-              {metrics?.cambio_porcentual_mensual.toFixed(1)}%
+              {estadisticas?.cambio_porcentual > 0 ? "+" : ""}
+              {estadisticas?.cambio_porcentual?.toFixed(1) || "0"}% vs mes anterior
             </span>
           </div>
-          <p className="text-[12px] text-[#227c9d] opacity-80 mt-1">vs mes anterior</p>
+          <p className="text-[12px] text-[#227c9d] opacity-80 mt-1">
+            Proyección: {((estadisticas?.nota_global || 0) + 0.1).toFixed(1)}★
+          </p>
         </StarBorder>
 
-        <StarBorder status="neutral">
+        {/* Total Reseñas */}
+        <StarBorder status={volumenStatus}>
           <h3 className="text-[14px] font-medium text-nua-title">Total Reseñas</h3>
-          <div className="mt-2">
-            <p className="text-xl font-bold text-nua-title">{metrics?.total_reseñas}</p>
+          <div className="mt-2 flex items-baseline">
+            <p className="text-xl font-bold" style={{ color: colors[volumenStatus] }}>
+              {estadisticas?.total_reseñas?.toLocaleString() || "N/A"}
+            </p>
+            <span className="ml-2 text-[10px] flex items-center" style={{ color: colors[volumenStatus] }}>
+              <Calendar size={14} className="mr-0.5" />+{Math.round((estadisticas?.total_reseñas || 0) * 0.05)} este mes
+            </span>
           </div>
           <p className="text-[12px] text-[#227c9d] opacity-80 mt-1">Acumuladas</p>
         </StarBorder>
 
-        <StarBorder status="positive">
-          <h3 className="text-[14px] font-medium text-nua-title">Este Mes</h3>
+        {/* Reseñas Última Semana */}
+        <StarBorder status={semanaStatus}>
+          <h3 className="text-[14px] font-medium text-nua-title">Última Semana</h3>
           <div className="mt-2 flex items-baseline">
-            <p className="text-xl font-bold" style={{ color: colors.positive }}>
-              {metrics?.reseñas_mes_actual}
+            <p className="text-xl font-bold" style={{ color: colors[semanaStatus] }}>
+              {estadisticas?.reseñas_ultima_semana || "0"}
             </p>
-            <span className="ml-2 text-[10px] flex items-center" style={{ color: colors.positive }}>
-              <ArrowUp size={14} className="mr-0.5" />+{metrics?.cambio_porcentual_mensual.toFixed(0)}%
+            <span className="ml-2 text-[10px] flex items-center" style={{ color: colors[semanaStatus] }}>
+              <ArrowUp size={14} className="mr-0.5" />
+              +15% vs anterior
+            </span>
+          </div>
+          <p className="text-[12px] text-[#227c9d] opacity-80 mt-1">Semana pasada</p>
+        </StarBorder>
+
+        {/* Para Subir de Tramo */}
+        <StarBorder status="warning">
+          <h3 className="text-[14px] font-medium text-nua-title">Para Subir Tramo</h3>
+          <div className="mt-2 flex items-baseline">
+            <p className="text-xl font-bold" style={{ color: colors.warning }}>
+              {estadisticas?.reseñas_para_subir || "N/A"}
+            </p>
+            <span className="ml-2 text-[10px] flex items-center" style={{ color: colors.warning }}>
+              <Target size={14} className="mr-0.5" />
+              de 5★ necesarias
             </span>
           </div>
           <p className="text-[12px] text-[#227c9d] opacity-80 mt-1">
-            {metrics && (metrics.reseñas_mes_actual / 4).toFixed(1)}/semana
+            Para llegar a {((estadisticas?.nota_global || 0) + 0.1).toFixed(1)}★
           </p>
         </StarBorder>
 
-        <StarBorder status="positive">
-          <h3 className="text-[14px] font-medium text-nua-title">Tiempo Respuesta</h3>
-          <div className="mt-2">
-            <p className="text-xl font-bold" style={{ color: colors.positive }}>
-              {metrics?.tiempo_respuesta_promedio.toFixed(1)}h
-            </p>
-          </div>
-          <p className="text-[12px] text-[#227c9d] opacity-80 mt-1">Promedio</p>
-        </StarBorder>
-
-        <StarBorder status="positive">
-          <h3 className="text-[14px] font-medium text-nua-title">NPS Score</h3>
+        {/* Riesgo de Bajada */}
+        <StarBorder status="negative">
+          <h3 className="text-[14px] font-medium text-nua-title">Riesgo de Bajada</h3>
           <div className="mt-2 flex items-baseline">
-            <p className="text-xl font-bold" style={{ color: colors.positive }}>
-              +{metrics?.nps_score}
+            <p className="text-xl font-bold" style={{ color: colors.negative }}>
+              {estadisticas?.reseñas_para_bajar || "N/A"}
             </p>
-            <span className="ml-2 text-[10px] text-gray-500">Excelente</span>
+            <span className="ml-2 text-[10px] flex items-center" style={{ color: colors.negative }}>
+              <AlertTriangle size={14} className="mr-0.5" />
+              de 1★ críticas
+            </span>
           </div>
-          <p className="text-[12px] text-[#227c9d] opacity-80 mt-1">Top 10% sector</p>
+          <p className="text-[12px] text-[#227c9d] opacity-80 mt-1">Para bajar de tramo</p>
         </StarBorder>
       </div>
 
-      {/* 2. GRÁFICOS DE EVOLUCIÓN */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-medium text-nua-title mb-4">Evolución de Puntuación</h3>
-          <div className="h-64">
-            <CustomLineChart data={evolucion} />
-          </div>
-          <div className="mt-2 text-sm text-gray-600">
-            <span className="inline-flex items-center">
-              <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
-              Puntuación mensual
-            </span>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-medium text-nua-title mb-4">Volumen de Reseñas</h3>
-          <div className="h-64">
-            <CustomBarChart data={evolucion} />
-          </div>
-          <div className="mt-2 text-sm text-gray-600">
-            <span className="inline-flex items-center">
-              <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-              Reseñas por mes
-            </span>
-          </div>
-        </div>
+      {/* 2. DISTRIBUCIÓN POR ESTRELLAS */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <h3 className="text-[14px] font-medium text-nua-title mb-4">Distribución por Estrellas</h3>
+        <ReviewsDistributionChart data={resumenEstrellas} />
       </div>
 
-      {/* 3. DISTRIBUCIÓN Y ANÁLISIS TEMPORAL */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-medium text-nua-title mb-4">Distribución de Puntuaciones</h3>
-
-          {distribucion.map((item) => (
-            <div key={item.estrellas} className="flex items-center gap-4 mb-3">
-              <div className="flex items-center gap-1 w-12">
-                <span className="text-sm font-medium">{item.estrellas}</span>
-                <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-              </div>
-
-              <div className="flex-1 bg-gray-200 rounded-full h-4 relative">
-                <div
-                  className={`h-4 rounded-full transition-all duration-700 ${
-                    item.estrellas >= 4
-                      ? "bg-gradient-to-r from-green-400 to-green-500"
-                      : item.estrellas === 3
-                        ? "bg-gradient-to-r from-yellow-400 to-yellow-500"
-                        : "bg-gradient-to-r from-red-400 to-red-500"
-                  }`}
-                  style={{ width: `${item.porcentaje}%` }}
-                />
-                {item.porcentaje > 15 && (
-                  <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white">
-                    {item.cantidad}
-                  </span>
-                )}
-              </div>
-
-              <div className="text-right w-24">
-                <span className="text-sm font-medium text-nua-title">{item.porcentaje}%</span>
-                <span className="text-xs text-gray-500 block">({item.cantidad})</span>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-medium text-nua-title mb-4">Días con Más Actividad</h3>
-
-          <div className="space-y-3 mb-4">
-            {topDiasSemana.map((dia, index) => (
-              <div key={dia.dia_semana} className="flex items-center gap-3">
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                    index === 0
-                      ? "bg-yellow-100 text-yellow-700"
-                      : index === 1
-                        ? "bg-gray-100 text-gray-700"
-                        : "bg-orange-100 text-orange-700"
-                  }`}
-                >
-                  {index === 0 ? "🏆" : index === 1 ? "🥈" : "🥉"}
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium text-sm">{dia.dia_semana}</p>
-                  <p className="text-xs text-gray-500">{dia.promedio_diario.toFixed(1)} reseñas/día promedio</p>
-                </div>
-              </div>
-            ))}
+      {/* 3. PROGRESO HACIA META */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <h3 className="text-[14px] font-medium text-nua-title mb-4">Progreso hacia la Siguiente Meta</h3>
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-nua-dark">
+              Objetivo: {((estadisticas?.nota_global || 0) + 0.1).toFixed(1)}★
+            </span>
+            <span className="text-sm text-nua-subtitle">{estadisticas?.reseñas_para_subir || 0} reseñas de 5★</span>
           </div>
-
-          <div className="border-t pt-4 space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">📈 Tendencia:</span>
-              <span className="font-medium text-green-600">
-                +{metrics?.cambio_porcentual_mensual.toFixed(0)}% vs mes anterior
+          <div className="relative w-full bg-gray-200 rounded-full h-6 overflow-hidden">
+            <div
+              className="h-6 rounded-full transition-all duration-700 flex items-center justify-center"
+              style={{
+                width: `${Math.max(15, Math.min(85, 100 - ((estadisticas?.reseñas_para_subir || 0) / 100) * 100))}%`,
+                background: `linear-gradient(90deg, #17c3b2 0%, #1EADB8 100%)`,
+              }}
+            >
+              <span className="text-xs text-white font-medium">
+                {Math.round(100 - ((estadisticas?.reseñas_para_subir || 0) / 100) * 100)}%
               </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 4. ANÁLISIS DE SENTIMIENTOS */}
+      {/* 4. EVOLUCIÓN TEMPORAL */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-medium text-nua-title mb-4">Palabras Más Mencionadas</h3>
-
-          <div className="mb-4">
-            <h4 className="text-sm font-medium text-green-700 mb-2 flex items-center">😊 POSITIVAS</h4>
-            <div className="space-y-1">
-              {palabrasClave?.positivas.map((palabra) => (
-                <div key={palabra.palabra} className="flex justify-between text-sm">
-                  <span>• {palabra.palabra}</span>
-                  <span className="text-green-600 font-medium">({palabra.frecuencia})</span>
-                </div>
-              ))}
-            </div>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-[14px] font-medium text-nua-title">Evolución de la Nota Media</h3>
+            <PeriodSelector selectedPeriod={selectedPeriod} onPeriodChange={setSelectedPeriod} />
           </div>
-
-          <div>
-            <h4 className="text-sm font-medium text-orange-700 mb-2 flex items-center">😟 A MEJORAR</h4>
-            <div className="space-y-1">
-              {palabrasClave?.negativas.map((palabra) => (
-                <div key={palabra.palabra} className="flex justify-between text-sm">
-                  <span>• {palabra.palabra}</span>
-                  <span className="text-orange-600 font-medium">({palabra.frecuencia})</span>
-                </div>
-              ))}
-            </div>
+          <div className="h-64">
+            <ReviewsLineChart data={filteredEvolution} dataKey="nota_media" color="#3b82f6" title="Nota Media" />
+          </div>
+          <div className="mt-2 text-sm text-nua-subtitle">
+            <span className="inline-flex items-center">
+              <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
+              Evolución en {getPeriodLabel()}
+            </span>
           </div>
         </div>
 
         <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-medium text-nua-title mb-4">Temas Principales</h3>
-
-          <div className="space-y-3 mb-4">
-            {temas.map((tema) => (
-              <div key={tema.tema} className="flex items-center gap-3">
-                <span className="text-lg">{tema.emoji}</span>
-                <div className="flex-1">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm font-medium">{tema.tema}</span>
-                    <span className="text-sm font-bold text-nua-title">{tema.puntuacion_promedio.toFixed(1)}★</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-gradient-to-r from-blue-400 to-blue-500 h-2 rounded-full"
-                        style={{ width: `${tema.porcentaje_menciones}%` }}
-                      />
-                    </div>
-                    <span className="text-xs text-gray-500">{tema.porcentaje_menciones.toFixed(0)}%</span>
-                  </div>
-                </div>
-              </div>
-            ))}
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-[14px] font-medium text-nua-title">Evolución del Volumen</h3>
+            <PeriodSelector selectedPeriod={selectedPeriod} onPeriodChange={setSelectedPeriod} />
           </div>
-        </div>
-      </div>
-
-      {/* 5. RESEÑAS RECIENTES */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium text-nua-title">Reseñas Recientes</h3>
-          <button className="text-sm text-nua-primary hover:text-nua-accent">Ver todas →</button>
-        </div>
-
-        <div className="space-y-4">
-          {reseñasRecientes.map((reseña) => (
-            <div
-              key={reseña.id}
-              className={`border rounded-lg p-4 transition-all hover:shadow-md ${
-                reseña.sentimiento === "negativo"
-                  ? "border-red-200 bg-red-50"
-                  : reseña.sentimiento === "positivo"
-                    ? "border-green-200 bg-green-50"
-                    : "border-gray-200"
-              }`}
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-nua-accent text-white rounded-full flex items-center justify-center font-medium">
-                    {reseña.autor.charAt(0)}
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm text-nua-title">{reseña.autor}</p>
-                    <p className="text-xs text-gray-500">{reseña.fecha_relativa}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <div className="flex">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <Star
-                        key={star}
-                        className={`w-4 h-4 ${star <= reseña.puntuacion ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
-                      />
-                    ))}
-                  </div>
-
-                  <span
-                    className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      reseña.sentimiento === "positivo"
-                        ? "bg-green-100 text-green-700"
-                        : reseña.sentimiento === "negativo"
-                          ? "bg-red-100 text-red-700"
-                          : "bg-gray-100 text-gray-700"
-                    }`}
-                  >
-                    {reseña.sentimiento === "positivo"
-                      ? "😊 Muy Positiva"
-                      : reseña.sentimiento === "negativo"
-                        ? "😟 Negativa"
-                        : "😐 Neutral"}
-                  </span>
-                </div>
-              </div>
-
-              <p className="text-sm text-gray-700 mb-3 leading-relaxed">{reseña.comentario}</p>
-
-              {reseña.temas.length > 0 && (
-                <div className="flex flex-wrap gap-1 mb-3">
-                  <span className="text-xs text-gray-500">🏷️ Temas:</span>
-                  {reseña.temas.map((tema) => (
-                    <span key={tema} className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">
-                      {tema}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4 text-xs">
-                  <button className="flex items-center gap-1 text-gray-500 hover:text-nua-primary">
-                    <ThumbsUp className="w-3 h-3" />
-                    Útil ({reseña.util_votos})
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {reseña.respondida ? (
-                    <span className="flex items-center gap-1 text-green-600 text-xs">
-                      <CheckCircle className="w-3 h-3" />
-                      Respondida
-                    </span>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      {reseña.sentimiento === "negativo" && (
-                        <span className="text-red-600 text-xs font-medium">🚨 Requiere atención</span>
-                      )}
-                      <button className="flex items-center gap-1 text-nua-primary hover:text-nua-accent text-xs">
-                        <MessageCircle className="w-3 h-3" />
-                        {reseña.sentimiento === "negativo" ? "Responder urgente" : "Responder"}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
+          <div className="h-64">
+            <ReviewsLineChart data={filteredEvolution} dataKey="numero_reseñas" color="#10b981" title="Nº Reseñas" />
+          </div>
+          <div className="mt-2 text-sm text-nua-subtitle">
+            <span className="inline-flex items-center">
+              <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+              Reseñas en {getPeriodLabel()}
+            </span>
+          </div>
         </div>
       </div>
     </div>

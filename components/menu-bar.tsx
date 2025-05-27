@@ -21,6 +21,9 @@ import {
   TrendingUp,
   Receipt,
   GitBranch,
+  Lightbulb,
+  Building2,
+  Layers,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { usePathname } from "next/navigation"
@@ -184,6 +187,50 @@ const kpisMenuItems: MenuItem[] = [
   },
 ]
 
+// Menú para la página de Análisis Bancario
+const analisisBancarioMenuItems: MenuItem[] = [
+  {
+    id: "insights",
+    icon: <Lightbulb className="h-4 w-4" />,
+    label: "Insights",
+    gradient: "radial-gradient(circle, rgba(34,197,94,0.15) 0%, rgba(34,197,94,0.06) 50%, rgba(34,197,94,0) 100%)",
+    iconColor: "text-[#22c55e]",
+    color: "#22c55e",
+  },
+  {
+    id: "caixabank",
+    icon: <Building2 className="h-4 w-4" />,
+    label: "CaixaBank",
+    gradient: "radial-gradient(circle, rgba(0,115,230,0.15) 0%, rgba(0,115,230,0.06) 50%, rgba(0,115,230,0) 100%)",
+    iconColor: "text-[#0073e6]",
+    color: "#0073e6",
+  },
+  {
+    id: "bbva",
+    icon: <Building2 className="h-4 w-4" />,
+    label: "BBVA",
+    gradient: "radial-gradient(circle, rgba(0,68,129,0.15) 0%, rgba(0,68,129,0.06) 50%, rgba(0,68,129,0) 100%)",
+    iconColor: "text-[#004481]",
+    color: "#004481",
+  },
+  {
+    id: "sabadell",
+    icon: <Building2 className="h-4 w-4" />,
+    label: "Banc Sabadell",
+    gradient: "radial-gradient(circle, rgba(0,160,176,0.15) 0%, rgba(0,160,176,0.06) 50%, rgba(0,160,176,0) 100%)",
+    iconColor: "text-[#00a0b0]",
+    color: "#00a0b0",
+  },
+  {
+    id: "pool",
+    icon: <Layers className="h-4 w-4" />,
+    label: "Pool Bancario",
+    gradient: "radial-gradient(circle, rgba(139,92,246,0.15) 0%, rgba(139,92,246,0.06) 50%, rgba(139,92,246,0) 100%)",
+    iconColor: "text-[#8b5cf6]",
+    color: "#8b5cf6",
+  },
+]
+
 const itemVariants = {
   initial: { rotateX: 0, opacity: 1 },
   hover: { rotateX: -90, opacity: 0 },
@@ -233,6 +280,8 @@ export function MenuBar({ activeTab, onTabChange }: MenuBarProps) {
       return configuracionMenuItems
     } else if (pathname.includes("/kpis")) {
       return kpisMenuItems
+    } else if (pathname.includes("/analisis-bancario")) {
+      return analisisBancarioMenuItems
     }
     // Por defecto, mostrar el menú de ventas
     return ventasMenuItems
