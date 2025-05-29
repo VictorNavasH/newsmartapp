@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { SubMenuBar } from "./sub-menu-bar"
-import { BancosConfigComplete } from "./bancos-config-complete"
+import { BancosConfig } from "./bancos-config"
 
 const subMenuItems = [
   {
@@ -42,13 +42,13 @@ export function ConexionesContent() {
   const renderSubContent = () => {
     switch (activeSubTab) {
       case "bancos":
-        return <BancosConfigComplete />
+        return <BancosConfig />
       case "ia":
         return <IAContent />
       case "apps":
         return <AppsContent />
       default:
-        return <BancosConfigComplete />
+        return <BancosConfig />
     }
   }
 

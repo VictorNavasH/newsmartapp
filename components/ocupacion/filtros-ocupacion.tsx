@@ -1,6 +1,7 @@
 "use client"
 
 import { Filter } from "lucide-react"
+import { PeriodDropdown, type PeriodOption } from "@/components/ui/period-dropdown"
 import type { FiltrosOcupacionType } from "@/app/actions/ocupacion-actions"
 
 interface FiltrosOcupacionProps {
@@ -9,39 +10,79 @@ interface FiltrosOcupacionProps {
 }
 
 export function FiltrosOcupacionComponent({ filtros, onFiltrosChange }: FiltrosOcupacionProps) {
-  const presets = [
-    { label: "Hoy", dias: 0 },
-    { label: "Ayer", dias: 1 },
-    { label: "Últimos 7 días", dias: 7 },
-    { label: "Últimos 30 días", dias: 30 },
-    { label: "Semana actual", dias: "semana" },
-    { label: "Mes actual", dias: "mes" },
-  ]
-
-  const aplicarPreset = (preset: any) => {
+  const aplicarPreset = (preset: PeriodOption) => {
     const hoy = new Date()
     let fechaInicio: string
     let fechaFin: string
 
-    if (preset.dias === 0) {
-      fechaInicio = fechaFin = hoy.toISOString().split("T")[0]
-    } else if (preset.dias === 1) {
-      const ayer = new Date(hoy.getTime() - 24 * 60 * 60 * 1000)
-      fechaInicio = fechaFin = ayer.toISOString().split("T")[0]
-    } else if (preset.dias === "semana") {
-      const inicioSemana = new Date(hoy.setDate(hoy.getDate() - hoy.getDay() + 1))
-      fechaInicio = inicioSemana.toISOString().split("T")[0]
-      fechaFin = new Date().toISOString().split("T")[0]
-    } else if (preset.dias === "mes") {
-      fechaInicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split("T")[0]
-      fechaFin = new Date().toISOString().split("T")[0]
-    } else {
-      const inicio = new Date(hoy.getTime() - preset.dias * 24 * 60 * 60 * 1000)
-      fechaInicio = inicio.toISOString().split("T")[0]
-      fechaFin = new Date().toISOString().split("T")[0]
+    switch (preset) {
+      case "hoy":
+        fechaInicio = fechaFin = hoy.toISOString().split("T")[0]
+        break
+      case "ayer":
+        const ayer = new Date(hoy.getTime() - 24 * 60 * 60 * 1000)
+        fechaInicio = fechaFin = ayer.toISOString().split("T")[0]
+        break
+      case "ultimos7":
+        const inicio7 = new Date(hoy.getTime() - 7 * 24 * 60 * 60 * 1000)
+        fechaInicio = inicio7.toISOString().split("T")[0]
+        fechaFin = hoy.toISOString().split("T")[0]
+        break
+      case "ultimos30":
+        const inicio30 = new Date(hoy.getTime() - 30 * 24 * 60 * 60 * 1000)
+        fechaInicio = inicio30.toISOString().split("T")[0]
+        fechaFin = hoy.toISOString().split("T")[0]
+        break
+      case "semanaActual":
+        const inicioSemana = new Date(hoy.setDate(hoy.getDate() - hoy.getDay() + 1))
+        fechaInicio = inicioSemana.toISOString().split("T")[0]
+        fechaFin = new Date().toISOString().split("T")[0]
+        break
+      case "mesActual":
+        fechaInicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split("T")[0]
+        fechaFin = new Date().toISOString().split("T")[0]
+        break
+      default:
+        fechaInicio = new Date(hoy.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+        fechaFin = hoy.toISOString().split("T")[0]
     }
 
     onFiltrosChange({ ...filtros, fechaInicio, fechaFin })
+  }
+
+  // Determinar qué preset está actualmente seleccionado
+  const getCurrentPreset = (): PeriodOption => {
+    const hoy = new Date().toISOString().split("T")[0]
+    const ayer = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+
+    if (filtros.fechaInicio === hoy && filtros.fechaFin === hoy) {
+      return "hoy"
+    }
+    if (filtros.fechaInicio === ayer && filtros.fechaFin === ayer) {
+      return "ayer"
+    }
+
+    const diffDays = Math.ceil(
+      (new Date(filtros.fechaFin).getTime() - new Date(filtros.fechaInicio).getTime()) / (1000 * 60 * 60 * 24),
+    )
+
+    if (diffDays === 7) return "ultimos7"
+    if (diffDays === 30) return "ultimos30"
+
+    // Verificar si es semana actual
+    const inicioSemana = new Date()
+    inicioSemana.setDate(inicioSemana.getDate() - inicioSemana.getDay() + 1)
+    if (filtros.fechaInicio === inicioSemana.toISOString().split("T")[0]) {
+      return "semanaActual"
+    }
+
+    // Verificar si es mes actual
+    const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+    if (filtros.fechaInicio === inicioMes.toISOString().split("T")[0]) {
+      return "mesActual"
+    }
+
+    return "ultimos7" // Por defecto
   }
 
   return (
@@ -52,20 +93,10 @@ export function FiltrosOcupacionComponent({ filtros, onFiltrosChange }: FiltrosO
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {/* Presets de Período */}
+        {/* Selector de Período */}
         <div>
           <label className="text-xs text-gray-500 mb-2 block">Período</label>
-          <div className="flex flex-wrap gap-1">
-            {presets.map((preset) => (
-              <button
-                key={preset.label}
-                onClick={() => aplicarPreset(preset)}
-                className="px-2 py-1 text-xs bg-gray-100 hover:bg-nua-primary hover:text-white rounded transition-colors"
-              >
-                {preset.label}
-              </button>
-            ))}
-          </div>
+          <PeriodDropdown value={getCurrentPreset()} onChange={aplicarPreset} />
         </div>
 
         {/* Fechas Personalizadas */}
