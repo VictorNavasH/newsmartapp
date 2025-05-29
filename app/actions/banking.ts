@@ -326,7 +326,7 @@ export async function getTransactions(accountId?: string, limit = 50) {
 }
 
 // Get SQL script for manual table creation
-export function getBankingTablesSQL() {
+export async function getBankingTablesSQL() {
   return `-- Banking Tables for GoCardless Integration
 -- Run this SQL in your Supabase SQL Editor
 
