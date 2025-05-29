@@ -1,16 +1,13 @@
 "use client"
-
-import { useState } from "react"
 import { ArrowUp, ArrowDown, Target, AlertTriangle, Calendar } from "lucide-react"
 import StarBorder from "@/components/ui/star-border"
 import { ReviewsLineChart } from "@/components/charts/reviews-line-chart"
 import { ReviewsDistributionChart } from "@/components/charts/reviews-distribution-chart"
-import { PeriodSelector, type PeriodType } from "@/components/charts/period-selector"
 import { useReviewsGoogle } from "@/hooks/use-reviews-google"
 
 export default function ReviewsGoogleContent() {
   const { data, loading, error } = useReviewsGoogle()
-  const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>("meses")
+  // const [selectedPeriod, setSelectedPeriod] = useState<PeriodOption>("meses")
 
   if (loading) {
     return (
@@ -76,45 +73,60 @@ export default function ReviewsGoogleContent() {
   const semanaStatus = getKPIStatus(estadisticas?.reseñas_ultima_semana || 0, "weekly")
 
   // Filtrar datos de evolución según el período seleccionado
-  const getFilteredEvolution = () => {
-    if (!evolucion.length) return evolucion
+  // const getFilteredEvolution = () => {
+  //   if (!evolucion.length) return evolucion
 
-    const now = new Date()
-    let daysToShow = 30
+  //   const now = new Date()
+  //   let daysToShow = 30
 
-    switch (selectedPeriod) {
-      case "dias":
-        daysToShow = 30
-        break
-      case "semanas":
-        daysToShow = 84
-        break
-      case "meses":
-        daysToShow = 365
-        break
-      case "años":
-        daysToShow = 1095
-        break
-    }
+  //   switch (selectedPeriod) {
+  //     case "dias":
+  //       daysToShow = 30
+  //       break
+  //     case "semanas":
+  //       daysToShow = 84
+  //       break
+  //     case "meses":
+  //       daysToShow = 365
+  //       break
+  //     case "años":
+  //       daysToShow = 1095
+  //       break
+  //   }
 
-    const cutoffDate = new Date(now.getTime() - daysToShow * 24 * 60 * 60 * 1000)
-    return evolucion.filter((item) => new Date(item.fecha) >= cutoffDate)
-  }
+  //   const cutoffDate = new Date(now.getTime() - daysToShow * 24 * 60 * 60 * 1000)
+  //   return evolucion.filter((item) => new Date(item.fecha) >= cutoffDate)
+  // }
 
-  const filteredEvolution = getFilteredEvolution()
+  // const filteredEvolution = getFilteredEvolution()
 
-  const getPeriodLabel = () => {
-    switch (selectedPeriod) {
-      case "dias":
-        return "últimos 30 días"
-      case "semanas":
-        return "últimas 12 semanas"
-      case "meses":
-        return "últimos 12 meses"
-      case "años":
-        return "últimos 3 años"
-    }
-  }
+  // const getPeriodLabel = () => {
+  //   switch (selectedPeriod) {
+  //     case "dias":
+  //       return "últimos 30 días"
+  //     case "semanas":
+  //       return "últimas 12 semanas"
+  //     case "meses":
+  //       return "últimos 12 meses"
+  //     case "años":
+  //       return "últimos 3 años"
+  //   }
+  // }
+
+  // const filteredEvolution = getFilteredEvolution()
+
+  // const getPeriodLabel = () => {
+  //   switch (selectedPeriod) {
+  //     case "dias":
+  //       return "últimos 30 días"
+  //     case "semanas":
+  //       return "últimas 12 semanas"
+  //     case "meses":
+  //       return "últimos 12 meses"
+  //     case "años":
+  //       return "últimos 3 años"
+  //   }
+  // }
 
   return (
     <div className="space-y-6">
@@ -241,15 +253,14 @@ export default function ReviewsGoogleContent() {
         <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-[14px] font-medium text-nua-title">Evolución de la Nota Media</h3>
-            <PeriodSelector selectedPeriod={selectedPeriod} onPeriodChange={setSelectedPeriod} />
           </div>
           <div className="h-64">
-            <ReviewsLineChart data={filteredEvolution} dataKey="nota_media" color="#3b82f6" title="Nota Media" />
+            <ReviewsLineChart data={evolucion} dataKey="nota_media" color="#3b82f6" title="Nota Media" />
           </div>
           <div className="mt-2 text-sm text-nua-subtitle">
             <span className="inline-flex items-center">
               <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
-              Evolución en {getPeriodLabel()}
+              Evolución
             </span>
           </div>
         </div>
@@ -257,15 +268,14 @@ export default function ReviewsGoogleContent() {
         <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-[14px] font-medium text-nua-title">Evolución del Volumen</h3>
-            <PeriodSelector selectedPeriod={selectedPeriod} onPeriodChange={setSelectedPeriod} />
           </div>
           <div className="h-64">
-            <ReviewsLineChart data={filteredEvolution} dataKey="numero_reseñas" color="#10b981" title="Nº Reseñas" />
+            <ReviewsLineChart data={evolucion} dataKey="numero_reseñas" color="#10b981" title="Nº Reseñas" />
           </div>
           <div className="mt-2 text-sm text-nua-subtitle">
             <span className="inline-flex items-center">
               <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-              Reseñas en {getPeriodLabel()}
+              Reseñas
             </span>
           </div>
         </div>
