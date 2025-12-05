@@ -9,7 +9,7 @@ import ExpensesPage from "@/pages/ExpensesPage"
 import OperationsPage from "@/pages/OperationsPage"
 import ProductsPage from "@/pages/ProductsPage"
 import ForecastingPage from "@/pages/ForecastingPage"
-import TreasuryPage from "@/pages/TreasuryPage"
+// import TreasuryPage from "@/pages/TreasuryPage"
 import WhatIfPage from "@/pages/WhatIfPage"
 
 export default function App() {
@@ -32,8 +32,8 @@ export default function App() {
         return <ProductsPage />
       case "/forecasting":
         return <ForecastingPage />
-      case "/treasury":
-        return <TreasuryPage />
+      // case "/treasury":
+      //   return <TreasuryPage />
       case "/what-if":
         return <WhatIfPage />
       default:
