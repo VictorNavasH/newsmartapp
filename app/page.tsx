@@ -11,6 +11,7 @@ import ProductsPage from "@/pages/ProductsPage"
 import ForecastingPage from "@/pages/ForecastingPage"
 import TreasuryPage from "@/pages/TreasuryPage"
 import WhatIfPage from "@/pages/WhatIfPage"
+import { SmartAssistant } from "@/components/features/SmartAssistant"
 
 export default function App() {
   const [collapsed, setCollapsed] = useState(false)
@@ -37,7 +38,6 @@ export default function App() {
       case "/what-if":
         return <WhatIfPage />
       default:
-        // Placeholder for other pages
         return (
           <div className="flex flex-col items-center justify-center h-full text-slate-400">
             <h2 className="text-2xl font-bold mb-2">Próximamente</h2>
@@ -56,6 +56,8 @@ export default function App() {
         onNavigate={setCurrentPath}
       />
       <main className="flex-1 overflow-auto h-full w-full">{renderContent()}</main>
+
+      <SmartAssistant currentPath={currentPath} />
     </div>
   )
 }
