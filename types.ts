@@ -302,6 +302,34 @@ export interface OperacionesData {
   actualizado_at: string
 }
 
+// NEW: Financial and Occupancy KPIs for Dashboard
+export interface FinancialKPIs {
+  periodo: string
+  ingresos: number
+  gastos: number
+  margen: number
+  margen_pct: number
+  num_facturas: number
+  comensales: number
+  ticket_medio: number
+  ingresos_ant: number
+  gastos_ant: number
+  ticket_medio_ant: number
+  fecha_inicio: string
+  fecha_fin: string
+}
+
+export interface OcupacionDia {
+  fecha: string
+  dia_semana: string
+  comensales_comida: number
+  comensales_cena: number
+  total_comensales: number
+  ocupacion_total_pct: number
+  nivel_ocupacion: "tranquilo" | "normal" | "fuerte" | "pico"
+  es_hoy: boolean
+}
+
 // --- PRODUCT MIX TYPES ---
 export interface ProductMixItem {
   fecha: string

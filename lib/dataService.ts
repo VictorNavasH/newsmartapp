@@ -24,12 +24,15 @@ import type {
   ForecastKPIs,
   ForecastHistorico,
   ForecastPrecision,
+  FinancialKPIs,
+  OcupacionDia,
 } from "../types"
 import { MOCK_DATA_DELAY } from "../constants"
 import { supabase } from "./supabase" // Corregida importación para usar el cliente correcto
 
-const CAPACITY_LUNCH = 120
-const CAPACITY_DINNER = 180
+const CAPACITY_LUNCH = 66
+const CAPACITY_DINNER = 66
+const CAPACITY_PER_SHIFT = 66 // Added constant for clarity in occupancy calculation
 
 // --- HELPER FOR LOCAL ISO STRING ---
 // Helper to convert a Date object to an ISO string without shifting the timezone
@@ -206,7 +209,7 @@ const generateTableSales = (revenue: number): TableSales[] => {
 
 // Helper to generate a single shift
 const generateShift = (basePax: number, type: "LUNCH" | "DINNER"): ShiftMetrics => {
-  const capacity = type === "LUNCH" ? CAPACITY_LUNCH : CAPACITY_DINNER
+  const capacity = 66
   const pax = Math.min(Math.max(0, basePax + Math.floor(Math.random() * 20 - 10)), capacity + 5)
   const avgPaxPerRes = type === "DINNER" ? 3.2 : 2.8
   const reservations = Math.max(1, Math.round(pax / avgPaxPerRes))
@@ -264,6 +267,10 @@ const generateShift = (basePax: number, type: "LUNCH" | "DINNER"): ShiftMetrics 
       error: vError,
       pending: vPending,
     },
+    // Added missing fields that might be present in more recent versions or expected by consumers
+    tables_used: 0,
+    table_rotation: 0,
+    avg_pax_per_table_used: 0,
   }
 }
 
@@ -287,7 +294,7 @@ const generateMockHistory = (days: number): DailyCompleteMetrics[] => {
     const dinner = generateShift(baseDinner, "DINNER")
 
     const totalPax = lunch.pax + dinner.pax
-    const totalCapacity = CAPACITY_LUNCH + CAPACITY_DINNER
+    const totalCapacity = 132
     const totalRevenue = lunch.revenue + dinner.revenue
     const totalTransactions = lunch.transactions + dinner.transactions
     const totalReservations = lunch.reservations + dinner.reservations
@@ -321,38 +328,46 @@ const generateMockHistory = (days: number): DailyCompleteMetrics[] => {
       }))
       .sort((a, b) => b.revenue - a.revenue)
 
-    const total: ShiftMetrics = {
-      reservations: totalReservations,
-      pax: totalPax,
-      tables: totalTables,
-      occupancy_rate: Number.parseFloat(((totalPax / totalCapacity) * 100).toFixed(1)),
-      revenue: totalRevenue,
-      tips: lunch.tips + dinner.tips,
-      tips_count: lunch.tips_count + dinner.tips_count,
-      transactions: totalTransactions,
-      avg_ticket_transaction:
-        lunch.transactions + dinner.transactions ? totalRevenue / (lunch.transactions + dinner.transactions) : 0,
-      avg_pax_per_res: totalReservations ? Number.parseFloat((totalPax / totalReservations).toFixed(2)) : 0,
-      avg_pax_per_table: totalTables ? Number.parseFloat((totalPax / totalTables).toFixed(2)) : 0, // Rough approx
-      avg_ticket_pax: totalPax ? Number.parseFloat((totalRevenue / totalPax).toFixed(2)) : 0,
-      avg_ticket_res: totalReservations ? Number.parseFloat((totalRevenue / totalReservations).toFixed(2)) : 0,
-      avg_ticket_table: totalTables ? Number.parseFloat((totalRevenue / totalTables).toFixed(2)) : 0,
-      payment_methods: {
-        card: lunch.payment_methods.card + dinner.payment_methods.card,
-        cash: lunch.payment_methods.cash + dinner.payment_methods.cash,
-        digital: lunch.payment_methods.digital + dinner.payment_methods.digital,
-      },
-      sales_data: totalSalesData,
-      expenses: totalExpenses,
-      tables_breakdown: totalTablesBreakdown,
-      verifactu_metrics: {
-        success: lunch.verifactu_metrics.success + dinner.verifactu_metrics.success,
-        error: lunch.verifactu_metrics.error + dinner.verifactu_metrics.error,
-        pending: lunch.verifactu_metrics.pending + dinner.verifactu_metrics.pending,
+    const dataPoint: DailyCompleteMetrics = {
+      date: dateStr,
+      lunch,
+      dinner,
+      total: {
+        reservations: totalReservations,
+        pax: totalPax,
+        tables: CAPACITY_LUNCH + CAPACITY_DINNER, // Total theoretical tables
+        occupancy_rate: Number.parseFloat(((totalPax / totalCapacity) * 100).toFixed(1)),
+        revenue: totalRevenue,
+        tips: lunch.tips + dinner.tips,
+        tips_count: lunch.tips_count + dinner.tips_count,
+        transactions: totalTransactions,
+        avg_ticket_transaction:
+          lunch.transactions + dinner.transactions ? totalRevenue / (lunch.transactions + dinner.transactions) : 0,
+        avg_pax_per_res: totalReservations ? Number.parseFloat((totalPax / totalReservations).toFixed(2)) : 0,
+        avg_pax_per_table: totalTables ? Number.parseFloat((totalPax / totalTables).toFixed(2)) : 0, // Rough approx
+        avg_ticket_pax: totalPax ? Number.parseFloat((totalRevenue / totalPax).toFixed(2)) : 0,
+        avg_ticket_res: totalReservations ? Number.parseFloat((totalRevenue / totalReservations).toFixed(2)) : 0,
+        avg_ticket_table: totalTables ? Number.parseFloat((totalRevenue / totalTables).toFixed(2)) : 0,
+        payment_methods: {
+          card: lunch.payment_methods.card + dinner.payment_methods.card,
+          cash: lunch.payment_methods.cash + dinner.payment_methods.cash,
+          digital: lunch.payment_methods.digital + dinner.payment_methods.digital,
+        },
+        sales_data: totalSalesData,
+        expenses: totalExpenses,
+        tables_breakdown: totalTablesBreakdown,
+        verifactu_metrics: {
+          success: lunch.verifactu_metrics.success + dinner.verifactu_metrics.success,
+          error: lunch.verifactu_metrics.error + dinner.verifactu_metrics.error,
+          pending: lunch.verifactu_metrics.pending + dinner.verifactu_metrics.pending,
+        },
+        // Added missing fields from the mock shift structure
+        tables_used: CAPACITY_LUNCH + CAPACITY_DINNER, // Mock total theoretical capacity
+        table_rotation: 0, // Mock value, would be calculated from DB
+        avg_pax_per_table_used: 0, // Mock value, would be calculated from DB
       },
     }
-
-    data.push({ date: dateStr, lunch, dinner, total })
+    data.push(dataPoint)
   }
   return data.reverse()
 }
@@ -607,6 +622,15 @@ export const fetchRealTimeData = async (): Promise<{
     },
     tables_breakdown: [],
     verifactu_metrics: { success: 0, error: 0, pending: 0 },
+    // Added fields from the original code that were missing in the empty shift structure
+    avg_ticket_transaction: 0,
+    avg_ticket_res: 0,
+    avg_ticket_pax: 0,
+    avg_ticket_table: 0,
+    payment_methods: { card: 0, cash: 0, digital: 0 },
+    tables_used: 0,
+    table_rotation: 0,
+    avg_pax_per_table_used: 0,
   })
 
   try {
@@ -660,6 +684,12 @@ export const fetchRealTimeData = async (): Promise<{
 
     const totalTickets =
       data.total_tickets ?? data.total_facturas ?? data.facturas_total ?? data.tickets ?? data["total facturas"] ?? 0
+
+    const avgTicketTotal = data.ticket_medio ?? 0
+    const lunchTickets = data.tickets_comida ?? 0
+    const dinnerTickets = data.tickets_cena ?? 0
+    const avgTicketLunch = data.ticket_medio_comida ?? 0
+    const avgTicketDinner = data.ticket_medio_cena ?? 0
 
     // VeriFactu
     const vfTotal = data.verifactu_total ?? data.total_facturas ?? 0
@@ -726,6 +756,8 @@ export const fetchRealTimeData = async (): Promise<{
       ...createEmptyShift(), // Start with zeros
       revenue: totalRevenue,
       transactions: totalTickets,
+      avg_ticket: avgTicketTotal,
+      avg_ticket_transaction: avgTicketTotal,
       verifactu_metrics, // Use parsed verifactu_metrics instead of zeros
       // Injected New Data
       sales_data,
@@ -736,11 +768,17 @@ export const fetchRealTimeData = async (): Promise<{
     const lunchShift: ShiftMetrics = {
       ...createEmptyShift(),
       revenue: lunchRevenue,
+      transactions: lunchTickets,
+      avg_ticket: avgTicketLunch,
+      avg_ticket_transaction: avgTicketLunch,
     }
 
     const dinnerShift: ShiftMetrics = {
       ...createEmptyShift(),
       revenue: dinnerRevenue,
+      transactions: dinnerTickets,
+      avg_ticket: avgTicketDinner,
+      avg_ticket_transaction: avgTicketDinner,
     }
 
     return {
@@ -758,7 +796,7 @@ export const fetchRealTimeData = async (): Promise<{
 }
 
 // --- AGGREGATION UTILITY ---
-const aggregateShifts = (shifts: ShiftMetrics[]): ShiftMetrics => {
+const aggregateShifts = (shifts: ShiftMetrics[], shiftType: "total" | "lunch" | "dinner" = "total"): ShiftMetrics => {
   const result: ShiftMetrics = {
     reservations: 0,
     pax: 0,
@@ -774,7 +812,7 @@ const aggregateShifts = (shifts: ShiftMetrics[]): ShiftMetrics => {
     tips_count: 0,
     transactions: 0,
     avg_ticket_transaction: 0,
-    avg_ticket_res: 0,
+    avg_ticket_res: 0, // Added missing fields from original code
     avg_ticket_pax: 0,
     avg_ticket_table: 0,
     payment_methods: { card: 0, cash: 0, digital: 0 },
@@ -811,8 +849,8 @@ const aggregateShifts = (shifts: ShiftMetrics[]): ShiftMetrics => {
   shifts.forEach((s) => {
     result.reservations += s.reservations
     result.pax += s.pax
-    result.tables += s.tables
-    result.tables_used += s.tables_used || 0
+    result.tables += s.tables // This is the *theoretical* capacity, not used tables
+    result.tables_used += s.tables_used || 0 // Actual tables used
     result.revenue += s.revenue
     result.tips += s.tips
     result.tips_count += s.tips_count
@@ -874,23 +912,51 @@ const aggregateShifts = (shifts: ShiftMetrics[]): ShiftMetrics => {
   if (result.reservations > 0) {
     result.avg_pax_per_res = Number.parseFloat((result.pax / result.reservations).toFixed(2))
   }
+
   if (result.tables_used > 0) {
     result.avg_pax_per_table_used = Number.parseFloat((result.pax / result.tables_used).toFixed(2))
+  }
+
+  // Usar el valor de BD si existe (mayor que 0), si no calcular como fallback
+  const existingRotation = shifts.find((s) => s.table_rotation > 0)?.table_rotation
+  if (existingRotation) {
+    result.table_rotation = existingRotation
+  } else if (result.tables_used > 0) {
+    // Fallback: solo calcular si no hay valor de BD
     result.table_rotation = Number.parseFloat((result.reservations / result.tables_used).toFixed(2))
   }
 
-  // Recalculate Occupancy (Average of occupancies)
-  const totalOccupancy = shifts.reduce((acc, s) => acc + s.occupancy_rate, 0)
-  result.occupancy_rate = Number.parseFloat((totalOccupancy / shifts.length).toFixed(1))
+  const existingOccupancy = shifts.find((s) => s.occupancy_rate > 0)?.occupancy_rate
+  if (existingOccupancy) {
+    result.occupancy_rate = existingOccupancy
+  } else {
+    // total = día completo (132 plazas), lunch/dinner = turno individual (66 plazas)
+    const totalCapacity = shiftType === "total" ? CAPACITY_PER_SHIFT * 2 : CAPACITY_PER_SHIFT
+    if (totalCapacity > 0) {
+      result.occupancy_rate = Number.parseFloat(((result.pax / totalCapacity) * 100).toFixed(2))
+    }
+  }
+
+  if (result.tables > 0) {
+    result.avg_pax_per_table = Number.parseFloat((result.pax / result.tables).toFixed(2))
+  }
 
   return result
 }
 
 export const aggregateMetrics = (data: DailyCompleteMetrics[]): DailyCompleteMetrics => {
-  // Aggregate totals
-  const totalShift = aggregateShifts(data.map((d) => d.total))
-  const lunchShift = aggregateShifts(data.map((d) => d.lunch))
-  const dinnerShift = aggregateShifts(data.map((d) => d.dinner))
+  const totalShift = aggregateShifts(
+    data.map((d) => d.total),
+    "total",
+  )
+  const lunchShift = aggregateShifts(
+    data.map((d) => d.lunch),
+    "lunch",
+  )
+  const dinnerShift = aggregateShifts(
+    data.map((d) => d.dinner),
+    "dinner",
+  )
 
   // Extract capacity from first record to attach to aggregated result
   const capacity = data.length > 0 && data[0].capacity ? data[0].capacity : undefined
@@ -905,14 +971,14 @@ export const aggregateMetrics = (data: DailyCompleteMetrics[]): DailyCompleteMet
 }
 
 export const fetchReservationsFromDB = async (startDate: Date, endDate: Date): Promise<DailyCompleteMetrics[]> => {
-  const start = startDate.toISOString().split("T")[0]
-  const end = endDate.toISOString().split("T")[0]
+  const startDateStr = startDate.toISOString().split("T")[0]
+  const endDateStr = endDate.toISOString().split("T")[0]
 
-  const { data, error } = await supabase
+  const { data: rows, error } = await supabase
     .from("vw_metricas_diarias_base")
     .select("*")
-    .gte("fecha", start)
-    .lte("fecha", end)
+    .gte("fecha", startDateStr)
+    .lte("fecha", endDateStr)
     .order("fecha", { ascending: true })
 
   if (error) {
@@ -920,7 +986,7 @@ export const fetchReservationsFromDB = async (startDate: Date, endDate: Date): P
     return []
   }
 
-  const firstRow = data?.[0]
+  const firstRow = rows?.[0]
   const capacity = firstRow
     ? {
         plazas_turno: firstRow.capacidad_plazas_turno || 66,
@@ -931,85 +997,161 @@ export const fetchReservationsFromDB = async (startDate: Date, endDate: Date): P
     : undefined
 
   // Transform DB data to DailyCompleteMetrics format
-  return (data || []).map((row: any) => ({
-    date: row.fecha,
-    capacity,
-    total: {
-      reservations: row.reservas_total_dia || 0,
-      pax: row.comensales_total_dia || 0,
-      tables: 0,
-      occupancy_rate: row.ocupacion_porcentaje_dia || 0,
-      avg_pax_per_res: Number.parseFloat(row.media_comensales_por_reserva_dia) || 0,
-      avg_pax_per_table: Number.parseFloat(row.media_comensales_por_mesa_dia) || 0,
-      tables_used: row.mesas_ocupadas_dia || 0,
-      table_rotation: Number.parseFloat(row.rotacion_mesas_dia) || 0,
-      avg_pax_per_table_used: Number.parseFloat(row.media_comensales_por_mesa_dia) || 0,
-      revenue: 0,
-      tips: 0,
-      tips_count: 0,
-      transactions: 0,
-      avg_ticket_transaction: 0,
-      verifactu_metrics: { success: 0, error: 0, pending: 0 },
-      expenses: { total: 0, paid: 0, overdue: 0, pending: 0, by_category: {} },
-      sales_data: {
-        categories: [],
-        top_products: [],
-        all_products: [],
-        modifiers: { with_options: 0, without_options: 0, total_items: 0 },
+  const mapped = (rows || []).map((row: any) => {
+    if (row.fecha === "2025-12-13") {
+      console.log("[v0] DEBUG día 13 - rotacion_mesas_dia:", row.rotacion_mesas_dia)
+      console.log("[v0] DEBUG día 13 - rotacion_mesas_comida:", row.rotacion_mesas_comida)
+      console.log("[v0] DEBUG día 13 - rotacion_mesas_cena:", row.rotacion_mesas_cena)
+      console.log("[v0] DEBUG día 13 - reservas:", row.reservas_total_dia, "mesas:", row.mesas_ocupadas_dia)
+    }
+
+    const paxDia = Number.parseFloat(row.comensales_total_dia) || 0
+    const paxComida = Number.parseFloat(row.comensales_comida) || 0
+    const paxCena = Number.parseFloat(row.comensales_cena) || 0
+    const capacidadDia = Number.parseFloat(row.capacidad_plazas_dia) || 132
+    const capacidadTurno = Number.parseFloat(row.capacidad_plazas_turno) || 66
+
+    // Use DB value if exists, otherwise calculate
+    const ocupacionDia = row.ocupacion_dia ? Number.parseFloat(row.ocupacion_dia) : (paxDia / capacidadDia) * 100
+    const ocupacionComida = row.ocupacion_comida
+      ? Number.parseFloat(row.ocupacion_comida)
+      : (paxComida / capacidadTurno) * 100
+    const ocupacionCena = row.ocupacion_cena ? Number.parseFloat(row.ocupacion_cena) : (paxCena / capacidadTurno) * 100
+
+    return {
+      date: row.fecha,
+      capacity,
+      total: {
+        reservations: Number.parseFloat(row.reservas_total_dia) || 0,
+        pax: paxDia,
+        tables: Number.parseFloat(row.capacidad_mesas_dia) || 38,
+        tables_used: row.mesas_ocupadas_dia || 0,
+        revenue: Number.parseFloat(row.total_facturado_dia) || 0,
+        tips: Number.parseFloat(row.total_propinas_dia) || 0,
+        tips_count: Number.parseInt(row.propinas_count_dia) || 0,
+        transactions: Number.parseInt(row.num_transacciones_dia) || 0,
+        avg_ticket_transaction: Number.parseFloat(row.ticket_medio_transaccion_dia) || 0,
+        avg_ticket_res: Number.parseFloat(row.ticket_medio_por_reserva_dia) || 0,
+        avg_ticket_pax: Number.parseFloat(row.ticket_medio_por_comensal_dia) || 0,
+        avg_ticket_table: Number.parseFloat(row.ticket_medio_por_mesa_dia) || 0,
+        avg_pax_per_res: Number.parseFloat(row.pax_medio_reserva_dia) || 0,
+        avg_pax_per_table_used: Number.parseFloat(row.pax_medio_mesa_dia) || 0,
+        table_rotation: Number.parseFloat(row.rotacion_mesas_dia) || 0,
+        occupancy_rate: Number.parseFloat(row.ocupacion_porcentaje_dia) || Number.parseFloat(ocupacionDia.toFixed(2)),
+
+        payment_methods: {
+          card: Number.parseFloat(row.facturado_tarjeta_dia) || 0,
+          cash: Number.parseFloat(row.facturado_efectivo_dia) || 0,
+          digital: Number.parseFloat(row.facturado_otros_dia) || 0,
+        },
+
+        verifactu_metrics: {
+          success: Number.parseInt(row.verifactu_ok) || 0,
+          error: Number.parseInt(row.verifactu_error) || 0,
+          pending: Number.parseInt(row.verifactu_pendientes) || 0,
+        },
+        expenses: { total: 0, paid: 0, overdue: 0, pending: 0, by_category: {} }, // Not available in this view
+        sales_data: {
+          categories: [],
+          top_products: [],
+          all_products: [],
+          modifiers: { with_options: 0, without_options: 0, total_items: 0 },
+        }, // Not available in this view
+        tables_breakdown: [], // Not available in this view
       },
-      tables_breakdown: [],
-    },
-    lunch: {
-      reservations: row.reservas_comida || 0,
-      pax: row.comensales_comida || 0,
-      tables: 0,
-      occupancy_rate: row.ocupacion_porcentaje_comida || 0,
-      avg_pax_per_res: Number.parseFloat(row.media_comensales_por_reserva_comida) || 0,
-      avg_pax_per_table: Number.parseFloat(row.media_comensales_por_mesa_comida) || 0,
-      tables_used: row.mesas_ocupadas_comida || 0,
-      table_rotation: Number.parseFloat(row.rotacion_mesas_comida) || 0,
-      avg_pax_per_table_used: Number.parseFloat(row.media_comensales_por_mesa_comida) || 0,
-      revenue: 0,
-      tips: 0,
-      tips_count: 0,
-      transactions: 0,
-      avg_ticket_transaction: 0,
-      verifactu_metrics: { success: 0, error: 0, pending: 0 },
-      expenses: { total: 0, paid: 0, overdue: 0, pending: 0, by_category: {} },
-      sales_data: {
-        categories: [],
-        top_products: [],
-        all_products: [],
-        modifiers: { with_options: 0, without_options: 0, total_items: 0 },
+      lunch: {
+        reservations: Number.parseFloat(row.reservas_comida) || 0,
+        pax: paxComida,
+        tables: Number.parseFloat(row.capacidad_mesas_turno) || 19,
+        tables_used: row.mesas_ocupadas_comida || 0,
+        revenue: Number.parseFloat(row.total_facturado_comida) || 0,
+        tips: Number.parseFloat(row.total_propinas_comida) || 0,
+        tips_count: Number.parseInt(row.propinas_count_comida) || 0,
+        transactions: Number.parseInt(row.num_transacciones_comida) || 0,
+        avg_ticket_transaction: Number.parseFloat(row.ticket_medio_transaccion_comida) || 0,
+        avg_ticket_res: Number.parseFloat(row.ticket_medio_por_reserva_comida) || 0,
+        avg_ticket_pax: Number.parseFloat(row.ticket_medio_por_comensal_comida) || 0,
+        avg_ticket_table: Number.parseFloat(row.ticket_medio_por_mesa_comida) || 0,
+        avg_pax_per_res: Number.parseFloat(row.pax_medio_reserva_comida) || 0,
+        avg_pax_per_table_used: Number.parseFloat(row.pax_medio_mesa_comida) || 0,
+        table_rotation: Number.parseFloat(row.rotacion_mesas_comida) || 0,
+        occupancy_rate:
+          Number.parseFloat(row.ocupacion_porcentaje_comida) || Number.parseFloat(ocupacionComida.toFixed(2)),
+
+        payment_methods: {
+          card: Number.parseFloat(row.facturado_tarjeta_comida) || 0,
+          cash: Number.parseFloat(row.facturado_efectivo_comida) || 0,
+          digital: Number.parseFloat(row.facturado_otros_comida) || 0,
+        },
+
+        verifactu_metrics: {
+          success: Number.parseInt(row.verifactu_ok_comida) || 0,
+          error: Number.parseInt(row.verifactu_error_comida) || 0,
+          pending: Number.parseInt(row.verifactu_pendientes_comida) || 0,
+        },
+        expenses: { total: 0, paid: 0, overdue: 0, pending: 0, by_category: {} },
+        sales_data: {
+          categories: [],
+          top_products: [],
+          all_products: [],
+          modifiers: { with_options: 0, without_options: 0, total_items: 0 },
+        },
+        tables_breakdown: [],
       },
-      tables_breakdown: [],
-    },
-    dinner: {
-      reservations: row.reservas_cena || 0,
-      pax: row.comensales_cena || 0,
-      tables: 0,
-      occupancy_rate: row.ocupacion_porcentaje_cena || 0,
-      avg_pax_per_res: Number.parseFloat(row.media_comensales_por_reserva_cena) || 0,
-      avg_pax_per_table: Number.parseFloat(row.media_comensales_por_mesa_cena) || 0,
-      tables_used: row.mesas_ocupadas_cena || 0,
-      table_rotation: Number.parseFloat(row.rotacion_mesas_cena) || 0,
-      avg_pax_per_table_used: Number.parseFloat(row.media_comensales_por_mesa_cena) || 0,
-      revenue: 0,
-      tips: 0,
-      tips_count: 0,
-      transactions: 0,
-      avg_ticket_transaction: 0,
-      verifactu_metrics: { success: 0, error: 0, pending: 0 },
-      expenses: { total: 0, paid: 0, overdue: 0, pending: 0, by_category: {} },
-      sales_data: {
-        categories: [],
-        top_products: [],
-        all_products: [],
-        modifiers: { with_options: 0, without_options: 0, total_items: 0 },
+      dinner: {
+        reservations: Number.parseFloat(row.reservas_cena) || 0,
+        pax: paxCena,
+        tables: Number.parseFloat(row.capacidad_mesas_turno) || 19,
+        tables_used: row.mesas_ocupadas_cena || 0,
+        revenue: Number.parseFloat(row.total_facturado_cena) || 0,
+        tips: Number.parseFloat(row.total_propinas_cena) || 0,
+        tips_count: Number.parseInt(row.propinas_count_cena) || 0,
+        transactions: Number.parseInt(row.num_transacciones_cena) || 0,
+        avg_ticket_transaction: Number.parseFloat(row.ticket_medio_transaccion_cena) || 0,
+        avg_ticket_res: Number.parseFloat(row.ticket_medio_por_reserva_cena) || 0,
+        avg_ticket_pax: Number.parseFloat(row.ticket_medio_por_comensal_cena) || 0,
+        avg_ticket_table: Number.parseFloat(row.ticket_medio_por_mesa_cena) || 0,
+        avg_pax_per_res: Number.parseFloat(row.pax_medio_reserva_cena) || 0,
+        avg_pax_per_table_used: Number.parseFloat(row.pax_medio_mesa_cena) || 0,
+        table_rotation: Number.parseFloat(row.rotacion_mesas_cena) || 0,
+        occupancy_rate: Number.parseFloat(row.ocupacion_porcentaje_cena) || Number.parseFloat(ocupacionCena.toFixed(2)),
+
+        payment_methods: {
+          card: Number.parseFloat(row.facturado_tarjeta_cena) || 0,
+          cash: Number.parseFloat(row.facturado_efectivo_cena) || 0,
+          digital: Number.parseFloat(row.facturado_otros_cena) || 0,
+        },
+
+        verifactu_metrics: {
+          success: Number.parseInt(row.verifactu_ok_cena) || 0,
+          error: Number.parseInt(row.verifactu_error_cena) || 0,
+          pending: Number.parseInt(row.verifactu_pendientes_cena) || 0,
+        },
+        expenses: { total: 0, paid: 0, overdue: 0, pending: 0, by_category: {} },
+        sales_data: {
+          categories: [],
+          top_products: [],
+          all_products: [],
+          modifiers: { with_options: 0, without_options: 0, total_items: 0 },
+        },
+        tables_breakdown: [],
       },
-      tables_breakdown: [],
-    },
-  }))
+    }
+  })
+
+  console.log(
+    "[v0] fetchReservationsFromDB mapped first row:",
+    mapped.length > 0
+      ? {
+          fecha: mapped[0].date,
+          total_tables_used: mapped[0].total.tables_used,
+          lunch_tables_used: mapped[0].lunch.tables_used,
+          dinner_tables_used: mapped[0].dinner.tables_used,
+          raw_total_mesas: rows && rows.length > 0 ? (rows as any)[0].total_mesas : "N/A",
+        }
+      : "No data",
+  )
+  return mapped
 }
 
 // --- FETCH INCOME FROM DB ---
@@ -1027,12 +1169,6 @@ export const fetchIncomeFromDB = async (startDate: Date, endDate: Date): Promise
     .order("fecha", { ascending: true })
 
   console.log("[v0] RAW DATA FROM SUPABASE:", data?.[0])
-  console.log("[v0] ticket_medio_por_mesa values:", {
-    dia: data?.[0]?.ticket_medio_por_mesa_dia,
-    comida: data?.[0]?.ticket_medio_por_mesa_comida,
-    cena: data?.[0]?.ticket_medio_por_mesa_cena,
-    tipo_dia: typeof data?.[0]?.ticket_medio_por_mesa_dia,
-  })
 
   if (error) {
     console.error("[v0] Error fetching income from DB:", error)
@@ -1054,25 +1190,22 @@ export const fetchIncomeFromDB = async (startDate: Date, endDate: Date): Promise
     date: row.fecha,
     capacity,
     total: {
-      reservations: row.reservas_total_dia || 0,
-      pax: row.comensales_total_dia || 0,
-      tables: 0,
-      occupancy_rate: row.ocupacion_porcentaje_dia || 0,
-      avg_pax_per_res: Number.parseFloat(row.media_comensales_por_reserva_dia) || 0,
-      avg_pax_per_table: Number.parseFloat(row.media_comensales_por_mesa_dia) || 0,
+      reservations: Number.parseFloat(row.reservas_total_dia) || 0,
+      pax: Number.parseFloat(row.comensales_total_dia) || 0,
+      tables: Number.parseFloat(row.capacidad_mesas_dia) || 38,
       tables_used: row.mesas_ocupadas_dia || 0,
-      table_rotation: Number.parseFloat(row.rotacion_mesas_dia) || 0,
-      avg_pax_per_table_used: Number.parseFloat(row.media_comensales_por_mesa_dia) || 0,
-
       revenue: Number.parseFloat(row.total_facturado_dia) || 0,
       tips: Number.parseFloat(row.total_propinas_dia) || 0,
-      tips_count: 0, // No disponible en la vista
-      transactions: row.num_transacciones_dia || 0,
-
+      tips_count: Number.parseInt(row.propinas_count_dia) || 0,
+      transactions: Number.parseInt(row.num_transacciones_dia) || 0,
       avg_ticket_transaction: Number.parseFloat(row.ticket_medio_transaccion_dia) || 0,
       avg_ticket_res: Number.parseFloat(row.ticket_medio_por_reserva_dia) || 0,
       avg_ticket_pax: Number.parseFloat(row.ticket_medio_por_comensal_dia) || 0,
       avg_ticket_table: Number.parseFloat(row.ticket_medio_por_mesa_dia) || 0,
+      avg_pax_per_res: Number.parseFloat(row.pax_medio_reserva_dia) || 0,
+      avg_pax_per_table_used: Number.parseFloat(row.pax_medio_mesa_dia) || 0,
+      table_rotation: Number.parseFloat(row.rotacion_mesas_dia) || 0,
+      occupancy_rate: Number.parseFloat(row.ocupacion_porcentaje_dia) || 0,
 
       payment_methods: {
         card: Number.parseFloat(row.facturado_tarjeta_dia) || 0,
@@ -1080,36 +1213,33 @@ export const fetchIncomeFromDB = async (startDate: Date, endDate: Date): Promise
         digital: Number.parseFloat(row.facturado_otros_dia) || 0,
       },
 
-      verifactu_metrics: { success: 0, error: 0, pending: 0 },
-      expenses: { total: 0, paid: 0, overdue: 0, pending: 0, by_category: {} },
+      verifactu_metrics: { success: 0, error: 0, pending: 0 }, // Not available in this view
+      expenses: { total: 0, paid: 0, overdue: 0, pending: 0, by_category: {} }, // Not available in this view
       sales_data: {
         categories: [],
         top_products: [],
         all_products: [],
         modifiers: { with_options: 0, without_options: 0, total_items: 0 },
-      },
-      tables_breakdown: [],
+      }, // Not available in this view
+      tables_breakdown: [], // Not available in this view
     },
     lunch: {
-      reservations: row.reservas_comida || 0,
-      pax: row.comensales_comida || 0,
-      tables: 0,
-      occupancy_rate: row.ocupacion_porcentaje_comida || 0,
-      avg_pax_per_res: Number.parseFloat(row.media_comensales_por_reserva_comida) || 0,
-      avg_pax_per_table: Number.parseFloat(row.media_comensales_por_mesa_comida) || 0,
+      reservations: Number.parseFloat(row.reservas_comida) || 0,
+      pax: Number.parseFloat(row.comensales_comida) || 0,
+      tables: Number.parseFloat(row.capacidad_mesas_turno) || 19,
       tables_used: row.mesas_ocupadas_comida || 0,
-      table_rotation: Number.parseFloat(row.rotacion_mesas_comida) || 0,
-      avg_pax_per_table_used: Number.parseFloat(row.media_comensales_por_mesa_comida) || 0,
-
       revenue: Number.parseFloat(row.total_facturado_comida) || 0,
       tips: Number.parseFloat(row.total_propinas_comida) || 0,
-      tips_count: 0,
-      transactions: row.num_transacciones_comida || 0,
-
+      tips_count: Number.parseInt(row.propinas_count_comida) || 0,
+      transactions: Number.parseInt(row.num_transacciones_comida) || 0,
       avg_ticket_transaction: Number.parseFloat(row.ticket_medio_transaccion_comida) || 0,
       avg_ticket_res: Number.parseFloat(row.ticket_medio_por_reserva_comida) || 0,
       avg_ticket_pax: Number.parseFloat(row.ticket_medio_por_comensal_comida) || 0,
       avg_ticket_table: Number.parseFloat(row.ticket_medio_por_mesa_comida) || 0,
+      avg_pax_per_res: Number.parseFloat(row.pax_medio_reserva_comida) || 0,
+      avg_pax_per_table_used: Number.parseFloat(row.pax_medio_mesa_comida) || 0,
+      table_rotation: Number.parseFloat(row.rotacion_mesas_comida) || 0,
+      occupancy_rate: Number.parseFloat(row.ocupacion_porcentaje_comida) || 0,
 
       payment_methods: {
         card: 0, // No disponible por turno
@@ -1128,25 +1258,22 @@ export const fetchIncomeFromDB = async (startDate: Date, endDate: Date): Promise
       tables_breakdown: [],
     },
     dinner: {
-      reservations: row.reservas_cena || 0,
-      pax: row.comensales_cena || 0,
-      tables: 0,
-      occupancy_rate: row.ocupacion_porcentaje_cena || 0,
-      avg_pax_per_res: Number.parseFloat(row.media_comensales_por_reserva_cena) || 0,
-      avg_pax_per_table: Number.parseFloat(row.media_comensales_por_mesa_cena) || 0,
+      reservations: Number.parseFloat(row.reservas_cena) || 0,
+      pax: Number.parseFloat(row.comensales_cena) || 0,
+      tables: Number.parseFloat(row.capacidad_mesas_turno) || 19,
       tables_used: row.mesas_ocupadas_cena || 0,
-      table_rotation: Number.parseFloat(row.rotacion_mesas_cena) || 0,
-      avg_pax_per_table_used: Number.parseFloat(row.media_comensales_por_mesa_cena) || 0,
-
       revenue: Number.parseFloat(row.total_facturado_cena) || 0,
       tips: Number.parseFloat(row.total_propinas_cena) || 0,
-      tips_count: 0,
-      transactions: row.num_transacciones_cena || 0,
-
+      tips_count: Number.parseInt(row.propinas_count_cena) || 0,
+      transactions: Number.parseInt(row.num_transacciones_cena) || 0,
       avg_ticket_transaction: Number.parseFloat(row.ticket_medio_transaccion_cena) || 0,
       avg_ticket_res: Number.parseFloat(row.ticket_medio_por_reserva_cena) || 0,
       avg_ticket_pax: Number.parseFloat(row.ticket_medio_por_comensal_cena) || 0,
       avg_ticket_table: Number.parseFloat(row.ticket_medio_por_mesa_cena) || 0,
+      avg_pax_per_res: Number.parseFloat(row.pax_medio_reserva_cena) || 0,
+      avg_pax_per_table_used: Number.parseFloat(row.pax_medio_mesa_cena) || 0,
+      table_rotation: Number.parseFloat(row.rotacion_mesas_cena) || 0,
+      occupancy_rate: Number.parseFloat(row.ocupacion_porcentaje_cena) || 0,
 
       payment_methods: {
         card: 0,
@@ -1392,7 +1519,7 @@ export async function fetchProductMix(
   categoria?: string,
 ): Promise<ProductMixItem[]> {
   try {
-    let query = supabase.from("vw_mix_productos").select("*").gte("fecha", startDate).lte("fecha", endDate)
+    let query = supabase.from("vw_mix_productos").select("*").gte("fecha_texto", startDate).lte("fecha_texto", endDate)
 
     if (turno && turno !== "todos") {
       query = query.eq("turno_nombre", turno)
@@ -1417,7 +1544,7 @@ export async function fetchProductMix(
 
 export async function fetchCategoryMix(startDate: string, endDate: string, turno?: string): Promise<CategoryMixItem[]> {
   try {
-    let query = supabase.from("vw_mix_categorias").select("*").gte("fecha", startDate).lte("fecha", endDate)
+    let query = supabase.from("vw_mix_categorias").select("*").gte("fecha_texto", startDate).lte("fecha_texto", endDate)
 
     if (turno && turno !== "todos") {
       query = query.eq("turno_nombre", turno)
@@ -1444,7 +1571,7 @@ export async function fetchOptionMix(
   soloExtraPago?: boolean,
 ): Promise<OptionMixItem[]> {
   try {
-    let query = supabase.from("vw_mix_opciones").select("*").gte("fecha", startDate).lte("fecha", endDate)
+    let query = supabase.from("vw_mix_opciones").select("*").gte("fecha_texto", startDate).lte("fecha_texto", endDate)
 
     if (turno && turno !== "todos") {
       query = query.eq("turno_nombre", turno)
@@ -1809,6 +1936,7 @@ export async function fetchForecastCalendar(year: number, month: number): Promis
       const diaSemana = date.getDay()
       const esFinDeSemana = diaSemana === 0 || diaSemana === 5 || diaSemana === 6
       const esPasado = date < today
+      const esHoy = date.toDateString() === today.toDateString()
 
       const basePrediccion = esFinDeSemana ? 140 : 90
       const prediccion = basePrediccion + Math.floor(Math.random() * 30) - 15
@@ -1851,7 +1979,7 @@ export async function fetchForecastCalendar(year: number, month: number): Promis
         evento_principal: null,
         comensales_semana_ant: null,
         comensales_año_ant: null,
-        tipo_fecha: esPasado ? "pasado" : date.toDateString() === today.toDateString() ? "hoy" : "futuro",
+        tipo_fecha: esPasado ? "pasado" : esHoy ? "hoy" : "futuro",
       })
     }
     return days
@@ -1889,4 +2017,77 @@ export async function fetchForecastCalendar(year: number, month: number): Promis
     comensales_año_ant: d.comensales_año_ant,
     tipo_fecha: d.tipo_fecha || "futuro",
   }))
+}
+
+export async function fetchFinancialKPIs(): Promise<FinancialKPIs[]> {
+  try {
+    const { data, error } = await supabase
+      .from("vw_dashboard_financiero")
+      .select("*")
+      .order("periodo", { ascending: true })
+
+    if (error) {
+      console.error("[v0] Error fetching financial KPIs:", error)
+      return []
+    }
+
+    return (data || []).map((row: any) => ({
+      periodo: row.periodo,
+      ingresos: row.ingresos || 0,
+      gastos: row.gastos || 0,
+      margen: row.margen || 0,
+      margen_pct: row.margen_pct || 0,
+      num_facturas: row.num_facturas || 0,
+      comensales: row.comensales || 0,
+      ticket_medio: row.ticket_medio || 0,
+      ingresos_ant: row.ingresos_ant || 0,
+      gastos_ant: row.gastos_ant || 0,
+      ticket_medio_ant: row.ticket_medio_ant || 0,
+      fecha_inicio: row.fecha_inicio,
+      fecha_fin: row.fecha_fin,
+    }))
+  } catch (error) {
+    console.error("[v0] Error in fetchFinancialKPIs:", error)
+    return []
+  }
+}
+
+export async function fetchOcupacionSemanal(): Promise<OcupacionDia[]> {
+  try {
+    const { data, error } = await supabase
+      .from("vw_dashboard_ocupacion")
+      .select("*")
+      .order("fecha", { ascending: true })
+      .limit(7)
+
+    if (error) {
+      console.error("[v0] Error fetching ocupacion semanal:", error)
+      return []
+    }
+
+    // Mapeo de días de inglés a español
+    const diasMap: Record<string, string> = {
+      Mon: "Lun",
+      Tue: "Mar",
+      Wed: "Mié",
+      Thu: "Jue",
+      Fri: "Vie",
+      Sat: "Sáb",
+      Sun: "Dom",
+    }
+
+    return (data || []).map((row: any) => ({
+      fecha: row.fecha,
+      dia_semana: diasMap[row.dia_semana] || row.dia_semana,
+      comensales_comida: row.comensales_comida || 0,
+      comensales_cena: row.comensales_cena || 0,
+      total_comensales: row.total_comensales || 0,
+      ocupacion_total_pct: row.ocupacion_total_pct || 0,
+      nivel_ocupacion: row.nivel_ocupacion || "tranquilo",
+      es_hoy: row.es_hoy || false,
+    }))
+  } catch (error) {
+    console.error("[v0] Error in fetchOcupacionSemanal:", error)
+    return []
+  }
 }

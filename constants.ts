@@ -43,7 +43,7 @@ export const BRAND_COLORS = {
   secondary: "#223143", // Darker blue-gray - Secondary text
   accent: "#227c9d", // Teal - Accent and night/dinner
   lunch: "#ffcb77", // Yellow - Lunch/day
-  success: "#49eada", // Green - Success states (VeriFactu OK, positive trends)
+  success: "#17c3b2", // Green - Success states (VeriFactu OK, positive trends, ingresos)
   error: "#fe6d73", // Red - Error states, negative trends, alerts
   warning: "#ffcb77", // Yellow - Warning states
 } as const

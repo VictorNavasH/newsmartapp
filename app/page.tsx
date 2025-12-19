@@ -2,15 +2,16 @@
 
 import { useState } from "react"
 import { Sidebar } from "@/components/layout/Sidebar"
-import DashboardPage from "@/pages/DashboardPage"
-import ReservationsPage from "@/pages/ReservationsPage"
-import IncomePage from "@/pages/IncomePage"
-import ExpensesPage from "@/pages/ExpensesPage"
-import OperationsPage from "@/pages/OperationsPage"
-import ProductsPage from "@/pages/ProductsPage"
-import ForecastingPage from "@/pages/ForecastingPage"
-import TreasuryPage from "@/pages/TreasuryPage"
-import WhatIfPage from "@/pages/WhatIfPage"
+import DashboardPage from "@/components/pages/DashboardPage"
+import ReservationsPage from "@/components/pages/ReservationsPage"
+import IncomePage from "@/components/pages/IncomePage"
+import ExpensesPage from "@/components/pages/ExpensesPage"
+import OperationsPage from "@/components/pages/OperationsPage"
+import ProductsPage from "@/components/pages/ProductsPage"
+import ForecastingPage from "@/components/pages/ForecastingPage"
+import TreasuryPage from "@/components/pages/TreasuryPage"
+import WhatIfPage from "@/components/pages/WhatIfPage"
+import BankConnectionsPage from "@/components/pages/BankConnectionsPage"
 import { SmartAssistant } from "@/components/features/SmartAssistant"
 
 export default function App() {
@@ -37,6 +38,8 @@ export default function App() {
         return <TreasuryPage />
       case "/what-if":
         return <WhatIfPage />
+      case "/bank-connections":
+        return <BankConnectionsPage />
       default:
         return (
           <div className="flex flex-col items-center justify-center h-full text-slate-400">

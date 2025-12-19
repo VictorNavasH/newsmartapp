@@ -1,39 +1,146 @@
 import type { WeatherDay } from "../types"
-import { RESTAURANT_LOCATION } from "../constants"
+import { supabase } from "./supabase"
+
+const aemetToWmoCode = (aemetCode: string | null): number => {
+  if (!aemetCode) return 0
+
+  // Códigos AEMET: https://www.aemet.es/es/eltiempo/prediccion/municipios/ayuda
+  // Mapeo a WMO codes usados por Open-Meteo
+  const mapping: Record<string, number> = {
+    // Despejado
+    "11": 0,
+    "11n": 0,
+    // Poco nuboso
+    "12": 1,
+    "12n": 1,
+    // Intervalos nubosos
+    "13": 2,
+    "13n": 2,
+    "14": 2,
+    "14n": 2,
+    // Muy nuboso
+    "15": 3,
+    "15n": 3,
+    // Cubierto
+    "16": 3,
+    "16n": 3,
+    // Nubes altas
+    "17": 2,
+    "17n": 2,
+    // Niebla
+    "81": 45,
+    "81n": 45,
+    "82": 45,
+    "82n": 45,
+    // Lluvia
+    "23": 61,
+    "23n": 61, // Intervalos nubosos con lluvia escasa
+    "24": 61,
+    "24n": 61, // Nuboso con lluvia escasa
+    "25": 63,
+    "25n": 63, // Muy nuboso con lluvia
+    "26": 65,
+    "26n": 65, // Cubierto con lluvia
+    "43": 61,
+    "43n": 61, // Intervalos nubosos con lluvia
+    "44": 63,
+    "44n": 63, // Nuboso con lluvia
+    "45": 65,
+    "45n": 65, // Muy nuboso con lluvia
+    "46": 65,
+    "46n": 65, // Cubierto con lluvia
+    // Chubascos
+    "51": 80,
+    "51n": 80,
+    "52": 80,
+    "52n": 80,
+    "53": 81,
+    "53n": 81,
+    "54": 82,
+    "54n": 82,
+    // Tormenta
+    "61": 95,
+    "61n": 95,
+    "62": 95,
+    "62n": 95,
+    "63": 96,
+    "63n": 96,
+    "64": 96,
+    "64n": 96,
+    // Nieve
+    "33": 71,
+    "33n": 71,
+    "34": 73,
+    "34n": 73,
+    "35": 75,
+    "35n": 75,
+    "36": 75,
+    "36n": 75,
+    "71": 77,
+    "71n": 77,
+    "72": 77,
+    "72n": 77,
+    "73": 85,
+    "73n": 85,
+    "74": 86,
+    "74n": 86,
+  }
+
+  return mapping[aemetCode] ?? 0
+}
 
 export const fetchWeatherForecast = async (): Promise<WeatherDay[]> => {
   try {
-    const { LAT, LON } = RESTAURANT_LOCATION
+    // Obtener fecha actual en formato ISO
+    const today = new Date().toISOString().split("T")[0]
 
-    // We fetch hourly data to pick specific times for Lunch (14:00) and Dinner (21:00)
-    const response = await fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&daily=temperature_2m_max,temperature_2m_min&hourly=weather_code&timezone=auto`,
-    )
+    const { data, error } = await supabase
+      .from("forecasting_weather_history")
+      .select("fecha, temp_max, temp_min, codigo_tiempo, source")
+      .gte("fecha", today)
+      .order("fecha", { ascending: true })
+      .order("source", { ascending: true }) // 'aemet' < 'open-meteo' alfabeticamente
+      .limit(14) // Traer mas por si hay duplicados
 
-    if (!response.ok) throw new Error("Weather API Error")
+    if (error) {
+      console.error("[v0] Error fetching weather from Supabase:", error)
+      return []
+    }
 
-    const data = await response.json()
+    if (!data || data.length === 0) {
+      console.warn("[v0] No weather data in Supabase")
+      return []
+    }
 
-    const forecast: WeatherDay[] = data.daily.time.map((date: string, index: number) => {
-      // Determine Hourly Indices for this day
-      // Each day has 24 hours. Index 0 = Day 0 00:00.
-      // Lunch ~ 14:00 -> Index = index * 24 + 14
-      // Dinner ~ 21:00 -> Index = index * 24 + 21
-      const lunchIdx = index * 24 + 14
-      const dinnerIdx = index * 24 + 21
-
-      return {
-        date: date,
-        maxTemp: Math.round(data.daily.temperature_2m_max[index]),
-        minTemp: Math.round(data.daily.temperature_2m_min[index]),
-        lunchCode: data.hourly.weather_code[lunchIdx] || 0,
-        dinnerCode: data.hourly.weather_code[dinnerIdx] || 0,
+    // Eliminar duplicados por fecha, priorizando AEMET
+    const uniqueByDate = new Map<string, any>()
+    for (const row of data) {
+      const dateKey = row.fecha.split("T")[0]
+      // Solo guardar si no existe o si el actual es AEMET y el existente no lo es
+      if (!uniqueByDate.has(dateKey) || (row.source === "aemet" && uniqueByDate.get(dateKey).source !== "aemet")) {
+        uniqueByDate.set(dateKey, row)
       }
-    })
+    }
+
+    // Convertir a array y tomar solo 7 dias
+    const forecast: WeatherDay[] = Array.from(uniqueByDate.values())
+      .slice(0, 7)
+      .map((row: any) => {
+        const weatherCode =
+          row.source === "aemet" ? aemetToWmoCode(row.codigo_tiempo) : Number.parseInt(row.codigo_tiempo) || 0
+
+        return {
+          date: row.fecha.split("T")[0],
+          maxTemp: Math.round(row.temp_max || 0),
+          minTemp: Math.round(row.temp_min || 0),
+          lunchCode: weatherCode,
+          dinnerCode: weatherCode,
+        }
+      })
 
     return forecast
   } catch (error) {
-    console.error("Failed to fetch weather", error)
+    console.error("[v0] Failed to fetch weather from Supabase:", error)
     return []
   }
 }

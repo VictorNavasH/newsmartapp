@@ -86,7 +86,7 @@ export const WeatherCard: React.FC = () => {
           </div>
         </div>
         <span className="text-[10px] text-slate-300 bg-slate-50 px-2 py-1 rounded-full border border-slate-100">
-          Open-Meteo
+          AEMET
         </span>
       </div>
 
