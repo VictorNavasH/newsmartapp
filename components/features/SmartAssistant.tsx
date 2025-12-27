@@ -199,8 +199,8 @@ export function SmartAssistant({ currentPath }: SmartAssistantProps) {
                 {messages.length === 0 && (
                   <div className="text-center text-slate-400 mt-8">
                     <Sparkles className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>¡Hola! Soy NÜA, tu asistente inteligente.</p>
-                    <p className="text-sm mt-2">Pregúntame sobre tus datos o selecciona una sugerencia.</p>
+                    <p>¡Hola! Soy NÜA Smart Assistant</p>
+                    <p className="text-sm mt-2">Tu asistente inteligente para análisis de datos del restaurante.</p>
                   </div>
                 )}
 
