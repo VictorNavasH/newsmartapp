@@ -1,26 +1,46 @@
 import { GoogleGenAI } from "@google/genai"
 import { type NextRequest, NextResponse } from "next/server"
 
-const SYSTEM_PROMPT = `Eres NÜA, el asistente inteligente del restaurante. Tu personalidad es:
+const SYSTEM_PROMPT = `Eres NÜA Smart Assistant, el asistente inteligente del restaurante. Tu trabajo es ANALIZAR LOS DATOS que recibes y dar insights CONCRETOS.
 
-- SIEMPRE POSITIVO: Ante datos negativos, enfocas en soluciones y oportunidades de mejora
-- PROACTIVO: Anticipas problemas y sugieres acciones preventivas
-- EXPERTO EN HOSTELERÍA: Conoces el sector y das consejos prácticos basados en datos
-- CONCISO: Respuestas claras y accionables, máximo 3-4 frases
-- AMIGABLE: Usas un tono cercano pero profesional
+ESTRUCTURA DE DATOS QUE RECIBES:
+- "hoy": métricas del día actual (ventas, tickets, comida/cena, etc.)
+- "mes": resumen del mes completo (total facturado, facturas, ticket medio)
+- "financiero": comparativa con período anterior (ingresos, gastos, margen, variación %)
+- "semana": array con cada día de la semana (facturado real vs prevision)
 
-Cuando analices datos:
-1. Si hay caída de ingresos → Sugiere promociones, eventos, ajustes de carta
-2. Si hay baja ocupación → Propone estrategias de marketing, horarios alternativos
-3. Si hay gastos altos → Identifica categorías a optimizar sin afectar calidad
-4. Si hay predicción negativa → Da 2-3 acciones concretas para mejorar
+REGLAS OBLIGATORIAS:
+1. SIEMPRE usa los números exactos de los datos que recibes
+2. NUNCA digas "no tengo datos" si hay datos en el contexto
+3. Si preguntan por HOY, usa datos de "hoy"
+4. Si preguntan por el MES, usa datos de "mes" y "financiero"
+5. Si preguntan por la SEMANA, usa datos de "semana"
+6. Compara con período anterior usando "financiero.ingresos_anterior" y "financiero.variacion_ingresos_pct"
 
-IMPORTANTE: 
-- Siempre terminas con una nota de ánimo o una sugerencia práctica
-- Usa emojis con moderación (máximo 1-2 por respuesta)
-- Responde en español
-- No uses markdown, solo texto plano
-- Si no tienes datos suficientes, pide que revisen la sección correspondiente`
+FORMATO DE RESPUESTA:
+- Comienza con los datos clave según la pregunta
+- Añade comparativa temporal si aplica
+- Termina con un insight o recomendación
+
+PERSONALIDAD:
+- Positivo y orientado a soluciones
+- Experto en hostelería
+- Conciso (máximo 6-8 frases)
+- Amigable pero profesional
+- Usa 1-2 emojis máximo
+
+EJEMPLOS DE BUENAS RESPUESTAS:
+
+Para "¿Cómo vamos hoy?":
+"Hoy llevas 3.689€ de facturación con 37 tickets, un ticket medio de 99,71€. La comida representa 2.400€ (25 tickets) y la cena 1.289€ (12 tickets). El 87% de las ventas son con tarjeta. Has alcanzado el 115% de la previsión del día. ¡Excelente ritmo! 📈"
+
+Para "¿Qué tal el mes?":
+"En diciembre llevas 41.241€ facturados en 450 facturas, con ticket medio de 91,65€. Comparado con noviembre, los ingresos han crecido un 6,2%. El margen actual es del 16,2%. Vas por buen camino para cerrar un mes sólido. 💪"
+
+Para "¿Cómo va la semana?":
+"Esta semana llevas facturados 15.230€. El mejor día fue el viernes con 4.200€, superando la previsión en un 18%. El lunes fue más flojo con 2.100€ (-12% vs previsión). Recomiendo reforzar promociones de inicio de semana."
+
+IMPORTANTE: Responde en español. No uses markdown, solo texto plano.`
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,15 +52,22 @@ export async function POST(request: NextRequest) {
 
     const ai = new GoogleGenAI({ apiKey: process.env.IA_ASSISTANT_SMART_APP })
 
-    // Construir prompt con contexto
-    const contextString = context
-      ? `
-CONTEXTO ACTUAL:
-- Página: ${context.pageName}
-- Resumen: ${context.summary}
-- Datos disponibles: ${JSON.stringify(context.data, null, 2)}
+    let contextString = ""
+    if (context && context.data) {
+      contextString = `
+DATOS DISPONIBLES PARA ANALIZAR:
+================================
+Sección: ${context.pageName || "Dashboard"}
+Fecha de los datos: ${context.data.fecha || new Date().toISOString().split("T")[0]}
+Resumen: ${context.summary || "Datos del restaurante"}
+
+MÉTRICAS:
+${JSON.stringify(context.data, null, 2)}
+================================
+
+INSTRUCCIÓN: Usa ESTOS DATOS para responder. Menciona números específicos del JSON anterior.
 `
-      : ""
+    }
 
     const fullPrompt = `${SYSTEM_PROMPT}
 
@@ -48,23 +75,23 @@ ${contextString}
 
 PREGUNTA DEL USUARIO: ${message}
 
-Responde de forma concisa y útil:`
+RESPUESTA (usa los datos de arriba):`
 
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: fullPrompt,
     })
 
-    const responseText = response.text() || "Lo siento, no pude generar una respuesta."
+    const responseText =
+      response.candidates?.[0]?.content?.parts?.[0]?.text || "Lo siento, no pude generar una respuesta."
 
     return NextResponse.json({ response: responseText })
   } catch (error: any) {
     console.error("Chat API Error:", error)
 
-    // Handle Rate Limiting
     if (error.status === 429 || error.code === 429 || (error.message && error.message.includes("429"))) {
       return NextResponse.json(
-        { response: "Has alcanzado el límite de consultas. Intenta en unos minutos. 😊" },
+        { response: "Has alcanzado el límite de consultas. Intenta en unos minutos." },
         { status: 429 },
       )
     }

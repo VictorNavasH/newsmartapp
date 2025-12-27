@@ -8,6 +8,57 @@ export interface AssistantContext {
   data: Record<string, any>
 }
 
+function parseNumericFields(obj: Record<string, any> | null): Record<string, any> {
+  if (!obj) return {}
+
+  const numericPatterns = [
+    "total",
+    "venta",
+    "ticket",
+    "ingresos",
+    "gastos",
+    "margen",
+    "iva",
+    "comensales",
+    "reservas",
+    "facturas",
+    "efectivo",
+    "tarjeta",
+    "saldo",
+    "cantidad",
+    "precio",
+    "coste",
+    "facturado",
+    "prevision",
+    "ocupacion",
+  ]
+
+  const parsed = { ...obj }
+  for (const [key, value] of Object.entries(parsed)) {
+    if (typeof value === "string" && numericPatterns.some((p) => key.toLowerCase().includes(p))) {
+      const num = Number.parseFloat(value)
+      if (!isNaN(num)) {
+        parsed[key] = num
+      }
+    }
+  }
+  return parsed
+}
+
+function getInicioSemana(): string {
+  const now = new Date()
+  const day = now.getDay()
+  const diff = now.getDate() - day + (day === 0 ? -6 : 1) // Lunes
+  const monday = new Date(now)
+  monday.setDate(diff)
+  return monday.toISOString().split("T")[0]
+}
+
+function getInicioMes(): string {
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0]
+}
+
 // Chips sugeridos por página
 export const ASSISTANT_CHIPS: Record<string, string[]> = {
   "/": ["¿Cómo vamos hoy?", "Resumen de la semana", "¿Qué tal el mes?", "Dame un insight rápido"],
@@ -107,27 +158,107 @@ export async function getAssistantContext(currentPath: string): Promise<Assistan
 
 async function getDashboardContext(pageName: string): Promise<AssistantContext> {
   const today = new Date().toISOString().split("T")[0]
+  const inicioSemana = getInicioSemana()
+  const inicioMes = getInicioMes()
+  const mesActual = today.substring(0, 7) // "2025-12"
 
-  const { data: dashboard } = await supabase
-    .from("vw_dashboard_ventas_facturas_live")
-    .select("*")
-    .eq("fecha_negocio", today)
-    .single()
+  // Ejecutar las 4 consultas en paralelo
+  const [hoyResult, mesResult, financieroResult, semanaResult] = await Promise.all([
+    // 1. Datos de HOY
+    supabase
+      .from("vw_dashboard_ventas_facturas_live")
+      .select("*")
+      .eq("fecha", today)
+      .single(),
+
+    // 2. Resumen del MES
+    supabase
+      .from("v_facturacion_mensual")
+      .select("*")
+      .eq("mes_texto", mesActual)
+      .single(),
+
+    // 3. Datos financieros con comparativa
+    supabase
+      .from("vw_dashboard_financiero")
+      .select("*")
+      .single(),
+
+    // 4. Datos de la SEMANA
+    supabase
+      .from("vw_facturacion_semana")
+      .select("*")
+      .gte("fecha", inicioSemana)
+      .lte("fecha", today)
+      .order("fecha", { ascending: true }),
+  ])
+
+  // Parsear datos numéricos
+  const hoy = parseNumericFields(hoyResult.data)
+  const mes = parseNumericFields(mesResult.data)
+  const financiero = parseNumericFields(financieroResult.data)
+  const semana = semanaResult.data?.map(parseNumericFields) || []
+
+  // Construir contexto enriquecido
+  const contextData = {
+    hoy: {
+      fecha: today,
+      venta_neta: hoy.venta_neta_total || 0,
+      total_tickets: hoy.total_tickets || 0,
+      ticket_medio: hoy.ticket_medio_total || 0,
+      comensales_reservados: hoy.comensales_reservados || 0,
+      total_tarjeta: hoy.total_tarjeta || 0,
+      total_efectivo: hoy.total_efectivo || 0,
+      iva_10: hoy.iva_10_total || 0,
+      comida: {
+        venta_neta: hoy.comida_venta_neta || 0,
+        tickets: hoy.comida_tickets || 0,
+        ticket_medio: hoy.comida_ticket_medio || 0,
+      },
+      cena: {
+        venta_neta: hoy.cena_venta_neta || 0,
+        tickets: hoy.cena_tickets || 0,
+        ticket_medio: hoy.cena_ticket_medio || 0,
+      },
+      verifactu_ok: hoy.verifactu_ok || 0,
+      verifactu_errores: hoy.verifactu_errores || 0,
+      prevision_alcanzada_pct: hoy.prevision_alcanzada || 0,
+    },
+    mes: {
+      mes_texto: mesActual,
+      total_facturado: mes.total_facturado || 0,
+      num_facturas: mes.num_facturas || 0,
+      ticket_medio: mes.ticket_medio || 0,
+      total_comensales: mes.total_comensales || 0,
+      dias_facturados: mes.dias_con_facturas || 0,
+      margen_pct: mes.margen_pct || 0,
+    },
+    financiero: {
+      periodo: financiero.periodo || "mes",
+      ingresos: financiero.ingresos || 0,
+      gastos: financiero.gastos || 0,
+      margen: financiero.margen || 0,
+      margen_pct: financiero.margen_pct || 0,
+      ingresos_anterior: financiero.ingresos_ant || 0,
+      gastos_anterior: financiero.gastos_ant || 0,
+      variacion_ingresos_pct: financiero.ingresos_ant
+        ? (((financiero.ingresos - financiero.ingresos_ant) / financiero.ingresos_ant) * 100).toFixed(1)
+        : 0,
+    },
+    semana: semana.map((d) => ({
+      fecha: d.fecha,
+      facturado: d.facturado_real || 0,
+      prevision: d.facturado_prevision || 0,
+      diferencia: d.diferencia || 0,
+      diferencia_pct: d.diferencia_pct || 0,
+    })),
+  }
 
   return {
     page: "/",
     pageName,
-    summary: `Dashboard del día ${today}`,
-    data: {
-      fecha: today,
-      ingresos_hoy: dashboard?.total_neto || 0,
-      facturas_hoy: dashboard?.num_facturas || 0,
-      comensales_hoy: dashboard?.comensales_facturados || 0,
-      ticket_medio: dashboard?.ticket_medio || 0,
-      total_tarjeta: dashboard?.total_tarjeta || 0,
-      total_efectivo: dashboard?.total_efectivo || 0,
-      iva_repercutido: dashboard?.iva_repercutido || 0,
-    },
+    summary: `Dashboard completo: hoy ${today}, semana desde ${inicioSemana}, mes ${mesActual}`,
+    data: contextData,
   }
 }
 
