@@ -13,6 +13,7 @@ import TreasuryPage from "@/components/views/TreasuryPage"
 import WhatIfPage from "@/components/views/WhatIfPage"
 import BankConnectionsPage from "@/components/views/BankConnectionsPage"
 import FacturacionPage from "@/components/views/FacturacionPage"
+import SmartAssistantPage from "@/components/views/SmartAssistantPage"
 import { SmartAssistant } from "@/components/features/SmartAssistant"
 
 export default function App() {
@@ -43,6 +44,8 @@ export default function App() {
         return <BankConnectionsPage />
       case "/invoices":
         return <FacturacionPage />
+      case "/ai-assistant":
+        return <SmartAssistantPage />
       default:
         return (
           <div className="flex flex-col items-center justify-center h-full text-slate-400">

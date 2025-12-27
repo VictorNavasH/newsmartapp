@@ -26,7 +26,7 @@ export const NAVIGATION_ITEMS = [
   { name: "Tesorería", icon: Landmark, path: "/treasury" },
   { name: "Forecasting", icon: TrendingUp, path: "/forecasting" },
   { name: "What-If", icon: Calculator, path: "/what-if" },
-  { name: "IA Assistant", icon: Sparkles, path: "/ai-assistant" },
+  { name: "Smart Assistant", icon: Sparkles, path: "/ai-assistant" },
   { name: "Configuración", icon: Settings, path: "/settings" },
 ]
 

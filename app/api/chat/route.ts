@@ -26,11 +26,11 @@ export async function POST(request: NextRequest) {
   try {
     const { message, context } = await request.json()
 
-    if (!process.env.API_KEY) {
+    if (!process.env.IA_ASSISTANT_SMART_APP) {
       return NextResponse.json({ response: "El asistente no está configurado. Contacta con soporte." }, { status: 500 })
     }
 
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY })
+    const ai = new GoogleGenAI({ apiKey: process.env.IA_ASSISTANT_SMART_APP })
 
     // Construir prompt con contexto
     const contextString = context

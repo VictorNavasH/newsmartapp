@@ -1,12 +1,12 @@
 import { GoogleGenAI } from "@google/genai"
 
 export const generateInsight = async (contextName: string, data: any): Promise<string> => {
-  if (!process.env.API_KEY) {
-    return "Configura tu API_KEY para obtener insights de IA."
+  if (!process.env.IA_ASSISTANT_SMART_APP) {
+    return "Configura tu IA_ASSISTANT_SMART_APP para obtener insights de IA."
   }
 
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY })
+    const ai = new GoogleGenAI({ apiKey: process.env.IA_ASSISTANT_SMART_APP })
 
     // Compact data for token efficiency
     const dataString = JSON.stringify(data, null, 2)
