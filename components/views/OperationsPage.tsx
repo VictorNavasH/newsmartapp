@@ -128,10 +128,12 @@ const OperationsPage: React.FC = () => {
         const tipo = tipoFilter === "todos" ? undefined : tipoFilter
         const categoria = categoriaFilter === "todas" ? undefined : categoriaFilter
 
+        const kpiTipo = tipo === "postre" ? undefined : (tipo as "comida" | "bebida" | undefined)
+
         const [itemsData, kpisData, productosData, clientesData, categoriasData, porHoraData] = await Promise.all([
           fetchOperativaItems(dateRange.from, dateRange.to, tipo, categoria),
-          fetchOperativaKPIs(dateRange.from, dateRange.to),
-          fetchOperativaProductos(dateRange.from, dateRange.to, tipo === "postre" ? undefined : tipo),
+          fetchOperativaKPIs(dateRange.from, dateRange.to, kpiTipo, categoria),
+          fetchOperativaProductos(dateRange.from, dateRange.to, kpiTipo, categoria),
           fetchOperativaCliente(dateRange.from, dateRange.to),
           fetchOperativaCategorias(dateRange.from, dateRange.to),
           fetchOperativaPorHora(dateRange.from, dateRange.to),
@@ -146,7 +148,7 @@ const OperationsPage: React.FC = () => {
 
         // Fetch previous period for comparison
         const prevPeriod = getPreviousPeriod(dateRange.from, dateRange.to)
-        const prevKpis = await fetchOperativaKPIs(prevPeriod.from, prevPeriod.to)
+        const prevKpis = await fetchOperativaKPIs(prevPeriod.from, prevPeriod.to, kpiTipo, categoria)
         setPreviousKpis(prevKpis)
       } catch (error) {
         console.error("[v0] Error loading operativa data:", error)

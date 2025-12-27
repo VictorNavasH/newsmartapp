@@ -620,9 +620,34 @@ export default function ExpensesPage() {
                           isAnimationActive={false}
                         />
                         <RechartsTooltip
-                          formatter={(value: number) =>
-                            new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(value)
-                          }
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null
+                            const data = payload[0].payload
+                            const total = pieChartData.reduce((sum, d) => sum + d.value, 0)
+                            const percent = ((data.value / total) * 100).toFixed(1)
+                            return (
+                              <div className="bg-white border border-slate-200 rounded-lg shadow-lg p-3 min-w-[180px]">
+                                <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-100">
+                                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: data.color }} />
+                                  <span className="font-medium text-[#364f6b]">{data.name}</span>
+                                </div>
+                                <div className="space-y-1 text-sm">
+                                  <div className="flex justify-between">
+                                    <span className="text-slate-500">Total gastado:</span>
+                                    <span className="font-medium text-[#364f6b]">
+                                      {new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(
+                                        data.value,
+                                      )}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-slate-500">% del total:</span>
+                                    <span className="font-medium text-[#364f6b]">{percent}%</span>
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          }}
                         />
                       </RechartsPieChart>
                     </ResponsiveContainer>
@@ -1045,9 +1070,34 @@ export default function ExpensesPage() {
                         isAnimationActive={false}
                       />
                       <RechartsTooltip
-                        formatter={(value: number) =>
-                          new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(value)
-                        }
+                        content={({ active, payload }) => {
+                          if (!active || !payload?.length) return null
+                          const data = payload[0].payload
+                          const total = providerPieChartData.reduce((sum, d) => sum + d.value, 0)
+                          const percent = ((data.value / total) * 100).toFixed(1)
+                          return (
+                            <div className="bg-white border border-slate-200 rounded-lg shadow-lg p-3 min-w-[180px]">
+                              <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-100">
+                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: data.color }} />
+                                <span className="font-medium text-[#364f6b]">{data.name}</span>
+                              </div>
+                              <div className="space-y-1 text-sm">
+                                <div className="flex justify-between">
+                                  <span className="text-slate-500">Total gastado:</span>
+                                  <span className="font-medium text-[#364f6b]">
+                                    {new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(
+                                      data.value,
+                                    )}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-slate-500">% del total:</span>
+                                  <span className="font-medium text-[#364f6b]">{percent}%</span>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        }}
                       />
                     </RechartsPieChart>
                   </ResponsiveContainer>

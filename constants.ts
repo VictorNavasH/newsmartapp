@@ -17,7 +17,7 @@ export const APP_NAME = "NÜA Smart Dashboard"
 
 export const NAVIGATION_ITEMS = [
   { name: "Dashboard", icon: BarChart3, path: "/" },
-  { name: "Reservas & Ocupación", icon: Calendar, path: "/reservations" },
+  { name: "Reservas y Ocupación", icon: Calendar, path: "/reservations" },
   { name: "Ingresos", icon: DollarSign, path: "/revenue" },
   { name: "Gastos", icon: PieChart, path: "/expenses" },
   { name: "Productos", icon: ShoppingBag, path: "/products" },

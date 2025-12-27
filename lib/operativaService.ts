@@ -13,16 +13,25 @@ const handleRpcError = (error: any, rpcName: string): boolean => {
   return false
 }
 
-export const fetchOperativaKPIs = async (startDate: Date, endDate: Date): Promise<OperativaKPI[]> => {
+export const fetchOperativaKPIs = async (
+  startDate: Date,
+  endDate: Date,
+  filtroTipo?: "comida" | "bebida",
+  filtroCategoria?: string,
+): Promise<OperativaKPI[]> => {
   try {
     const startStr = formatDateStr(startDate)
     const endStr = formatDateStr(endDate)
 
-    console.log(`[v0] fetchOperativaKPIs (RPC) - from ${startStr} to ${endStr}`)
+    console.log(
+      `[v0] fetchOperativaKPIs (RPC) - from ${startStr} to ${endStr}, tipo: ${filtroTipo}, categoria: ${filtroCategoria}`,
+    )
 
     const { data, error } = await supabase.rpc("get_operativa_kpis", {
       fecha_inicio: startStr,
       fecha_fin: endStr,
+      filtro_tipo: filtroTipo || null,
+      filtro_categoria: filtroCategoria || null,
     })
 
     if (error) {
@@ -43,17 +52,21 @@ export const fetchOperativaProductos = async (
   startDate: Date,
   endDate: Date,
   filtroTipo?: "comida" | "bebida",
+  filtroCategoria?: string,
 ): Promise<OperativaProducto[]> => {
   try {
     const startStr = formatDateStr(startDate)
     const endStr = formatDateStr(endDate)
 
-    console.log(`[v0] fetchOperativaProductos (RPC) - from ${startStr} to ${endStr}, filtro: ${filtroTipo}`)
+    console.log(
+      `[v0] fetchOperativaProductos (RPC) - from ${startStr} to ${endStr}, tipo: ${filtroTipo}, categoria: ${filtroCategoria}`,
+    )
 
     const { data, error } = await supabase.rpc("get_operativa_productos", {
       fecha_inicio: startStr,
       fecha_fin: endStr,
       filtro_tipo: filtroTipo || null,
+      filtro_categoria: filtroCategoria || null,
     })
 
     if (error) {

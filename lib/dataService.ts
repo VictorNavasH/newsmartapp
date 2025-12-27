@@ -26,6 +26,8 @@ import type {
   ForecastPrecision,
   FinancialKPIs,
   OcupacionDia,
+  LaborCostDay, // Added for the new function
+  WeekRevenueDay, // Added for the new function
 } from "../types"
 import { MOCK_DATA_DELAY } from "../constants"
 import { supabase } from "./supabase" // Corregida importación para usar el cliente correcto
@@ -543,57 +545,43 @@ export const fetchWeekReservations = async (offsetWeeks = 0): Promise<WeekReserv
       const dateStr = formatDateStr(date)
       const row = dbMap.get(dateStr)
 
-      // Flexible mapping for column names
-      const pax = row?.total_comensales ?? row?.["total_comensales"] ?? 0
-      const paxLunch = row?.comensales_comida ?? row?.["comensales_comida"] ?? 0
-      const paxDinner = row?.comensales_cena ?? row?.["comensales_cena"] ?? 0
+      const pax = row?.total_comensales ?? 0
+      const paxLunch = row?.comensales_comida ?? 0
+      const paxDinner = row?.comensales_cena ?? 0
 
-      // Determine status based on pax
+      const occupancyLunch = CAPACITY_PER_SHIFT > 0 ? Math.round((paxLunch / CAPACITY_PER_SHIFT) * 100) : 0
+      const occupancyDinner = CAPACITY_PER_SHIFT > 0 ? Math.round((paxDinner / CAPACITY_PER_SHIFT) * 100) : 0
+      const totalCapacity = CAPACITY_PER_SHIFT * 2 // 132
+      const occupancyTotal = totalCapacity > 0 ? Math.round((pax / totalCapacity) * 100) : 0
+
+      // Determine status based on occupancy
       let status: "low" | "medium" | "high" | "full" = "low"
-      if (pax > 210) status = "full"
-      else if (pax > 150) status = "high"
-      else if (pax >= 60) status = "medium"
+      if (occupancyTotal >= 95) status = "full"
+      else if (occupancyTotal >= 70) status = "high"
+      else if (occupancyTotal >= 40) status = "medium"
 
-      const isToday = dateStr === businessDateStr
+      const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
+      const dayOfWeek = dayNames[date.getDay()]
 
       days.push({
         date: dateStr,
-        pax: pax,
+        pax,
         reservations: pax,
         reservationsLunch: paxLunch,
         reservationsDinner: paxDinner,
         status,
-        isToday,
+        isToday: dateStr === businessDateStr,
+        occupancyTotal,
+        occupancyLunch,
+        occupancyDinner,
+        dayOfWeek,
       })
     }
 
     return days
   } catch (err) {
-    console.error("[v0] Error fetching week reservations from Supabase:", err)
-    // Fallback in case of error
-    const days: WeekReservationDay[] = []
-    const today = new Date()
-    const dayOfWeek = today.getDay()
-    const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
-    const startOfCurrentWeek = new Date(today)
-    startOfCurrentWeek.setDate(today.getDate() + diffToMon)
-    const startOfTargetWeek = new Date(startOfCurrentWeek)
-    startOfTargetWeek.setDate(startOfCurrentWeek.getDate() + offsetWeeks * 7)
-
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(startOfTargetWeek)
-      date.setDate(startOfTargetWeek.getDate() + i)
-      days.push({
-        date: toLocalISOString(date),
-        pax: 0,
-        reservations: 0,
-        reservationsLunch: 0,
-        reservationsDinner: 0,
-        status: "low",
-        isToday: false,
-      })
-    }
-    return days
+    console.error("[v0] Error fetching week reservations:", err)
+    return []
   }
 }
 
@@ -604,6 +592,18 @@ export const fetchRealTimeData = async (): Promise<{
   total: ShiftMetrics
   lunch_percentage: number
   dinner_percentage: number
+  prevision: {
+    comensales_reservados: number
+    comensales_reservados_comida: number
+    comensales_reservados_cena: number
+    mesas_reservadas: number
+    prevision_facturacion: number
+    prevision_facturacion_comida: number
+    prevision_facturacion_cena: number
+    porcentaje_prevision_alcanzado: number
+    ticket_comensal_30d: number
+    ticket_mesa_30d: number
+  }
 }> => {
   // Helper to create a zeroed-out shift structure
   const createEmptyShift = (): ShiftMetrics => ({
@@ -633,6 +633,19 @@ export const fetchRealTimeData = async (): Promise<{
     avg_pax_per_table_used: 0,
   })
 
+  const createEmptyPrevision = () => ({
+    comensales_reservados: 0,
+    comensales_reservados_comida: 0,
+    comensales_reservados_cena: 0,
+    mesas_reservadas: 0,
+    prevision_facturacion: 0,
+    prevision_facturacion_comida: 0,
+    prevision_facturacion_cena: 0,
+    porcentaje_prevision_alcanzado: 0,
+    ticket_comensal_30d: 0,
+    ticket_mesa_30d: 0,
+  })
+
   try {
     const todayStr = getBusinessDate().toISOString().split("T")[0]
 
@@ -651,14 +664,28 @@ export const fetchRealTimeData = async (): Promise<{
       console.error("[v0] Error fetching live data:", error)
       // In case of error, return empty (zeros), NEVER mocks
       const empty = createEmptyShift()
-      return { lunch: empty, dinner: empty, total: empty, lunch_percentage: 0, dinner_percentage: 0 }
+      return {
+        lunch: empty,
+        dinner: empty,
+        total: empty,
+        lunch_percentage: 0,
+        dinner_percentage: 0,
+        prevision: createEmptyPrevision(),
+      }
     }
 
     if (!data) {
       console.log("[v0] No live data found for TODAY. Returning zeros.")
       // Correct behavior: If no sales today, show 0. Do NOT generate random data.
       const empty = createEmptyShift()
-      return { lunch: empty, dinner: empty, total: empty, lunch_percentage: 0, dinner_percentage: 0 }
+      return {
+        lunch: empty,
+        dinner: empty,
+        total: empty,
+        lunch_percentage: 0,
+        dinner_percentage: 0,
+        prevision: createEmptyPrevision(),
+      }
     }
 
     console.log("[v0] Live Data Found for Today:", data)
@@ -751,6 +778,21 @@ export const fetchRealTimeData = async (): Promise<{
 
     console.log("[v0] VeriFactu Metrics Mapped:", verifactu_metrics)
 
+    const prevision = {
+      comensales_reservados: data.comensales_reservados ?? 0,
+      comensales_reservados_comida: data.comensales_reservados_comida ?? 0,
+      comensales_reservados_cena: data.comensales_reservados_cena ?? 0,
+      mesas_reservadas: data.mesas_reservadas ?? 0,
+      prevision_facturacion: data.prevision_facturacion ?? 0,
+      prevision_facturacion_comida: data.prevision_facturacion_comida ?? 0,
+      prevision_facturacion_cena: data.prevision_facturacion_cena ?? 0,
+      porcentaje_prevision_alcanzado: data.porcentaje_prevision_alcanzado ?? 0,
+      ticket_comensal_30d: data.ticket_comensal_30d ?? 0,
+      ticket_mesa_30d: data.ticket_mesa_30d ?? 0,
+    }
+
+    console.log("[v0] Prevision Data Parsed:", prevision)
+
     // Construct the "Total" shift object with real data
     const totalShift: ShiftMetrics = {
       ...createEmptyShift(), // Start with zeros
@@ -787,11 +829,19 @@ export const fetchRealTimeData = async (): Promise<{
       total: totalShift,
       lunch_percentage: lunchPercentage,
       dinner_percentage: dinnerPercentage,
+      prevision, // Añadido objeto prevision
     }
   } catch (err) {
     console.error("[v0] Unexpected error in fetchRealTimeData:", err)
     const empty = createEmptyShift()
-    return { lunch: empty, dinner: empty, total: empty, lunch_percentage: 0, dinner_percentage: 0 }
+    return {
+      lunch: empty,
+      dinner: empty,
+      total: empty,
+      lunch_percentage: 0,
+      dinner_percentage: 0,
+      prevision: createEmptyPrevision(),
+    }
   }
 }
 
@@ -2088,6 +2138,92 @@ export async function fetchOcupacionSemanal(): Promise<OcupacionDia[]> {
     }))
   } catch (error) {
     console.error("[v0] Error in fetchOcupacionSemanal:", error)
+    return []
+  }
+}
+
+export async function fetchLaborCostAnalysis(startDate: string, endDate: string): Promise<LaborCostDay[]> {
+  try {
+    const { data, error } = await supabase
+      .from("vw_labor_cost_analysis")
+      .select("*")
+      .gte("fecha", startDate)
+      .lte("fecha", endDate)
+      .order("fecha", { ascending: true })
+
+    if (error) {
+      console.error("[v0] Error fetching labor cost analysis:", error)
+      return []
+    }
+
+    return (data || []).map((row: any) => ({
+      fecha: row.fecha,
+      ventas_netas: row.ventas_netas || 0,
+      coste_laboral: row.coste_laboral || 0,
+      horas_trabajadas: row.horas_trabajadas || 0,
+      trabajadores: row.trabajadores || 0,
+      porcentaje_laboral: row.porcentaje_laboral || 0,
+    }))
+  } catch (err) {
+    console.error("[v0] Error in fetchLaborCostAnalysis:", err)
+    return []
+  }
+}
+
+export async function fetchWeekRevenue(weekOffset = 0): Promise<WeekRevenueDay[]> {
+  try {
+    // Calcular el rango de la semana según el offset
+    const today = new Date()
+    const currentDay = today.getDay()
+    const mondayOffset = currentDay === 0 ? -6 : 1 - currentDay
+
+    const monday = new Date(today)
+    monday.setDate(today.getDate() + mondayOffset + weekOffset * 7)
+
+    const sunday = new Date(monday)
+    sunday.setDate(monday.getDate() + 6)
+
+    const startDate = monday.toISOString().split("T")[0]
+    const endDate = sunday.toISOString().split("T")[0]
+
+    const { data, error } = await supabase
+      .from("vw_facturacion_semana")
+      .select("*")
+      .gte("fecha", startDate)
+      .lte("fecha", endDate)
+      .order("fecha", { ascending: true })
+
+    if (error) {
+      console.error("[v0] Error fetching week revenue:", error)
+      return []
+    }
+
+    // Mapeo de días de inglés a español
+    const diasMap: Record<string, string> = {
+      Mon: "Lun",
+      Tue: "Mar",
+      Wed: "Mié",
+      Thu: "Jue",
+      Fri: "Vie",
+      Sat: "Sáb",
+      Sun: "Dom",
+    }
+
+    return (data || []).map((row: any) => ({
+      fecha: row.fecha,
+      diaSemanaCorto: diasMap[row.dia_semana_corto] || row.dia_semana_corto,
+      diaMes: row.dia_mes,
+      tipoDia: row.tipo_dia,
+      esHoy: row.es_hoy || false,
+      facturadoReal: row.facturado_real || 0,
+      prevision: row.prevision || 0,
+      porcentajeAlcanzado: row.porcentaje_alcanzado || 0,
+      margenErrorPct: row.margen_error_pct,
+      diferenciaEuros: row.diferencia_euros,
+      comensalesReservados: row.comensales_reservados || 0,
+    }))
+  } catch (error) {
+    console.error("[v0] Error in fetchWeekRevenue:", error)
     return []
   }
 }

@@ -78,7 +78,6 @@ export const WeatherCard: React.FC = () => {
       {/* Header aligned with WeekReservationsCard */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          {/* Icon wrapper to match CalendarDays in other card */}
           <ThermometerSun className="w-5 h-5 text-[#02b1c4]" />
           <div>
             <h3 className="font-bold text-[#364f6b]">Previsión 7 Días</h3>

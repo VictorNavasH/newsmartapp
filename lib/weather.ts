@@ -91,16 +91,14 @@ const aemetToWmoCode = (aemetCode: string | null): number => {
 
 export const fetchWeatherForecast = async (): Promise<WeatherDay[]> => {
   try {
-    // Obtener fecha actual en formato ISO
     const today = new Date().toISOString().split("T")[0]
 
     const { data, error } = await supabase
       .from("forecasting_weather_history")
-      .select("fecha, temp_max, temp_min, codigo_tiempo, source")
+      .select("fecha, temp_max, temp_min, codigo_tiempo_comida, codigo_tiempo_cena")
       .gte("fecha", today)
       .order("fecha", { ascending: true })
-      .order("source", { ascending: true }) // 'aemet' < 'open-meteo' alfabeticamente
-      .limit(14) // Traer mas por si hay duplicados
+      .limit(7)
 
     if (error) {
       console.error("[v0] Error fetching weather from Supabase:", error)
@@ -112,31 +110,14 @@ export const fetchWeatherForecast = async (): Promise<WeatherDay[]> => {
       return []
     }
 
-    // Eliminar duplicados por fecha, priorizando AEMET
-    const uniqueByDate = new Map<string, any>()
-    for (const row of data) {
-      const dateKey = row.fecha.split("T")[0]
-      // Solo guardar si no existe o si el actual es AEMET y el existente no lo es
-      if (!uniqueByDate.has(dateKey) || (row.source === "aemet" && uniqueByDate.get(dateKey).source !== "aemet")) {
-        uniqueByDate.set(dateKey, row)
-      }
-    }
-
-    // Convertir a array y tomar solo 7 dias
-    const forecast: WeatherDay[] = Array.from(uniqueByDate.values())
-      .slice(0, 7)
-      .map((row: any) => {
-        const weatherCode =
-          row.source === "aemet" ? aemetToWmoCode(row.codigo_tiempo) : Number.parseInt(row.codigo_tiempo) || 0
-
-        return {
-          date: row.fecha.split("T")[0],
-          maxTemp: Math.round(row.temp_max || 0),
-          minTemp: Math.round(row.temp_min || 0),
-          lunchCode: weatherCode,
-          dinnerCode: weatherCode,
-        }
-      })
+    // Mapear directamente sin deduplicacion (solo AEMET)
+    const forecast: WeatherDay[] = data.map((row: any) => ({
+      date: row.fecha,
+      maxTemp: Math.round(row.temp_max || 0),
+      minTemp: Math.round(row.temp_min || 0),
+      lunchCode: aemetToWmoCode(row.codigo_tiempo_comida),
+      dinnerCode: aemetToWmoCode(row.codigo_tiempo_cena),
+    }))
 
     return forecast
   } catch (error) {

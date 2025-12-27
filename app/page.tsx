@@ -2,16 +2,17 @@
 
 import { useState } from "react"
 import { Sidebar } from "@/components/layout/Sidebar"
-import DashboardPage from "@/components/pages/DashboardPage"
-import ReservationsPage from "@/components/pages/ReservationsPage"
-import IncomePage from "@/components/pages/IncomePage"
-import ExpensesPage from "@/components/pages/ExpensesPage"
-import OperationsPage from "@/components/pages/OperationsPage"
-import ProductsPage from "@/components/pages/ProductsPage"
-import ForecastingPage from "@/components/pages/ForecastingPage"
-import TreasuryPage from "@/components/pages/TreasuryPage"
-import WhatIfPage from "@/components/pages/WhatIfPage"
-import BankConnectionsPage from "@/components/pages/BankConnectionsPage"
+import DashboardPage from "@/components/views/DashboardPage"
+import ReservationsPage from "@/components/views/ReservationsPage"
+import IncomePage from "@/components/views/IncomePage"
+import ExpensesPage from "@/components/views/ExpensesPage"
+import OperationsPage from "@/components/views/OperationsPage"
+import ProductsPage from "@/components/views/ProductsPage"
+import ForecastingPage from "@/components/views/ForecastingPage"
+import TreasuryPage from "@/components/views/TreasuryPage"
+import WhatIfPage from "@/components/views/WhatIfPage"
+import BankConnectionsPage from "@/components/views/BankConnectionsPage"
+import FacturacionPage from "@/components/views/FacturacionPage"
 import { SmartAssistant } from "@/components/features/SmartAssistant"
 
 export default function App() {
@@ -40,6 +41,8 @@ export default function App() {
         return <WhatIfPage />
       case "/bank-connections":
         return <BankConnectionsPage />
+      case "/invoices":
+        return <FacturacionPage />
       default:
         return (
           <div className="flex flex-col items-center justify-center h-full text-slate-400">

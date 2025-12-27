@@ -23,6 +23,7 @@ export const WeekReservationsCard: React.FC = () => {
   }, [weekOffset])
 
   const totalWeekReservations = days.reduce((acc, curr) => acc + curr.reservations, 0)
+  const avgWeekOccupancy = days.length > 0 ? days.reduce((acc, curr) => acc + curr.occupancyTotal, 0) / days.length : 0
 
   // Calculate range label for header
   const startLabel =
@@ -73,8 +74,13 @@ export const WeekReservationsCard: React.FC = () => {
             </button>
           </div>
 
+          <div className="bg-[#17c3b2]/10 px-3 py-1 rounded-lg text-center">
+            <span className="text-[10px] text-[#17c3b2] font-bold block">Ocupación</span>
+            <span className="text-lg font-bold text-[#17c3b2] leading-tight">{avgWeekOccupancy.toFixed(0)}%</span>
+          </div>
+
           <div className="bg-[#02b1c4]/10 px-3 py-1 rounded-lg text-center">
-            <span className="text-[10px] text-[#02b1c4] font-bold block">Acumulado</span>
+            <span className="text-[10px] text-[#02b1c4] font-bold block">Comensales</span>
             <span className="text-lg font-bold text-[#02b1c4] leading-tight">{totalWeekReservations}</span>
           </div>
         </div>
@@ -112,18 +118,41 @@ export const WeekReservationsCard: React.FC = () => {
                 </span>
               </div>
 
+              <div className="mb-1">
+                <div className="flex items-center justify-between text-[10px] mb-1">
+                  <span className="text-slate-500 font-medium">Ocupación</span>
+                  <span className="font-bold text-[#364f6b]">{day.occupancyTotal.toFixed(0)}%</span>
+                </div>
+                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${Math.min(day.occupancyTotal, 100)}%`,
+                      backgroundColor:
+                        day.occupancyTotal >= 90 ? "#227c9d" : day.occupancyTotal >= 70 ? "#ffcb77" : "#17c3b2",
+                    }}
+                  />
+                </div>
+              </div>
+
               {/* Breakdown Body */}
               <div className="space-y-2 flex-1">
                 {/* Lunch Row - Updated Color #ffcb77 */}
                 <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-[#ffcb77]/20">
                   <Sun size={16} className="text-[#ffcb77]" fill="currentColor" fillOpacity={0.4} />
-                  <span className="font-bold text-slate-700 text-lg">{day.reservationsLunch}</span>
+                  <div className="flex flex-col items-end">
+                    <span className="font-bold text-slate-700 text-lg leading-tight">{day.reservationsLunch}</span>
+                    <span className="text-[10px] text-slate-500 font-medium">{day.occupancyLunch.toFixed(0)}%</span>
+                  </div>
                 </div>
 
                 {/* Dinner Row - Updated Color #227c9d */}
                 <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-[#227c9d]/15">
                   <Moon size={16} className="text-[#227c9d]" fill="currentColor" fillOpacity={0.4} />
-                  <span className="font-bold text-slate-700 text-lg">{day.reservationsDinner}</span>
+                  <div className="flex flex-col items-end">
+                    <span className="font-bold text-slate-700 text-lg leading-tight">{day.reservationsDinner}</span>
+                    <span className="text-[10px] text-slate-500 font-medium">{day.occupancyDinner.toFixed(0)}%</span>
+                  </div>
                 </div>
               </div>
 

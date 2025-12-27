@@ -6,6 +6,11 @@ import type {
   TreasuryTransactionsSummary,
   TreasuryCategory,
   TreasuryCategoryBreakdown,
+  PoolBancarioResumen,
+  PoolBancarioPrestamo,
+  PoolBancarioVencimiento,
+  PoolBancarioPorBanco,
+  PoolBancarioCalendarioMes,
 } from "@/types"
 
 // Helper para manejar errores de queries
@@ -65,6 +70,17 @@ export const fetchTreasuryTransactions = async (
   offset = 0,
 ): Promise<TreasuryTransaction[]> => {
   try {
+    console.log("[v0] fetchTreasuryTransactions - params:", {
+      startDate,
+      endDate,
+      accountId,
+      categoryId,
+      tipo,
+      search,
+      limit,
+      offset,
+    })
+
     const { data, error } = await supabase.rpc("get_treasury_transactions", {
       p_fecha_inicio: startDate || null,
       p_fecha_fin: endDate || null,
@@ -74,6 +90,12 @@ export const fetchTreasuryTransactions = async (
       p_search: search || null,
       p_limit: limit,
       p_offset: offset,
+    })
+
+    console.log("[v0] fetchTreasuryTransactions - response:", {
+      error: error ? { code: error.code, message: error.message } : null,
+      dataCount: data?.length || 0,
+      firstRecord: data?.[0] ? JSON.stringify(data[0]).substring(0, 200) : null,
     })
 
     if (error) {
@@ -181,6 +203,114 @@ export const fetchTreasuryByCategory = async (
     return data || []
   } catch (err) {
     console.error("[v0] Error fetching treasury by category:", err)
+    return []
+  }
+}
+
+export const fetchPoolBancarioResumen = async (): Promise<PoolBancarioResumen | null> => {
+  try {
+    const { data, error } = await supabase.from("v_pool_bancario_resumen").select("*").single()
+
+    if (error) {
+      handleQueryError(error, "fetchPoolBancarioResumen")
+      return null
+    }
+
+    console.log("[v0] fetchPoolBancarioResumen data:", JSON.stringify(data))
+    return data
+  } catch (err) {
+    console.error("[v0] Error fetching pool bancario resumen:", err)
+    return null
+  }
+}
+
+export const fetchPoolBancarioPrestamos = async (): Promise<PoolBancarioPrestamo[]> => {
+  try {
+    const { data, error } = await supabase
+      .from("v_pool_bancario_prestamos")
+      .select("*")
+      .order("saldo_pendiente", { ascending: false })
+
+    if (error) {
+      handleQueryError(error, "fetchPoolBancarioPrestamos")
+      return []
+    }
+
+    console.log("[v0] fetchPoolBancarioPrestamos data:", JSON.stringify(data))
+    return data || []
+  } catch (err) {
+    console.error("[v0] Error fetching pool bancario prestamos:", err)
+    return []
+  }
+}
+
+export const fetchPoolBancarioVencimientos = async (limit = 10): Promise<PoolBancarioVencimiento[]> => {
+  try {
+    const today = new Date()
+    const thirtyDaysLater = new Date(today)
+    thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30)
+
+    const todayStr = today.toISOString().split("T")[0]
+    const thirtyDaysStr = thirtyDaysLater.toISOString().split("T")[0]
+
+    const { data, error } = await supabase
+      .from("v_pool_bancario_proximos_vencimientos")
+      .select("*")
+      .gte("fecha_vencimiento", todayStr)
+      .lte("fecha_vencimiento", thirtyDaysStr)
+      .order("fecha_vencimiento", { ascending: true })
+      .limit(limit)
+
+    if (error) {
+      handleQueryError(error, "fetchPoolBancarioVencimientos")
+      return []
+    }
+
+    console.log("[v0] fetchPoolBancarioVencimientos data:", JSON.stringify(data))
+    return data || []
+  } catch (err) {
+    console.error("[v0] Error fetching pool bancario vencimientos:", err)
+    return []
+  }
+}
+
+export const fetchPoolBancarioPorBanco = async (): Promise<PoolBancarioPorBanco[]> => {
+  try {
+    const { data, error } = await supabase
+      .from("v_pool_bancario_por_banco")
+      .select("*")
+      .order("saldo_pendiente", { ascending: false })
+
+    if (error) {
+      handleQueryError(error, "fetchPoolBancarioPorBanco")
+      return []
+    }
+
+    console.log("[v0] fetchPoolBancarioPorBanco data:", JSON.stringify(data))
+    return data || []
+  } catch (err) {
+    console.error("[v0] Error fetching pool bancario por banco:", err)
+    return []
+  }
+}
+
+export const fetchPoolBancarioCalendario = async (meses = 12): Promise<PoolBancarioCalendarioMes[]> => {
+  try {
+    const { data, error } = await supabase
+      .from("v_pool_bancario_calendario_mensual")
+      .select("*")
+      .order("mes_id", { ascending: true })
+      .limit(meses)
+
+    if (error) {
+      handleQueryError(error, "fetchPoolBancarioCalendario")
+      return []
+    }
+
+    console.log("[v0] fetchPoolBancarioCalendario data:", JSON.stringify(data))
+    return data || []
+  } catch (err) {
+    console.error("[v0] Error fetching pool bancario calendario:", err)
     return []
   }
 }
