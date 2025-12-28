@@ -1,36 +1,41 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import {
+  Users,
+  CalendarDays,
+  BarChart3,
+  Target,
+  TrendingUp,
+  TrendingDown,
+  ChevronLeft,
+  ChevronRight,
+  LayoutDashboard,
+  Crosshair,
+  Calculator,
+  Receipt,
+  Calendar,
+  Zap,
+  Moon,
+  Sun,
+  CloudRain,
+  CloudDrizzle,
+  Droplets,
+  RefreshCw,
+  LineChart,
+  AlertTriangle,
+} from "lucide-react"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { PageContent } from "@/components/layout/PageContent"
 import { TremorCard, TremorTitle, TremorText } from "@/components/ui/TremorCard"
 import { MenuBar } from "@/components/ui/menu-bar"
 import { Button } from "@/components/ui/button"
+import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
 import { BRAND_COLORS } from "@/constants"
 import { fetchForecastData, fetchForecastCalendar } from "@/lib/dataService"
-import type { ForecastDay, ForecastKPIs, ForecastPrecision } from "@/types"
-import {
-  Target,
-  Sun,
-  Moon,
-  CloudRain,
-  CloudDrizzle,
-  Droplets,
-  RefreshCw,
-  ChevronLeft,
-  ChevronRight,
-  LineChart,
-  LayoutDashboard,
-  CalendarDays,
-  Crosshair,
-  Users,
-  TrendingUp,
-  Calendar,
-  BarChart3,
-  AlertTriangle,
-  TrendingDown,
-} from "lucide-react"
+import { fetchWhatIfReferenceData } from "@/lib/whatIfService"
+import type { ForecastDay, ForecastKPIs, ForecastPrecision, WhatIfReferenceData } from "@/types"
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts"
 
 const activeTabStyle = {
@@ -124,6 +129,13 @@ export default function ForecastingPage() {
       href: "#",
       gradient: "radial-gradient(circle, rgba(254,201,79,0.15) 0%, transparent 70%)",
       iconColor: "text-[#fec94f]",
+    },
+    {
+      icon: Calculator,
+      label: "What-If",
+      href: "#",
+      gradient: "radial-gradient(circle, rgba(23,195,178,0.15) 0%, transparent 70%)",
+      iconColor: "text-[#17c3b2]",
     },
   ]
 
@@ -353,6 +365,67 @@ export default function ForecastingPage() {
   const getActiveMenuLabel = () => {
     const activeItem = menuItems.find((item) => item.label === activeView)
     return activeItem ? activeItem.label : ""
+  }
+
+  const [whatIfData, setWhatIfData] = useState<WhatIfReferenceData | null>(null)
+  const [whatIfLoading, setWhatIfLoading] = useState(false)
+  const [customers, setCustomers] = useState(45)
+  const [avgTicket, setAvgTicket] = useState(25)
+
+  useEffect(() => {
+    if (activeView === "What-If" && !whatIfData) {
+      const loadWhatIfData = async () => {
+        setWhatIfLoading(true)
+        try {
+          const data = await fetchWhatIfReferenceData()
+          setWhatIfData(data)
+          setCustomers(Math.round(data.comensales_media))
+          setAvgTicket(Math.round(data.ticket_medio_historico))
+        } catch (error) {
+          console.error("Error loading what-if data:", error)
+        } finally {
+          setWhatIfLoading(false)
+        }
+      }
+      loadWhatIfData()
+    }
+  }, [activeView, whatIfData])
+
+  const whatIfCalculations = useMemo(() => {
+    if (!whatIfData) return null
+
+    const dailyRevenue = customers * avgTicket
+    const avgDaily = whatIfData.facturacion_media_dia
+    const difference = dailyRevenue - avgDaily
+    const percentDiff = avgDaily > 0 ? (difference / avgDaily) * 100 : 0
+    const monthlyProjection = dailyRevenue * whatIfData.dias_operativos_mes
+    const occupancy = (customers / whatIfData.capacidad_dia) * 100
+    const percentVsBest =
+      whatIfData.mejor_dia_facturacion > 0 ? (dailyRevenue / whatIfData.mejor_dia_facturacion) * 100 : 0
+
+    return {
+      dailyRevenue,
+      difference,
+      percentDiff,
+      monthlyProjection,
+      occupancy,
+      percentVsBest,
+    }
+  }, [customers, avgTicket, whatIfData])
+
+  const getOccupancyColor = (occupancy: number): string => {
+    if (occupancy < 50) return BRAND_COLORS.error
+    if (occupancy < 80) return BRAND_COLORS.lunch
+    return BRAND_COLORS.success
+  }
+
+  const formatWhatIfCurrency = (value: number): string => {
+    return new Intl.NumberFormat("es-ES", {
+      style: "currency",
+      currency: "EUR",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value)
   }
 
   if (loading) {
@@ -867,6 +940,278 @@ export default function ForecastingPage() {
                 </div>
               )}
             </TremorCard>
+          </div>
+        )}
+
+        {activeView === "What-If" && (
+          <div className="space-y-4">
+            {whatIfLoading || !whatIfData || !whatIfCalculations ? (
+              <div className="flex items-center justify-center h-64">
+                <div className="animate-pulse text-slate-400">Cargando datos de referencia...</div>
+              </div>
+            ) : (
+              <>
+                {/* Reference Data Banner */}
+                <div className="bg-white border border-slate-200 rounded-lg px-6 py-4 shadow-sm">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div className="flex items-center gap-8">
+                      <div>
+                        <div className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
+                          Media Diaria
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Receipt className="w-4 h-4" style={{ color: BRAND_COLORS.primary }} />
+                          <span className="text-lg font-bold text-[#364f6b]">
+                            {formatWhatIfCurrency(whatIfData.facturacion_media_dia)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="h-12 w-px bg-slate-200" />
+
+                      <div>
+                        <div className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
+                          Ticket Medio
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Users className="w-4 h-4" style={{ color: BRAND_COLORS.accent }} />
+                          <span className="text-lg font-bold text-[#364f6b]">
+                            {formatWhatIfCurrency(whatIfData.ticket_medio_historico)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="h-12 w-px bg-slate-200" />
+
+                      <div>
+                        <div className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Capacidad</div>
+                        <div className="flex items-center gap-2">
+                          <Target className="w-4 h-4" style={{ color: BRAND_COLORS.primary }} />
+                          <span className="text-lg font-bold text-[#364f6b]">{whatIfData.capacidad_dia} pax/día</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-xs text-slate-400 italic">
+                      Mejor día histórico: {formatWhatIfCurrency(whatIfData.mejor_dia_facturacion)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Input Section */}
+                  <TremorCard>
+                    <div className="flex items-center gap-2 mb-6">
+                      <Zap className="w-5 h-5" style={{ color: BRAND_COLORS.primary }} />
+                      <TremorTitle>Parámetros de Simulación</TremorTitle>
+                    </div>
+
+                    {/* Customers Slider */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Users className="w-5 h-5" style={{ color: BRAND_COLORS.accent }} />
+                          <span className="font-medium text-slate-700">Comensales / día</span>
+                        </div>
+                        <span className="text-2xl font-bold" style={{ color: BRAND_COLORS.primary }}>
+                          {customers}
+                        </span>
+                      </div>
+                      <Slider
+                        value={[customers]}
+                        onValueChange={(value) => setCustomers(value[0])}
+                        min={10}
+                        max={260}
+                        step={5}
+                        className="w-full"
+                      />
+                      <div className="flex justify-between text-xs text-slate-400">
+                        <span>10</span>
+                        <span className="text-slate-500 font-medium">Media: {whatIfData.comensales_media}</span>
+                        <span>260</span>
+                      </div>
+                    </div>
+
+                    {/* Average Ticket Slider */}
+                    <div className="mt-8 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Receipt className="w-5 h-5" style={{ color: BRAND_COLORS.lunch }} />
+                          <span className="font-medium text-slate-700">Ticket medio</span>
+                        </div>
+                        <span className="text-2xl font-bold" style={{ color: BRAND_COLORS.primary }}>
+                          {formatWhatIfCurrency(avgTicket)}
+                        </span>
+                      </div>
+                      <Slider
+                        value={[avgTicket]}
+                        onValueChange={(value) => setAvgTicket(value[0])}
+                        min={15}
+                        max={50}
+                        step={1}
+                        className="w-full"
+                      />
+                      <div className="flex justify-between text-xs text-slate-400">
+                        <span>15€</span>
+                        <span className="text-slate-500 font-medium">
+                          Media: {formatWhatIfCurrency(whatIfData.ticket_medio_historico)}
+                        </span>
+                        <span>50€</span>
+                      </div>
+                    </div>
+
+                    {/* Occupancy Bar */}
+                    <div className="mt-8 p-4 rounded-lg bg-slate-50 border border-slate-100">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="font-medium text-slate-700">% Ocupación</span>
+                        <span
+                          className="text-lg font-bold"
+                          style={{ color: getOccupancyColor(whatIfCalculations.occupancy) }}
+                        >
+                          {whatIfCalculations.occupancy.toFixed(1)}%
+                        </span>
+                      </div>
+                      <div className="h-3 bg-slate-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-300"
+                          style={{
+                            width: `${Math.min(whatIfCalculations.occupancy, 100)}%`,
+                            backgroundColor: getOccupancyColor(whatIfCalculations.occupancy),
+                          }}
+                        />
+                      </div>
+                      <div className="flex justify-between text-xs text-slate-400 mt-2">
+                        <span>0%</span>
+                        <span>50%</span>
+                        <span>100%</span>
+                      </div>
+                    </div>
+                  </TremorCard>
+
+                  {/* Results Section */}
+                  <div className="space-y-6">
+                    {/* Daily Revenue - Main Result */}
+                    <TremorCard>
+                      <div className="text-center py-6">
+                        <p className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-3">
+                          Facturación día simulada
+                        </p>
+                        <p className="text-5xl font-bold text-[#364f6b]">
+                          {formatWhatIfCurrency(whatIfCalculations.dailyRevenue)}
+                        </p>
+
+                        <div
+                          className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-md border text-xs font-semibold uppercase tracking-wide"
+                          style={{
+                            borderColor: "#227c9d",
+                            color: "#227c9d",
+                            backgroundColor: "transparent",
+                          }}
+                        >
+                          {whatIfCalculations.difference >= 0 ? (
+                            <TrendingUp className="w-3.5 h-3.5" />
+                          ) : (
+                            <TrendingDown className="w-3.5 h-3.5" />
+                          )}
+                          <span>
+                            {whatIfCalculations.difference >= 0 ? "+" : ""}
+                            {formatWhatIfCurrency(whatIfCalculations.difference)} vs media
+                          </span>
+                          <span>
+                            ({whatIfCalculations.percentDiff >= 0 ? "+" : ""}
+                            {whatIfCalculations.percentDiff.toFixed(1)}%)
+                          </span>
+                        </div>
+                      </div>
+                    </TremorCard>
+
+                    {/* Secondary Metrics */}
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Monthly Projection */}
+                      <TremorCard>
+                        <div className="flex items-start gap-3">
+                          <div className="p-2 rounded-lg" style={{ backgroundColor: `${BRAND_COLORS.primary}20` }}>
+                            <Calendar className="w-5 h-5" style={{ color: BRAND_COLORS.primary }} />
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                              Proyección mensual
+                            </p>
+                            <p className="text-xl font-bold text-[#364f6b] mt-1">
+                              {formatWhatIfCurrency(whatIfCalculations.monthlyProjection)}
+                            </p>
+                            <p className="text-xs text-slate-400 mt-1">
+                              {whatIfData.dias_operativos_mes} días operativos
+                            </p>
+                          </div>
+                        </div>
+                      </TremorCard>
+
+                      {/* vs Best Day */}
+                      <TremorCard>
+                        <div className="flex items-start gap-3">
+                          <div className="p-2 rounded-lg" style={{ backgroundColor: `${BRAND_COLORS.lunch}20` }}>
+                            <Target className="w-5 h-5" style={{ color: BRAND_COLORS.lunch }} />
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">vs Mejor día</p>
+                            <p className="text-xl font-bold text-[#364f6b] mt-1">
+                              {whatIfCalculations.percentVsBest.toFixed(0)}%
+                            </p>
+                            <p className="text-xs text-slate-400 mt-1">
+                              Récord: {formatWhatIfCurrency(whatIfData.mejor_dia_facturacion)}
+                            </p>
+                          </div>
+                        </div>
+                      </TremorCard>
+                    </div>
+
+                    {/* Quick Scenarios */}
+                    <TremorCard>
+                      <div className="flex items-center gap-2 mb-4">
+                        <Zap className="w-5 h-5" style={{ color: BRAND_COLORS.primary }} />
+                        <TremorTitle>Escenarios rápidos</TremorTitle>
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        <button
+                          onClick={() => {
+                            setCustomers(Math.round(whatIfData.comensales_media * 0.7))
+                            setAvgTicket(Math.round(whatIfData.ticket_medio_historico))
+                          }}
+                          className="p-4 rounded-lg border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all text-center group"
+                        >
+                          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Día flojo</p>
+                          <p className="text-lg font-bold text-[#364f6b] mt-1 group-hover:text-[#02b1c4]">-30% pax</p>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setCustomers(Math.round(whatIfData.comensales_media))
+                            setAvgTicket(Math.round(whatIfData.ticket_medio_historico))
+                          }}
+                          className="p-4 rounded-lg border-2 transition-all text-center"
+                          style={{ borderColor: BRAND_COLORS.primary, backgroundColor: `${BRAND_COLORS.primary}10` }}
+                        >
+                          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Día normal</p>
+                          <p className="text-lg font-bold mt-1" style={{ color: BRAND_COLORS.primary }}>
+                            Media
+                          </p>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setCustomers(Math.round(whatIfData.capacidad_dia * 0.85))
+                            setAvgTicket(Math.round(whatIfData.ticket_medio_historico * 1.15))
+                          }}
+                          className="p-4 rounded-lg border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all text-center group"
+                        >
+                          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Día top</p>
+                          <p className="text-lg font-bold text-[#364f6b] mt-1 group-hover:text-[#02b1c4]">85% + 15%</p>
+                        </button>
+                      </div>
+                    </TremorCard>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
 

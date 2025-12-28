@@ -20,12 +20,12 @@ export const NAVIGATION_ITEMS = [
   { name: "Reservas y Ocupación", icon: Calendar, path: "/reservations" },
   { name: "Ingresos", icon: DollarSign, path: "/revenue" },
   { name: "Gastos", icon: PieChart, path: "/expenses" },
+  { name: "Costes", icon: Calculator, path: "/costs" },
   { name: "Productos", icon: ShoppingBag, path: "/products" },
   { name: "Operaciones", icon: Clock, path: "/operations" },
   { name: "Facturación", icon: FileText, path: "/invoices" },
   { name: "Tesorería", icon: Landmark, path: "/treasury" },
   { name: "Forecasting", icon: TrendingUp, path: "/forecasting" },
-  { name: "What-If", icon: Calculator, path: "/what-if" },
   { name: "Smart Assistant", icon: Sparkles, path: "/ai-assistant" },
   { name: "Configuración", icon: Settings, path: "/settings" },
 ]

@@ -26,8 +26,10 @@ import type {
   ForecastPrecision,
   FinancialKPIs,
   OcupacionDia,
-  LaborCostDay, // Added for the new function
-  WeekRevenueDay, // Added for the new function
+  LaborCostDay,
+  WeekRevenueDay,
+  BenchmarkItem,
+  BenchmarkResumen,
 } from "../types"
 import { MOCK_DATA_DELAY } from "../constants"
 import { supabase } from "./supabase" // Corregida importación para usar el cliente correcto
@@ -467,23 +469,32 @@ export const fetchUpcomingInvoices = async (days: number): Promise<Invoice[]> =>
 export const getBusinessDate = (): Date => {
   const now = new Date()
 
-  // Obtener hora en timezone de España
-  const spainTime = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Madrid" }))
-  const hours = spainTime.getHours()
-  const minutes = spainTime.getMinutes()
+  const spainFormatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Madrid",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    hour12: false,
+  })
 
-  console.log("[v0] getBusinessDate - Spain time:", spainTime.toISOString(), "hours:", hours, "minutes:", minutes)
+  const parts = spainFormatter.formatToParts(now)
+  const year = Number.parseInt(parts.find((p) => p.type === "year")?.value || "0")
+  const month = Number.parseInt(parts.find((p) => p.type === "month")?.value || "1") - 1 // JS months are 0-indexed
+  const day = Number.parseInt(parts.find((p) => p.type === "day")?.value || "1")
+  const hour = Number.parseInt(parts.find((p) => p.type === "hour")?.value || "0")
 
-  // Si estamos entre 00:00 y 01:58 en España, consideramos que es el día anterior
-  if (hours < 1 || (hours === 1 && minutes < 58)) {
-    const yesterday = new Date(spainTime)
-    yesterday.setDate(yesterday.getDate() - 1)
-    console.log("[v0] getBusinessDate - Before 1:58, returning yesterday:", toLocalISOString(yesterday))
-    return yesterday
+  // Corte a las 02:00 (igual que fn_dia_operativo en Supabase)
+  if (hour < 2) {
+    // Devolver el día anterior en España
+    const result = new Date(year, month, day - 1)
+    result.setHours(0, 0, 0, 0)
+    return result
   }
 
-  console.log("[v0] getBusinessDate - After 1:58, returning today:", toLocalISOString(spainTime))
-  return spainTime
+  const result = new Date(year, month, day)
+  result.setHours(0, 0, 0, 0)
+  return result
 }
 
 export const fetchWeekReservations = async (offsetWeeks = 0): Promise<WeekReservationDay[]> => {
@@ -506,12 +517,15 @@ export const fetchWeekReservations = async (offsetWeeks = 0): Promise<WeekReserv
     const endOfTargetWeek = new Date(startOfTargetWeek)
     endOfTargetWeek.setDate(startOfTargetWeek.getDate() + 6)
 
+    // --- FIX FOR UNDECLARED VARIABLE 'pad' ---
+    const pad = (num: number) => String(num).padStart(2, "0")
     const formatDateStr = (d: Date) => {
       const year = d.getFullYear()
       const month = String(d.getMonth() + 1).padStart(2, "0")
       const day = String(d.getDate()).padStart(2, "0")
-      return `${year}-${month}-${day}`
+      return `${year}-${pad(month)}-${pad(day)}`
     }
+    // --- END FIX ---
 
     const startDateStr = formatDateStr(startOfTargetWeek)
     const endDateStr = formatDateStr(endOfTargetWeek)
@@ -647,7 +661,7 @@ export const fetchRealTimeData = async (): Promise<{
   })
 
   try {
-    const todayStr = getBusinessDate().toISOString().split("T")[0]
+    const todayStr = toLocalISOString(getBusinessDate())
 
     console.log(`[v0] Fetching Live Data for business date: ${todayStr}`)
 
@@ -2225,5 +2239,112 @@ export async function fetchWeekRevenue(weekOffset = 0): Promise<WeekRevenueDay[]
   } catch (error) {
     console.error("[v0] Error in fetchWeekRevenue:", error)
     return []
+  }
+}
+
+export async function fetchBenchmarks(fechaInicio: string, fechaFin: string): Promise<BenchmarkResumen> {
+  try {
+    console.log("[v0] fetchBenchmarks llamado con:", { fechaInicio, fechaFin })
+
+    const { data, error } = await supabase.rpc("get_benchmarks_resumen", {
+      p_fecha_inicio: fechaInicio,
+      p_fecha_fin: fechaFin,
+    })
+
+    console.log("[v0] fetchBenchmarks respuesta:", { data, error, rowCount: data?.length || 0 })
+
+    if (error) {
+      console.error("[fetchBenchmarks] Error:", error)
+      return {
+        benchmarks: [],
+        totales: {
+          margen_operativo: 0,
+          margen_operativo_euros: 0,
+          margen_neto: 0,
+          margen_neto_euros: 0,
+          total_gastos: 0,
+          total_ventas: 0,
+        },
+      }
+    }
+
+    // Separar benchmarks de totales
+    const benchmarks: BenchmarkItem[] = []
+    let margenOperativo = 0
+    let margenOperativoEuros = 0
+    let margenNeto = 0
+    let margenNetoEuros = 0
+    let totalGastos = 0
+    let totalVentas = 0
+
+    for (const row of data || []) {
+      const etiqueta = row.benchmark || ""
+
+      if (etiqueta === "_MARGEN_OPERATIVO") {
+        // Margen Operativo: gasto = euros, porcentaje = %
+        margenOperativo = row.porcentaje || 0
+        margenOperativoEuros = row.gasto || 0
+      } else if (etiqueta === "_MARGEN_NETO") {
+        // Margen Neto: gasto = euros, porcentaje = %
+        margenNeto = row.porcentaje || 0
+        margenNetoEuros = row.gasto || 0
+      } else if (etiqueta === "_TOTAL_GASTOS") {
+        // Total gastos y ventas vienen de esta fila
+        totalGastos = row.gasto || 0
+        totalVentas = row.ventas || 0
+      } else if (etiqueta === "_TOTAL_OPERATIVO") {
+        // También capturamos ventas de aquí si no viene de _TOTAL_GASTOS
+        if (totalVentas === 0) {
+          totalVentas = row.ventas || 0
+        }
+      } else if (etiqueta && !etiqueta.startsWith("_")) {
+        // Benchmarks individuales (sin underscore)
+        benchmarks.push({
+          etiqueta: etiqueta,
+          gasto: row.gasto || 0,
+          pagado: row.pagado || 0,
+          pendiente: row.pendiente || 0,
+          ventas: row.ventas || 0,
+          porcentaje: row.porcentaje || 0,
+          min_sector: row.rango_min,
+          max_sector: row.rango_max,
+        })
+      }
+    }
+
+    console.log("[v0] fetchBenchmarks procesado:", {
+      benchmarksCount: benchmarks.length,
+      margenOperativo,
+      margenOperativoEuros,
+      margenNeto,
+      margenNetoEuros,
+      totalGastos,
+      totalVentas,
+    })
+
+    return {
+      benchmarks,
+      totales: {
+        margen_operativo: margenOperativo,
+        margen_operativo_euros: margenOperativoEuros,
+        margen_neto: margenNeto,
+        margen_neto_euros: margenNetoEuros,
+        total_gastos: totalGastos,
+        total_ventas: totalVentas,
+      },
+    }
+  } catch (err) {
+    console.error("[fetchBenchmarks] Exception:", err)
+    return {
+      benchmarks: [],
+      totales: {
+        margen_operativo: 0,
+        margen_operativo_euros: 0,
+        margen_neto: 0,
+        margen_neto_euros: 0,
+        total_gastos: 0,
+        total_ventas: 0,
+      },
+    }
   }
 }

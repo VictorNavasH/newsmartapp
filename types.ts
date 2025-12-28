@@ -998,3 +998,26 @@ export interface FacturacionMensual {
   total_tarjeta: number
   total_efectivo: number
 }
+
+export interface BenchmarkItem {
+  etiqueta: string
+  gasto: number
+  pagado: number
+  pendiente: number
+  ventas: number
+  porcentaje: number
+  min_sector: number | null
+  max_sector: number | null
+}
+
+export interface BenchmarkResumen {
+  benchmarks: BenchmarkItem[]
+  totales: {
+    margen_operativo: number
+    margen_operativo_euros: number
+    margen_neto: number
+    margen_neto_euros: number
+    total_gastos: number
+    total_ventas: number
+  }
+}

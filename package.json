@@ -9,6 +9,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@cfworker/json-schema": "latest",
     "@emotion/is-prop-valid": "latest",
     "@google/genai": "1.30.0",
     "@hookform/resolvers": "^3.10.0",

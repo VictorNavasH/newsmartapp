@@ -6,6 +6,7 @@ import DashboardPage from "@/components/views/DashboardPage"
 import ReservationsPage from "@/components/views/ReservationsPage"
 import IncomePage from "@/components/views/IncomePage"
 import ExpensesPage from "@/components/views/ExpensesPage"
+import CostesPage from "@/components/views/CostesPage"
 import OperationsPage from "@/components/views/OperationsPage"
 import ProductsPage from "@/components/views/ProductsPage"
 import ForecastingPage from "@/components/views/ForecastingPage"
@@ -30,6 +31,8 @@ export default function App() {
         return <IncomePage />
       case "/expenses":
         return <ExpensesPage />
+      case "/costs":
+        return <CostesPage />
       case "/operations":
         return <OperationsPage />
       case "/products":

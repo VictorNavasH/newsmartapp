@@ -76,27 +76,27 @@ const OperationsPage: React.FC = () => {
 
   const setPeriod = (period: PeriodKey) => {
     setActiveTab(period)
-    const today = period === "hoy" ? getBusinessDate() : new Date()
-    today.setHours(0, 0, 0, 0)
-    const from = new Date(today)
-    const to = new Date(today)
+    const businessToday = getBusinessDate()
+    businessToday.setHours(0, 0, 0, 0)
+    const from = new Date(businessToday)
+    const to = new Date(businessToday)
 
     switch (period) {
       case "hoy":
-        // getBusinessDate() already applied above for "hoy" only
+        // businessToday ya está configurado
         break
       case "ayer":
-        from.setDate(today.getDate() - 1)
-        to.setDate(today.getDate() - 1)
+        from.setDate(businessToday.getDate() - 1)
+        to.setDate(businessToday.getDate() - 1)
         break
       case "semana":
-        from.setDate(today.getDate() - 7)
+        from.setDate(businessToday.getDate() - 7)
         break
       case "mes":
-        from.setDate(today.getDate() - 30)
+        from.setDate(businessToday.getDate() - 30)
         break
       case "trimestre":
-        from.setDate(today.getDate() - 90)
+        from.setDate(businessToday.getDate() - 90)
         break
       default:
         return

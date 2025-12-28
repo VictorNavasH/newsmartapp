@@ -83,34 +83,39 @@ const ReservationsPage: React.FC = () => {
   }, [current, previous, dateRange])
 
   const setPeriod = (period: PeriodKey) => {
-    const today = period === "hoy" ? getBusinessDate() : new Date()
-    today.setHours(12, 0, 0, 0)
-    const from = new Date(today)
-    const to = new Date(today)
+    const businessToday = getBusinessDate()
+    businessToday.setHours(12, 0, 0, 0)
+    const from = new Date(businessToday)
+    const to = new Date(businessToday)
 
-    console.log("[v0] ReservationsPage setPeriod called with:", period, "today:", today.toISOString().split("T")[0])
+    console.log(
+      "[v0] ReservationsPage setPeriod called with:",
+      period,
+      "today:",
+      businessToday.toISOString().split("T")[0],
+    )
 
     switch (period) {
       case "hoy":
-        // getBusinessDate() already applied above for "hoy" only
+        // businessToday ya está configurado
         break
       case "ayer":
-        from.setDate(today.getDate() - 1)
-        to.setDate(today.getDate() - 1)
+        from.setDate(businessToday.getDate() - 1)
+        to.setDate(businessToday.getDate() - 1)
         break
       case "semana":
-        const day = today.getDay() || 7
-        if (day !== 1) from.setDate(today.getDate() - (day - 1))
-        to.setDate(today.getDate() - 1)
+        const day = businessToday.getDay() || 7
+        if (day !== 1) from.setDate(businessToday.getDate() - (day - 1))
+        to.setDate(businessToday.getDate() - 1)
         break
       case "mes":
         from.setDate(1)
-        to.setDate(today.getDate() - 1)
+        to.setDate(businessToday.getDate() - 1)
         break
       case "trimestre":
-        const currentQuarter = Math.floor(today.getMonth() / 3)
+        const currentQuarter = Math.floor(businessToday.getMonth() / 3)
         from.setMonth(currentQuarter * 3, 1)
-        to.setDate(today.getDate() - 1)
+        to.setDate(businessToday.getDate() - 1)
         break
       default:
         return

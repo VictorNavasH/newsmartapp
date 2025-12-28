@@ -55,36 +55,34 @@ const IncomePage: React.FC = () => {
     hasCurrentData: !!current,
   })
 
-  const setPeriod = (period: string) => {
-    const now = new Date()
-    now.setHours(12, 0, 0, 0)
-    const fromDate = new Date(now)
-    const toDate = new Date(now)
+  const handlePeriodChange = (period: string) => {
+    const businessToday = getBusinessDate()
+    businessToday.setHours(12, 0, 0, 0)
+    const fromDate = new Date(businessToday)
+    const toDate = new Date(businessToday)
 
     switch (period) {
       case "hoy":
-        const businessToday = getBusinessDate()
-        businessToday.setHours(12, 0, 0, 0)
         setDateRange({ from: businessToday, to: businessToday })
         setActiveTab("hoy")
         return
       case "ayer":
-        fromDate.setDate(now.getDate() - 1)
-        toDate.setDate(now.getDate() - 1)
+        fromDate.setDate(businessToday.getDate() - 1)
+        toDate.setDate(businessToday.getDate() - 1)
         break
       case "semana":
-        const day = now.getDay() || 7
-        if (day !== 1) fromDate.setDate(now.getDate() - (day - 1))
-        toDate.setDate(now.getDate() - 1)
+        const day = businessToday.getDay() || 7
+        if (day !== 1) fromDate.setDate(businessToday.getDate() - (day - 1))
+        toDate.setDate(businessToday.getDate() - 1)
         break
       case "mes":
         fromDate.setDate(1)
-        toDate.setDate(now.getDate() - 1)
+        toDate.setDate(businessToday.getDate() - 1)
         break
       case "trimestre":
-        const currentQuarter = Math.floor(now.getMonth() / 3)
+        const currentQuarter = Math.floor(businessToday.getMonth() / 3)
         fromDate.setMonth(currentQuarter * 3, 1)
-        toDate.setDate(now.getDate() - 1)
+        toDate.setDate(businessToday.getDate() - 1)
         break
       default:
         return
@@ -329,7 +327,7 @@ const IncomePage: React.FC = () => {
         subtitle={`Análisis financiero y tickets medios: ${getPeriodLabel()}`}
         actions={
           <>
-            <Tabs value={activeTab} onValueChange={(v) => setPeriod(v)}>
+            <Tabs value={activeTab} onValueChange={(v) => handlePeriodChange(v)}>
               <TabsList className="bg-white border border-slate-200 shadow-sm">
                 <TabsTrigger value="ayer" className={activeTabStyle}>
                   Ayer

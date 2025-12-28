@@ -564,6 +564,8 @@ export default function FacturacionPage() {
           title="Total Facturado"
           icon={<Euro className="w-5 h-5 text-[#02b1c4]" />}
           total={{ value: kpiData.total_facturado, previous: 0, delta: 0, trend: "neutral" }}
+          decimals={2}
+          suffix="€"
         >
           <div className="grid grid-cols-2 gap-2 mt-3">
             <div className="p-2 rounded-lg bg-[#02b1c4]/10 border border-slate-100/50">
