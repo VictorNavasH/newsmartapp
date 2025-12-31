@@ -99,12 +99,11 @@ export function SmartAssistant({ currentPath }: SmartAssistantProps) {
 
   return (
     <>
-      {/* Botón flotante con efecto MovingBorder */}
       <div className="fixed bottom-6 right-6 z-50">
         <MovingBorderButton
           borderRadius="1rem"
           containerClassName="h-14 w-14"
-          className="cursor-pointer hover:scale-105 transition-transform"
+          className="cursor-pointer hover:scale-105 transition-transform bg-white/70 backdrop-blur-sm"
           duration={3000}
           onClick={() => setIsOpen(true)}
         >
