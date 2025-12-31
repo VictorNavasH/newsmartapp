@@ -501,7 +501,7 @@ export default function ProductsPage() {
               </TabsList>
             </Tabs>
 
-            <DateRangePicker from={dateRange.from} to={dateRange.to} onSelect={handleDateChange} />
+            <DateRangePicker from={dateRange.from} to={dateRange.to} onChange={handleDateChange} />
 
             {hasFilters && (
               <button

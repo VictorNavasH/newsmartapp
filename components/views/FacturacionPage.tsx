@@ -228,11 +228,9 @@ export default function FacturacionPage() {
     }
   }
 
-  const handleDateChange = (from: Date | undefined, to: Date | undefined) => {
-    if (from && to) {
-      setDateRange({ from, to })
-      setSelectedPeriod("custom")
-    }
+  const handleDateChange = (range: { from: Date; to: Date }) => {
+    setDateRange({ from: range.from, to: range.to })
+    setSelectedPeriod("custom")
   }
 
   // Carga de datos principales

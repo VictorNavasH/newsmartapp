@@ -96,7 +96,6 @@ export function DateRangePicker({ from, to, onChange, className }: DateRangePick
               defaultMonth={from}
               locale={es}
               weekStartsOn={1}
-              disabled={(date) => isSameOrAfter(date, to) && date.getDate() !== to.getDate()}
               modifiersStyles={calendarStyles}
             />
           </PopoverContent>
@@ -127,7 +126,6 @@ export function DateRangePicker({ from, to, onChange, className }: DateRangePick
               defaultMonth={to}
               locale={es}
               weekStartsOn={1}
-              disabled={(date) => isSameOrBefore(date, from) && date.getDate() !== from.getDate()}
               modifiersStyles={calendarStyles}
             />
           </PopoverContent>

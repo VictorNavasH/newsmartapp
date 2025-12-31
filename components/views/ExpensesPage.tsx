@@ -176,27 +176,12 @@ export default function ExpensesPage() {
   }, [filteredProviderExpenses])
 
   const providerPieChartData = useMemo(() => {
-    const top7 = providerSummary.slice(0, 7)
-    const others = providerSummary.slice(7)
-    const othersTotal = others.reduce((sum, p) => sum + p.total, 0)
-
-    const data = top7.map((item, index) => ({
+    return providerSummary.map((item, index) => ({
       name: item.proveedor,
       value: item.total,
       color: CATEGORY_COLORS[index % CATEGORY_COLORS.length],
       fill: CATEGORY_COLORS[index % CATEGORY_COLORS.length],
     }))
-
-    if (othersTotal > 0) {
-      data.push({
-        name: "Otros",
-        value: othersTotal,
-        color: "#94a3b8",
-        fill: "#94a3b8",
-      })
-    }
-
-    return data
   }, [providerSummary])
 
   // Medir altura de tarjeta izquierda
@@ -1113,56 +1098,49 @@ export default function ExpensesPage() {
                 </div>
               </TremorCard>
 
-              {/* Ranking de Proveedores */}
-              <TremorCard>
-                <div className="flex items-center gap-2 mb-4">
-                  <TrendingUp className="h-5 w-5 text-[#17c3b2]" />
-                  <TremorTitle>Top Proveedores</TremorTitle>
-                </div>
+              <div style={{ height: rightCardHeight ? `${rightCardHeight}px` : "auto" }} className="overflow-hidden">
+                <TremorCard className="h-full flex flex-col">
+                  <div className="flex items-center gap-2 mb-4 flex-shrink-0">
+                    <Building2 className="h-5 w-5 text-[#17c3b2]" />
+                    <TremorTitle>Resumen por Proveedor</TremorTitle>
+                  </div>
 
-                <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                  {providerSummary.slice(0, 10).map((provider, index) => {
-                    const percentage = totals.total > 0 ? (provider.total / totals.total) * 100 : 0
-                    const color = CATEGORY_COLORS[index % CATEGORY_COLORS.length]
-                    const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : null
-
-                    return (
-                      <div key={provider.proveedor} className="p-3 bg-slate-50 rounded-lg">
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center gap-2">
-                            {medal ? (
-                              <span className="text-lg">{medal}</span>
-                            ) : (
-                              <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold bg-slate-100 text-slate-500">
-                                {index + 1}
-                              </span>
+                  <div className="flex-1 overflow-y-auto min-h-0 space-y-3">
+                    {providerSummary.map((provider, index) => {
+                      const percentage = totals.total > 0 ? (provider.total / totals.total) * 100 : 0
+                      const color = CATEGORY_COLORS[index % CATEGORY_COLORS.length]
+                      return (
+                        <div key={provider.proveedor} className="p-3 bg-slate-50 rounded-lg">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                              <span className="font-medium text-slate-700">{provider.proveedor}</span>
+                            </div>
+                            <span className="font-bold text-slate-800">{formatCurrency(provider.total)}</span>
+                          </div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="flex-1 bg-slate-200 rounded-full h-2">
+                              <div
+                                className="h-2 rounded-full"
+                                style={{ width: `${percentage}%`, backgroundColor: color }}
+                              />
+                            </div>
+                            <span className="text-xs text-slate-500 w-12 text-right">{percentage.toFixed(1)}%</span>
+                          </div>
+                          <div className="flex items-center gap-4 text-xs text-slate-500">
+                            <span>{provider.facturas} facturas</span>
+                            <span className="text-[#17c3b2]">Pagado: {formatCurrency(provider.pagado)}</span>
+                            <span className="text-[#ffcb77]">Pendiente: {formatCurrency(provider.pendiente)}</span>
+                            {provider.vencido > 0 && (
+                              <span className="text-[#fe6d73]">Vencido: {formatCurrency(provider.vencido)}</span>
                             )}
-                            <span className="font-medium text-slate-700">{provider.proveedor}</span>
                           </div>
-                          <span className="font-bold text-slate-800">{formatCurrency(provider.total)}</span>
                         </div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="flex-1 bg-slate-200 rounded-full h-2">
-                            <div
-                              className="h-2 rounded-full"
-                              style={{ width: `${percentage}%`, backgroundColor: color }}
-                            />
-                          </div>
-                          <span className="text-xs text-slate-500 w-12 text-right">{percentage.toFixed(1)}%</span>
-                        </div>
-                        <div className="flex items-center gap-4 text-xs text-slate-500">
-                          <span>{provider.facturas} facturas</span>
-                          <span className="text-[#17c3b2]">Pagado: {formatCurrency(provider.pagado)}</span>
-                          <span className="text-[#ffcb77]">Pendiente: {formatCurrency(provider.pendiente)}</span>
-                          {provider.vencido > 0 && (
-                            <span className="text-[#fe6d73]">Vencido: {formatCurrency(provider.vencido)}</span>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </TremorCard>
+                      )
+                    })}
+                  </div>
+                </TremorCard>
+              </div>
             </div>
 
             {/* Tabla de Proveedores */}
