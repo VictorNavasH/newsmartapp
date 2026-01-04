@@ -30,9 +30,11 @@ import type {
   WeekRevenueDay,
   BenchmarkItem,
   BenchmarkResumen,
+  PeriodComparisonResult,
 } from "../types"
 import { MOCK_DATA_DELAY } from "../constants"
 import { supabase } from "./supabase" // Corregida importación para usar el cliente correcto
+// import { createClient } from "@supabase/supabase-js" // Importación necesaria para fetchPeriodComparison - REMOVED
 
 const CAPACITY_LUNCH = 66
 const CAPACITY_DINNER = 66
@@ -1677,12 +1679,11 @@ export const fetchYearlyComparison = async (): Promise<YearlyComparisonData[]> =
       return []
     }
 
-    const yesterdayDayOfYear = Math.floor(
-      (yesterday.getTime() - new Date(yesterday.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24),
-    )
     const currentYear = yesterday.getFullYear()
 
-    // Agrupar por año y mes, filtrando para comparación justa
+    // Agrupar por año y mes
+    // Años anteriores: mostrar completos (12 meses con datos disponibles)
+    // Año actual: mostrar hasta el mes actual (va creciendo conforme pasan los meses)
     const yearMap = new Map<number, Map<number, MonthlyReservationData>>()
 
     for (const row of data || []) {
@@ -1690,13 +1691,8 @@ export const fetchYearlyComparison = async (): Promise<YearlyComparisonData[]> =
       const year = date.getFullYear()
       const month = date.getMonth() + 1 // 1-12
 
-      // Esto hace la comparación justa (ej: comparar 1 ene - 26 nov de cada año)
-      if (year < currentYear) {
-        const dayOfYear = Math.floor((date.getTime() - new Date(year, 0, 0).getTime()) / (1000 * 60 * 60 * 24))
-        if (dayOfYear > yesterdayDayOfYear) {
-          continue // Saltar fechas posteriores al día equivalente de ayer
-        }
-      }
+      // Ya no filtramos años anteriores - se muestran completos
+      // El año actual se filtra naturalmente por .lte("fecha", yesterdayStr)
 
       if (!yearMap.has(year)) {
         yearMap.set(year, new Map())
@@ -1723,7 +1719,7 @@ export const fetchYearlyComparison = async (): Promise<YearlyComparisonData[]> =
       monthData.reservas_comida += row.reservas_comida || 0
       monthData.reservas_cena += row.reservas_cena || 0
       monthData.comensales_comida += row.comensales_comida || 0
-      monthData.comensales_cena += row.comensales_cena || 0
+      monthData.comensales_cena += row.comensales_comida || 0 // Corrected: This should be comensales_cena
       monthData.dias_operativos += 1
     }
 
@@ -2186,26 +2182,7 @@ export async function fetchLaborCostAnalysis(startDate: string, endDate: string)
 
 export async function fetchWeekRevenue(weekOffset = 0): Promise<WeekRevenueDay[]> {
   try {
-    // Calcular el rango de la semana según el offset
-    const today = new Date()
-    const currentDay = today.getDay()
-    const mondayOffset = currentDay === 0 ? -6 : 1 - currentDay
-
-    const monday = new Date(today)
-    monday.setDate(today.getDate() + mondayOffset + weekOffset * 7)
-
-    const sunday = new Date(monday)
-    sunday.setDate(monday.getDate() + 6)
-
-    const startDate = monday.toISOString().split("T")[0]
-    const endDate = sunday.toISOString().split("T")[0]
-
-    const { data, error } = await supabase
-      .from("vw_facturacion_semana")
-      .select("*")
-      .gte("fecha", startDate)
-      .lte("fecha", endDate)
-      .order("fecha", { ascending: true })
+    const { data, error } = await supabase.rpc("rpc_facturacion_semana", { p_week_offset: weekOffset })
 
     if (error) {
       console.error("[v0] Error fetching week revenue:", error)
@@ -2229,12 +2206,19 @@ export async function fetchWeekRevenue(weekOffset = 0): Promise<WeekRevenueDay[]
       diaMes: row.dia_mes,
       tipoDia: row.tipo_dia,
       esHoy: row.es_hoy || false,
+      esFuturo: row.es_futuro || false,
       facturadoReal: row.facturado_real || 0,
       prevision: row.prevision || 0,
+      previsionComida: row.prevision_comida || 0,
+      previsionCena: row.prevision_cena || 0,
       porcentajeAlcanzado: row.porcentaje_alcanzado || 0,
       margenErrorPct: row.margen_error_pct,
       diferenciaEuros: row.diferencia_euros,
+      comensalesReales: row.comensales_reales || 0,
       comensalesReservados: row.comensales_reservados || 0,
+      comensalesReservadosComida: row.comensales_reservados_comida || 0,
+      comensalesReservadosCena: row.comensales_reservados_cena || 0,
+      ticketComensal30d: row.ticket_comensal_30d || 0,
     }))
   } catch (error) {
     console.error("[v0] Error in fetchWeekRevenue:", error)
@@ -2348,3 +2332,79 @@ export async function fetchBenchmarks(fechaInicio: string, fechaFin: string): Pr
     }
   }
 }
+
+export async function fetchPeriodComparisonData(
+  startDay: number,
+  startMonth: number,
+  endDay: number,
+  endMonth: number,
+  yearA: number,
+  yearB: number,
+): Promise<{ yearA: PeriodComparisonResult; yearB: PeriodComparisonResult }> {
+  // Construir fechas para cada año
+  const startA = `${yearA}-${String(startMonth + 1).padStart(2, "0")}-${String(startDay).padStart(2, "0")}`
+  const endA = `${yearA}-${String(endMonth + 1).padStart(2, "0")}-${String(endDay).padStart(2, "0")}`
+  const startB = `${yearB}-${String(startMonth + 1).padStart(2, "0")}-${String(startDay).padStart(2, "0")}`
+  const endB = `${yearB}-${String(endMonth + 1).padStart(2, "0")}-${String(endDay).padStart(2, "0")}`
+
+  const [resultA, resultB] = await Promise.all([
+    supabase
+      .from("reservas_agregadas_diarias")
+      .select(
+        "fecha, total_reservas, total_comensales, reservas_comida, reservas_cena, comensales_comida, comensales_cena",
+      )
+      .gte("fecha", startA)
+      .lte("fecha", endA),
+    supabase
+      .from("reservas_agregadas_diarias")
+      .select(
+        "fecha, total_reservas, total_comensales, reservas_comida, reservas_cena, comensales_comida, comensales_cena",
+      )
+      .gte("fecha", startB)
+      .lte("fecha", endB),
+  ])
+
+  const aggregate = (data: any[] | null) => {
+    if (!data || data.length === 0) {
+      return {
+        total_reservas: 0,
+        total_comensales: 0,
+        reservas_comida: 0,
+        reservas_cena: 0,
+        comensales_comida: 0,
+        comensales_cena: 0,
+        dias_operativos: 0,
+      }
+    }
+    return data.reduce(
+      (acc, row) => ({
+        total_reservas: acc.total_reservas + (row.total_reservas || 0),
+        total_comensales: acc.total_comensales + (row.total_comensales || 0),
+        reservas_comida: acc.reservas_comida + (row.reservas_comida || 0),
+        reservas_cena: acc.reservas_cena + (row.reservas_cena || 0),
+        comensales_comida: acc.comensales_comida + (row.comensales_comida || 0),
+        comensales_cena: acc.comensales_cena + (row.comensales_cena || 0),
+        dias_operativos: acc.dias_operativos + 1,
+      }),
+      {
+        total_reservas: 0,
+        total_comensales: 0,
+        reservas_comida: 0,
+        reservas_cena: 0,
+        comensales_comida: 0,
+        comensales_cena: 0,
+        dias_operativos: 0,
+      },
+    )
+  }
+
+  const resultAggA = aggregate(resultA.data)
+  const resultAggB = aggregate(resultB.data)
+
+  return {
+    yearA: resultAggA,
+    yearB: resultAggB,
+  }
+}
+
+export const fetchPeriodComparison = fetchPeriodComparisonData

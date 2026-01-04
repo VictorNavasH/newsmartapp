@@ -122,12 +122,12 @@ export function DashboardPage() {
   const weekRevenueTotals = useMemo(() => {
     const totalFacturado = weekRevenueData.reduce((sum, d) => sum + (d.facturadoReal || 0), 0)
     const totalPrevision = weekRevenueData.reduce((sum, d) => sum + (d.prevision || 0), 0)
-    // Previsión semana = facturado real (pasados/hoy) + previsión (futuros)
     const previsionSemana = weekRevenueData.reduce((sum, d) => {
-      if (d.tipoDia === "futuro") {
-        return sum + (d.prevision || 0)
+      if (d.tipoDia === "pasado") {
+        return sum + (d.facturadoReal || 0)
       }
-      return sum + (d.facturadoReal || 0)
+      // Hoy y futuro usan previsión
+      return sum + (d.prevision || 0)
     }, 0)
     const porcentajeTotal = previsionSemana > 0 ? (totalFacturado / previsionSemana) * 100 : 0
     return { totalFacturado, totalPrevision, previsionSemana, porcentajeTotal }

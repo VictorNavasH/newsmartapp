@@ -311,6 +311,18 @@ const IncomePage: React.FC = () => {
 
   const selectedTableData = tableData.find((t) => t.table_id === selectedTable)
 
+  const validPaxDays = historyData.filter((d) => (d.total?.avg_ticket_pax || 0) > 0)
+  const avgTicketPax =
+    validPaxDays.length > 0
+      ? validPaxDays.reduce((acc, d) => acc + (d.total?.avg_ticket_pax || 0), 0) / validPaxDays.length
+      : 0
+
+  const validTableDays = historyData.filter((d) => (d.total?.avg_ticket_table || 0) > 0)
+  const avgTicketTable =
+    validTableDays.length > 0
+      ? validTableDays.reduce((acc, d) => acc + (d.total?.avg_ticket_table || 0), 0) / validTableDays.length
+      : 0
+
   // formatDate se usa solo para debug, se elimina del scope principal
   // const formatDate = (date: Date): string => {
   //   const yyyy = date.getFullYear()
@@ -618,19 +630,47 @@ const IncomePage: React.FC = () => {
               <TremorTitle className="flex items-center gap-2 text-lg">
                 Evolución de Tickets Medios (Últimos 30 días)
               </TremorTitle>
-              <div className="flex items-center gap-4 text-xs">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: CHART_CONFIG.avgTicketColors.pax }} />
-                  <span className="text-slate-600">Por Comensal</span>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4 text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <div
+                      className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: CHART_CONFIG.avgTicketColors.pax }}
+                    />
+                    <span className="text-slate-600">Por Comensal</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div
+                      className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: CHART_CONFIG.avgTicketColors.table }}
+                    />
+                    <span className="text-slate-600">Por Mesa</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <div
-                    className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: CHART_CONFIG.avgTicketColors.table }}
-                  />
-                  <span className="text-slate-600">Por Mesa</span>
-                </div>
+                {historyData.length > 0 && (
+                  <div className="flex gap-3">
+                    <div
+                      className="px-3 py-2 rounded-lg text-center min-w-[100px]"
+                      style={{ backgroundColor: `${CHART_CONFIG.avgTicketColors.pax}20` }}
+                    >
+                      <p className="text-xs text-slate-500 mb-0.5">Ticket Comensal</p>
+                      <p className="text-lg font-bold" style={{ color: CHART_CONFIG.avgTicketColors.pax }}>
+                        {avgTicketPax.toFixed(2)}€
+                      </p>
+                    </div>
+                    <div
+                      className="px-3 py-2 rounded-lg text-center min-w-[100px]"
+                      style={{ backgroundColor: `${CHART_CONFIG.avgTicketColors.table}20` }}
+                    >
+                      <p className="text-xs text-slate-500 mb-0.5">Ticket Mesa</p>
+                      <p className="text-lg font-bold" style={{ color: CHART_CONFIG.avgTicketColors.table }}>
+                        {avgTicketTable.toFixed(2)}€
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
+              {/* </CHANGE> */}
             </div>
             <div className="h-80">
               {historyData.length > 0 ? (
