@@ -31,6 +31,8 @@ import type {
   BenchmarkItem,
   BenchmarkResumen,
   PeriodComparisonResult,
+  FoodCostProduct, // Added import
+  FoodCostSummary, // Added import
 } from "../types"
 import { MOCK_DATA_DELAY } from "../constants"
 import { supabase } from "./supabase" // Corregida importación para usar el cliente correcto
@@ -2390,3 +2392,91 @@ export async function fetchPeriodComparisonData(
 }
 
 export const fetchPeriodComparison = fetchPeriodComparisonData
+
+export async function fetchFoodCostProducts(): Promise<FoodCostSummary> {
+  try {
+    const { data, error } = await supabase.from("vw_food_cost").select("*").order("food_cost_pct", { ascending: false })
+
+    if (error) {
+      console.error("[fetchFoodCostProducts] Error:", error.message)
+      return {
+        productos: [],
+        kpis: {
+          food_cost_promedio: 0,
+          total_productos: 0,
+          productos_criticos: 0,
+          productos_warning: 0,
+          productos_ok: 0,
+        },
+        por_categoria: [],
+      }
+    }
+
+    console.log("[v0] Food Cost data received:", data?.length, "rows", data?.[0])
+
+    const productos: FoodCostProduct[] = (data || []).map((row: any) => ({
+      sku: row.sku || "",
+      producto: row.nombre_producto || "",
+      categoria: row.categoria || "Sin categoría",
+      tipo: row.tipo || "Comida",
+      pvp: Number.parseFloat(row.pvp) || 0,
+      pvp_neto: Number.parseFloat(row.pvp_neto) || 0,
+      coste: Number.parseFloat(row.coste_escandallo) || 0,
+      food_cost_pct: Number.parseFloat(row.food_cost_pct) || 0,
+      food_cost_peor_pct: Number.parseFloat(row.food_cost_peor_pct) || 0,
+      tiene_patatas: row.tiene_patatas === true,
+    }))
+
+    // Calcular KPIs
+    const total_productos = productos.length
+    const productos_criticos = productos.filter((p) => p.food_cost_pct > 30).length
+    const productos_warning = productos.filter((p) => p.food_cost_pct >= 20 && p.food_cost_pct <= 30).length
+    const productos_ok = productos.filter((p) => p.food_cost_pct < 20).length
+
+    const food_cost_promedio =
+      total_productos > 0 ? productos.reduce((sum, p) => sum + p.food_cost_pct, 0) / total_productos : 0
+
+    // Agrupar por categoría
+    const categoriasMap = new Map<string, { productos: number; sum_food_cost: number }>()
+    productos.forEach((p) => {
+      const cat = p.categoria
+      if (!categoriasMap.has(cat)) {
+        categoriasMap.set(cat, { productos: 0, sum_food_cost: 0 })
+      }
+      const entry = categoriasMap.get(cat)!
+      entry.productos += 1
+      entry.sum_food_cost += p.food_cost_pct
+    })
+
+    const por_categoria = Array.from(categoriasMap.entries()).map(([categoria, stats]) => ({
+      categoria,
+      productos: stats.productos,
+      food_cost_promedio: stats.productos > 0 ? stats.sum_food_cost / stats.productos : 0,
+    }))
+
+    return {
+      productos,
+      kpis: {
+        food_cost_promedio,
+        total_productos,
+        productos_criticos,
+        productos_warning,
+        productos_ok,
+      },
+      por_categoria,
+    }
+  } catch (err) {
+    console.error("[fetchFoodCostProducts] Exception:", err)
+    return {
+      productos: [],
+      kpis: {
+        food_cost_promedio: 0,
+        total_productos: 0,
+        productos_criticos: 0,
+        productos_warning: 0,
+        productos_ok: 0,
+      },
+      por_categoria: [],
+    }
+  }
+}

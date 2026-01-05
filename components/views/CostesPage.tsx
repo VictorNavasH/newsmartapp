@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { MenuBar } from "@/components/ui/menu-bar"
 import { Calculator, UtensilsCrossed, FileSpreadsheet, TrendingDown, Target, Calendar } from "lucide-react"
 import { BenchmarksTab } from "@/components/features/BenchmarksTab"
+import { FoodCostTab } from "@/components/features/FoodCostTab"
 
 const costesMenuItems = [
   {
@@ -147,26 +148,7 @@ export default function CostesPage() {
         </div>
 
         {/* Tab Food Cost */}
-        {activeTab === "Food Cost" && (
-          <Card className="bg-white border-slate-200">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-[#364f6b]">
-                <Calculator className="h-5 w-5 text-[#02b1c4]" />
-                Food Cost
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col items-center justify-center py-12 text-slate-400">
-                <TrendingDown className="h-16 w-16 mb-4 text-slate-300" />
-                <h3 className="text-lg font-medium mb-2">Próximamente</h3>
-                <p className="text-center max-w-md">
-                  Aquí podrás analizar el food cost de tu restaurante, comparar costes teóricos vs reales y optimizar tu
-                  rentabilidad.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {activeTab === "Food Cost" && <FoodCostTab />}
 
         {/* Tab Escandallos */}
         {activeTab === "Escandallos" && (
