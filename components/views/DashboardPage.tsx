@@ -122,16 +122,23 @@ export function DashboardPage() {
   const weekRevenueTotals = useMemo(() => {
     const totalFacturado = weekRevenueData.reduce((sum, d) => sum + (d.facturadoReal || 0), 0)
     const totalPrevision = weekRevenueData.reduce((sum, d) => sum + (d.prevision || 0), 0)
-    const previsionSemana = weekRevenueData.reduce((sum, d) => {
-      if (d.tipoDia === "pasado") {
-        return sum + (d.facturadoReal || 0)
-      }
-      // Hoy y futuro usan previsión
-      return sum + (d.prevision || 0)
-    }, 0)
+
+    // Para semana actual o futuras, usar lógica mixta (real pasados + previsión futuros)
+    const esSemanaCompletamentePasada = weekOffset < 0
+
+    const previsionSemana = esSemanaCompletamentePasada
+      ? totalPrevision
+      : weekRevenueData.reduce((sum, d) => {
+          if (d.tipoDia === "pasado") {
+            return sum + (d.facturadoReal || 0)
+          }
+          // Hoy y futuro usan previsión
+          return sum + (d.prevision || 0)
+        }, 0)
+
     const porcentajeTotal = previsionSemana > 0 ? (totalFacturado / previsionSemana) * 100 : 0
     return { totalFacturado, totalPrevision, previsionSemana, porcentajeTotal }
-  }, [weekRevenueData])
+  }, [weekRevenueData, weekOffset])
 
   const LaborCostTooltip = ({ active, payload, label }: any) => {
     if (!active || !payload || payload.length === 0) return null
@@ -512,7 +519,7 @@ export function DashboardPage() {
         <TremorCard className="mt-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <TremorTitle>Facturación Semanal</TremorTitle>
+              <TremorTitle>Previsión Facturación Semanal</TremorTitle>
               <span className="text-xs bg-[#227c9d]/10 text-[#227c9d] px-2 py-1 rounded-full font-bold live-badge">
                 Live
               </span>

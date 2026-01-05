@@ -52,7 +52,7 @@ const YEAR_COLORS: Record<number, string> = {
   2023: BRAND_COLORS.error,
   2024: BRAND_COLORS.accent,
   2025: BRAND_COLORS.primary,
-  2026: "#8b5cf6",
+  2026: "#edadff",
   2027: "#f59e0b",
 }
 

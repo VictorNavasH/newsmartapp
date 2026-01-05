@@ -1006,6 +1006,7 @@ export interface BenchmarkItem {
   pendiente: number
   ventas: number
   porcentaje: number
+  porcentaje_gastos: number
   min_sector: number | null
   max_sector: number | null
 }

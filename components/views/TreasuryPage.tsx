@@ -658,12 +658,19 @@ export default function TreasuryPage() {
       const endDate = format(dateRange.to, "yyyy-MM-dd")
       const offset = (page - 1) * PAGE_SIZE
 
+      const isUncategorized = categoryFilter === "uncategorized"
+      const effectiveCategoryId = categoryFilter !== "all" && !isUncategorized ? categoryFilter : undefined
+      const effectiveTipo = isUncategorized ? "sin_categorizar" : tipoFilter !== "all" ? tipoFilter : undefined
+
       console.log("[v0] Loading transactions with params:", {
         startDate,
         endDate,
         accountFilter,
         categoryFilter,
         tipoFilter,
+        isUncategorized,
+        effectiveCategoryId,
+        effectiveTipo,
         searchTerm,
         page,
         offset,
@@ -675,8 +682,8 @@ export default function TreasuryPage() {
           startDate,
           endDate,
           accountFilter !== "all" ? accountFilter : undefined,
-          categoryFilter !== "all" ? categoryFilter : undefined,
-          tipoFilter !== "all" ? tipoFilter : undefined,
+          effectiveCategoryId,
+          effectiveTipo,
           searchTerm || undefined,
           PAGE_SIZE,
           offset,
@@ -685,8 +692,8 @@ export default function TreasuryPage() {
           startDate,
           endDate,
           accountFilter !== "all" ? accountFilter : undefined,
-          categoryFilter !== "all" ? categoryFilter : undefined,
-          tipoFilter !== "all" ? tipoFilter : undefined,
+          effectiveCategoryId,
+          effectiveTipo,
           searchTerm || undefined,
         ),
       ])
@@ -797,7 +804,7 @@ export default function TreasuryPage() {
     console.log("[v0] handleViewUncategorized - Setting filter to sin_categorizar")
     setTipoFilter("sin_categorizar")
     setAccountFilter("all")
-    setCategoryFilter("all")
+    setCategoryFilter("uncategorized") // Changed from "all" to "uncategorized"
     setSearchTerm("")
     setPage(1)
     setActiveTab("Movimientos")
@@ -1338,6 +1345,7 @@ export default function TreasuryPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todas las categorías</SelectItem>
+                    {/* <SelectItem value="uncategorized">Sin categorizar</SelectItem> // Removed this, handled by tipoFilter */}
                     {flattenedCategories.map((cat) => (
                       <SelectItem key={cat.id} value={cat.id}>
                         {cat.name}
@@ -1726,7 +1734,7 @@ export default function TreasuryPage() {
                       size="sm"
                       onClick={() => {
                         setActiveTab("Movimientos")
-                        setCategoryFilter("uncategorized")
+                        setCategoryFilter("uncategorized") // Changed from "all" to "uncategorized"
                       }}
                       style={{ borderColor: BRAND_COLORS.warning, color: BRAND_COLORS.warning }}
                     >

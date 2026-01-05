@@ -2228,14 +2228,10 @@ export async function fetchWeekRevenue(weekOffset = 0): Promise<WeekRevenueDay[]
 
 export async function fetchBenchmarks(fechaInicio: string, fechaFin: string): Promise<BenchmarkResumen> {
   try {
-    console.log("[v0] fetchBenchmarks llamado con:", { fechaInicio, fechaFin })
-
     const { data, error } = await supabase.rpc("get_benchmarks_resumen", {
       p_fecha_inicio: fechaInicio,
       p_fecha_fin: fechaFin,
     })
-
-    console.log("[v0] fetchBenchmarks respuesta:", { data, error, rowCount: data?.length || 0 })
 
     if (error) {
       console.error("[fetchBenchmarks] Error:", error)
@@ -2265,24 +2261,19 @@ export async function fetchBenchmarks(fechaInicio: string, fechaFin: string): Pr
       const etiqueta = row.benchmark || ""
 
       if (etiqueta === "_MARGEN_OPERATIVO") {
-        // Margen Operativo: gasto = euros, porcentaje = %
         margenOperativo = row.porcentaje || 0
         margenOperativoEuros = row.gasto || 0
       } else if (etiqueta === "_MARGEN_NETO") {
-        // Margen Neto: gasto = euros, porcentaje = %
         margenNeto = row.porcentaje || 0
         margenNetoEuros = row.gasto || 0
       } else if (etiqueta === "_TOTAL_GASTOS") {
-        // Total gastos y ventas vienen de esta fila
         totalGastos = row.gasto || 0
         totalVentas = row.ventas || 0
       } else if (etiqueta === "_TOTAL_OPERATIVO") {
-        // También capturamos ventas de aquí si no viene de _TOTAL_GASTOS
         if (totalVentas === 0) {
           totalVentas = row.ventas || 0
         }
       } else if (etiqueta && !etiqueta.startsWith("_")) {
-        // Benchmarks individuales (sin underscore)
         benchmarks.push({
           etiqueta: etiqueta,
           gasto: row.gasto || 0,
@@ -2290,21 +2281,12 @@ export async function fetchBenchmarks(fechaInicio: string, fechaFin: string): Pr
           pendiente: row.pendiente || 0,
           ventas: row.ventas || 0,
           porcentaje: row.porcentaje || 0,
+          porcentaje_gastos: row.porcentaje_gastos || 0,
           min_sector: row.rango_min,
           max_sector: row.rango_max,
         })
       }
     }
-
-    console.log("[v0] fetchBenchmarks procesado:", {
-      benchmarksCount: benchmarks.length,
-      margenOperativo,
-      margenOperativoEuros,
-      margenNeto,
-      margenNetoEuros,
-      totalGastos,
-      totalVentas,
-    })
 
     return {
       benchmarks,
