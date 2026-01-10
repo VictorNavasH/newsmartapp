@@ -690,13 +690,17 @@ export default function FacturacionPage() {
                                 ? "bg-[#17c3b2]/10 text-[#17c3b2]"
                                 : item.verifactu_estado === "rejected"
                                   ? "bg-[#fe6d73]/10 text-[#fe6d73]"
-                                  : "bg-[#ffcb77]/10 text-[#ffcb77]"
+                                  : item.verifactu_estado === "signed"
+                                    ? "bg-[#227c9d]/10 text-[#227c9d]"
+                                    : "bg-[#ffcb77]/10 text-[#ffcb77]"
                             }`}
                           >
                             {item.verifactu_estado === "accepted" ? (
                               <CheckCircle className="w-3 h-3" />
                             ) : item.verifactu_estado === "rejected" ? (
                               <XCircle className="w-3 h-3" />
+                            ) : item.verifactu_estado === "signed" ? (
+                              <CheckCircle className="w-3 h-3" />
                             ) : (
                               <Clock className="w-3 h-3" />
                             )}
