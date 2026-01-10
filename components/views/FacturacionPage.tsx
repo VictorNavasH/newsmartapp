@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect } from "react"
 import { format, startOfMonth, startOfWeek, subDays, startOfQuarter, isValid } from "date-fns"
 import { es } from "date-fns/locale"
 import {
@@ -23,13 +23,13 @@ import {
   Trash2,
   Filter,
   RefreshCw,
+  ChevronLeft,
 } from "lucide-react"
 import { ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
 
 import { PageHeader } from "@/components/layout/PageHeader"
 import { PageContent } from "@/components/layout/PageContent"
-import { TremorCard } from "@/components/ui/TremorCard"
-import { Title as TremorTitle } from "@tremor/react"
+import { TremorCard, TremorTitle } from "@/components/ui/TremorCard"
 import { MenuBar } from "@/components/ui/menu-bar"
 import { MetricGroupCard } from "@/components/ui/MetricGroupCard"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -52,6 +52,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { formatCurrency } from "@/lib/utils"
 import {
   fetchFacturacionListado,
+  fetchFacturacionKPIs,
   fetchTiposIngreso,
   fetchFacturacionAlertas,
   fetchFacturacionMensual,
@@ -161,6 +162,23 @@ export default function FacturacionPage() {
   const [dataMensual, setDataMensual] = useState<FacturacionMensual[]>([])
   const [loading, setLoading] = useState(true)
 
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(50)
+  const [totalCount, setTotalCount] = useState(0)
+
+  const [kpiData, setKpiData] = useState({
+    total_facturado: 0,
+    total_tarjeta: 0,
+    total_efectivo: 0,
+    num_facturas: 0,
+    ticket_medio: 0,
+    base_imponible: 0,
+    iva_total: 0,
+    verifactu_ok: 0,
+    verifactu_error: 0,
+    verifactu_pendiente: 0,
+  })
+
   // Estados para Cuadre Manual
   const [cuadreListado, setCuadreListado] = useState<CuadreListadoItem[]>([])
   const [cuadreEstadoFilter, setCuadreEstadoFilter] = useState<CuadreEstadoFilter>("todos")
@@ -226,36 +244,57 @@ export default function FacturacionPage() {
       default:
         break
     }
+    setCurrentPage(1)
   }
 
   const handleDateChange = (range: { from: Date; to: Date }) => {
     setDateRange({ from: range.from, to: range.to })
     setSelectedPeriod("custom")
+    setCurrentPage(1)
   }
 
-  // Carga de datos principales
   useEffect(() => {
-    const loadData = async () => {
+    const loadKPIs = async () => {
+      const startDateStr = format(dateRange.from, "yyyy-MM-dd")
+      const endDateStr = format(dateRange.to, "yyyy-MM-dd")
+      const kpis = await fetchFacturacionKPIs(startDateStr, endDateStr)
+      setKpiData(kpis)
+    }
+    loadKPIs()
+  }, [dateRange])
+
+  useEffect(() => {
+    const loadListado = async () => {
       setLoading(true)
       const startDateStr = format(dateRange.from, "yyyy-MM-dd")
       const endDateStr = format(dateRange.to, "yyyy-MM-dd")
 
-      const [listadoData, tiposData, alertasData, mensualData] = await Promise.all([
-        fetchFacturacionListado(startDateStr, endDateStr),
+      const { data, count } = await fetchFacturacionListado(startDateStr, endDateStr, undefined, {
+        page: currentPage,
+        pageSize,
+      })
+
+      setListado(data)
+      setTotalCount(count)
+      setLoading(false)
+    }
+    loadListado()
+  }, [dateRange, currentPage, pageSize])
+
+  // Carga de otros datos (tipos ingreso, alertas, mensual)
+  useEffect(() => {
+    const loadOtherData = async () => {
+      const [tiposData, alertasData, mensualData] = await Promise.all([
         fetchTiposIngreso(),
         fetchFacturacionAlertas(),
         fetchFacturacionMensual(),
       ])
-
-      setListado(listadoData)
       setTiposIngreso(tiposData)
       setAlertas(alertasData)
       setDataMensual(mensualData)
-      setLoading(false)
     }
-
-    loadData()
-  }, [dateRange])
+    loadOtherData()
+  }, [])
 
   // Carga de datos de Cuadre cuando se cambia a esa pestaña
   useEffect(() => {
@@ -316,66 +355,21 @@ export default function FacturacionPage() {
   }
 
   // Filtrar cuadre por estado
-  const cuadreListadoFiltrado = useMemo(() => {
-    if (cuadreEstadoFilter === "todos") return cuadreListado
-    if (cuadreEstadoFilter === "pendientes") {
-      return cuadreListado.filter((item) => ["descuadre", "propuesta", "pendiente"].includes(item.estado))
-    }
-    if (cuadreEstadoFilter === "cuadrados") {
-      return cuadreListado.filter((item) => ["cuadrado_auto", "cuadrado_manual"].includes(item.estado))
-    }
-    if (cuadreEstadoFilter === "descuadres") {
-      return cuadreListado.filter((item) => item.estado === "descuadre")
-    }
-    return cuadreListado
-  }, [cuadreListado, cuadreEstadoFilter])
+  const cuadreListadoFiltrado =
+    cuadreEstadoFilter === "todos"
+      ? cuadreListado
+      : cuadreEstadoFilter === "pendientes"
+        ? cuadreListado.filter((item) => ["descuadre", "propuesta", "pendiente"].includes(item.estado))
+        : cuadreEstadoFilter === "cuadrados"
+          ? cuadreListado.filter((item) => ["cuadrado_auto", "cuadrado_manual"].includes(item.estado))
+          : cuadreEstadoFilter === "descuadres"
+            ? cuadreListado.filter((item) => item.estado === "descuadre")
+            : cuadreListado
 
-  // Calcular KPIs desde listado
-  const kpiData = useMemo(() => {
-    const total_facturado = listado.reduce((sum, f) => sum + (f.importe_total || 0), 0)
-    const base_imponible = listado.reduce((sum, f) => sum + (f.base_imponible || 0), 0)
-    const iva_total = listado.reduce((sum, f) => sum + (f.iva || 0), 0)
-    const total_tarjeta = listado
-      .filter(
-        (f) =>
-          f.metodo_pago === "card" ||
-          f.metodo_pago === "tarjeta" ||
-          f.metodo_pago_nombre?.toLowerCase().includes("tarjeta"),
-      )
-      .reduce((sum, f) => sum + (f.importe_total || 0), 0)
-    const total_efectivo = listado
-      .filter(
-        (f) =>
-          f.metodo_pago === "cash" ||
-          f.metodo_pago === "efectivo" ||
-          f.metodo_pago_nombre?.toLowerCase().includes("efectivo"),
-      )
-      .reduce((sum, f) => sum + (f.importe_total || 0), 0)
-    const verifactu_ok = listado.filter((f) => f.verifactu_estado === "accepted").length
-    const verifactu_error = listado.filter((f) => f.verifactu_estado === "rejected").length
-    const verifactu_pendiente = listado.filter(
-      (f) => f.verifactu_estado === "waiting_for_response" || f.verifactu_estado === "not_sent",
-    ).length
-    const num_facturas = listado.length
-    const ticket_medio = num_facturas > 0 ? total_facturado / num_facturas : 0
-    const alertas_error = alertas.filter((a) => a.severidad === "error").length
-    const alertas_warning = alertas.filter((a) => a.severidad === "warning").length
+  const alertas_error = alertas.filter((a) => a.severidad === "error").length
+  const alertas_warning = alertas.filter((a) => a.severidad === "warning").length
 
-    return {
-      total_facturado,
-      base_imponible,
-      iva_total,
-      total_tarjeta,
-      total_efectivo,
-      verifactu_ok,
-      verifactu_error,
-      verifactu_pendiente,
-      num_facturas,
-      ticket_medio,
-      alertas_error,
-      alertas_warning,
-    }
-  }, [listado, alertas])
+  const totalPages = Math.ceil(totalCount / pageSize)
 
   // Acciones de Cuadre
   const handleConfirmarCuadre = async (item: CuadreListadoItem) => {
@@ -592,129 +586,184 @@ export default function FacturacionPage() {
           title="Facturas Emitidas"
           icon={<FileText className="w-5 h-5 text-[#17c3b2]" />}
           total={{ value: kpiData.num_facturas, previous: 0, delta: 0, trend: "neutral" }}
-          valuePrefix=""
-          valueSuffix=""
+          decimals={0}
         >
           <div className="grid grid-cols-2 gap-2 mt-3">
-            <div className="p-2 rounded-lg bg-[#ffcb77]/10 border border-slate-100/50">
+            <div className="p-2 rounded-lg bg-slate-50 border border-slate-100/50">
               <div className="flex items-center gap-1.5">
-                <Receipt className="w-3 h-3 text-[#ffcb77]" />
+                <Percent className="w-3 h-3 text-slate-500" />
                 <span className="text-xs font-medium text-slate-600 uppercase">Ticket Medio</span>
               </div>
               <p className="text-sm font-bold text-[#364f6b] text-right mt-1">{formatCurrency(kpiData.ticket_medio)}</p>
             </div>
-            <div className="p-2 rounded-lg bg-[#02b1c4]/10 border border-slate-100/50">
+            <div className="p-2 rounded-lg bg-slate-50 border border-slate-100/50">
               <div className="flex items-center gap-1.5">
-                <Percent className="w-3 h-3 text-[#02b1c4]" />
-                <span className="text-xs font-medium text-slate-600 uppercase">IVA (10%)</span>
+                <Euro className="w-3 h-3 text-slate-500" />
+                <span className="text-xs font-medium text-slate-600 uppercase">IVA Total</span>
               </div>
               <p className="text-sm font-bold text-[#364f6b] text-right mt-1">{formatCurrency(kpiData.iva_total)}</p>
             </div>
           </div>
         </MetricGroupCard>
 
-        {/* VeriFactu + Alertas */}
+        {/* Estado VeriFactu */}
         <MetricGroupCard
-          title="VeriFactu"
+          title="Estado VeriFactu"
           icon={<CheckCircle className="w-5 h-5 text-[#17c3b2]" />}
-          total={{ value: kpiData.verifactu_ok, previous: 0, delta: 0, trend: "neutral" }}
-          valuePrefix=""
-          valueSuffix=" OK"
+          total={{
+            value: kpiData.num_facturas > 0 ? (kpiData.verifactu_ok / kpiData.num_facturas) * 100 : 0,
+            previous: 0,
+            delta: 0,
+            trend: "neutral",
+          }}
+          decimals={1}
+          suffix="%"
         >
-          <div className="space-y-2 mt-3">
-            <div className="grid grid-cols-3 gap-2">
-              <div className="p-2 rounded-lg bg-[#17c3b2]/10 border border-slate-100/50 text-center">
-                <CheckCircle className="w-3 h-3 text-[#17c3b2] mx-auto" />
-                <p className="text-xs font-medium text-slate-600 mt-1">OK</p>
-                <p className="text-sm font-bold text-[#364f6b]">{kpiData.verifactu_ok}</p>
+          <div className="grid grid-cols-3 gap-2 mt-3">
+            <div className="p-2 rounded-lg bg-[#17c3b2]/10 border border-slate-100/50">
+              <div className="flex items-center gap-1">
+                <CheckCircle className="w-3 h-3 text-[#17c3b2]" />
+                <span className="text-xs font-medium text-slate-600">OK</span>
               </div>
-              <div className="p-2 rounded-lg bg-[#ffcb77]/10 border border-slate-100/50 text-center">
-                <Clock className="w-3 h-3 text-[#ffcb77] mx-auto" />
-                <p className="text-xs font-medium text-slate-600 mt-1">Pend.</p>
-                <p className="text-sm font-bold text-[#364f6b]">{kpiData.verifactu_pendiente}</p>
-              </div>
-              <div className="p-2 rounded-lg bg-[#fe6d73]/10 border border-slate-100/50 text-center">
-                <XCircle className="w-3 h-3 text-[#fe6d73] mx-auto" />
-                <p className="text-xs font-medium text-slate-600 mt-1">Error</p>
-                <p className="text-sm font-bold text-[#364f6b]">{kpiData.verifactu_error}</p>
-              </div>
+              <p className="text-sm font-bold text-[#17c3b2] text-right mt-1">{kpiData.verifactu_ok}</p>
             </div>
-            <div className="border-t border-slate-100 pt-2">
-              <div className="grid grid-cols-2 gap-2">
-                <div className="p-2 rounded-lg bg-[#fe6d73]/10 border border-slate-100/50">
-                  <div className="flex items-center gap-1.5">
-                    <XCircle className="w-3 h-3 text-[#fe6d73]" />
-                    <span className="text-xs font-medium text-slate-600 uppercase">Errores</span>
-                  </div>
-                  <p className="text-sm font-bold text-[#364f6b] text-right mt-1">{kpiData.alertas_error}</p>
-                </div>
-                <div className="p-2 rounded-lg bg-[#ffcb77]/10 border border-slate-100/50">
-                  <div className="flex items-center gap-1.5">
-                    <AlertTriangle className="w-3 h-3 text-[#ffcb77]" />
-                    <span className="text-xs font-medium text-slate-600 uppercase">Avisos</span>
-                  </div>
-                  <p className="text-sm font-bold text-[#364f6b] text-right mt-1">{kpiData.alertas_warning}</p>
-                </div>
+            <div className="p-2 rounded-lg bg-[#fe6d73]/10 border border-slate-100/50">
+              <div className="flex items-center gap-1">
+                <XCircle className="w-3 h-3 text-[#fe6d73]" />
+                <span className="text-xs font-medium text-slate-600">Error</span>
               </div>
+              <p className="text-sm font-bold text-[#fe6d73] text-right mt-1">{kpiData.verifactu_error}</p>
+            </div>
+            <div className="p-2 rounded-lg bg-[#ffcb77]/10 border border-slate-100/50">
+              <div className="flex items-center gap-1">
+                <Clock className="w-3 h-3 text-[#ffcb77]" />
+                <span className="text-xs font-medium text-slate-600">Pend.</span>
+              </div>
+              <p className="text-sm font-bold text-[#ffcb77] text-right mt-1">{kpiData.verifactu_pendiente}</p>
             </div>
           </div>
         </MetricGroupCard>
       </div>
 
-      {/* Tabs de contenido */}
-      <div className="flex justify-center mb-6">
-        <MenuBar items={facturacionMenuItems} activeItem={activeTab} onItemClick={setActiveTab} />
-      </div>
+      {/* Menu Bar */}
+      <MenuBar items={facturacionMenuItems} activeItem={activeTab} onItemClick={setActiveTab} className="mb-6" />
 
       {/* Tab Facturas */}
       {activeTab === "Facturas" && (
         <TremorCard>
-          <TremorTitle>Listado de Facturas</TremorTitle>
-          <div className="overflow-x-auto mt-4">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200">
-                  <th className="text-left py-3 px-4 font-medium text-slate-600">Fecha</th>
-                  <th className="text-left py-3 px-4 font-medium text-slate-600">Nº Factura</th>
-                  <th className="text-left py-3 px-4 font-medium text-slate-600">Mesa</th>
-                  <th className="text-right py-3 px-4 font-medium text-slate-600">Importe</th>
-                  <th className="text-left py-3 px-4 font-medium text-slate-600">Método</th>
-                  <th className="text-center py-3 px-4 font-medium text-slate-600">VeriFactu</th>
-                </tr>
-              </thead>
-              <tbody>
-                {listado.slice(0, 50).map((item) => (
-                  <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50">
-                    <td className="py-3 px-4">{formatDateES(item.fecha)}</td>
-                    <td className="py-3 px-4 font-medium">{item.numero_completo}</td>
-                    <td className="py-3 px-4">{item.mesa || "-"}</td>
-                    <td className="py-3 px-4 text-right font-medium">{formatCurrency(item.importe_total)}</td>
-                    <td className="py-3 px-4">{item.metodo_pago_nombre}</td>
-                    <td className="py-3 px-4 text-center">
-                      <span
-                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                          item.verifactu_estado === "accepted"
-                            ? "bg-[#17c3b2]/10 text-[#17c3b2]"
-                            : item.verifactu_estado === "rejected"
-                              ? "bg-[#fe6d73]/10 text-[#fe6d73]"
-                              : "bg-[#ffcb77]/10 text-[#ffcb77]"
-                        }`}
-                      >
-                        {item.verifactu_estado === "accepted" ? (
-                          <CheckCircle className="w-3 h-3" />
-                        ) : item.verifactu_estado === "rejected" ? (
-                          <XCircle className="w-3 h-3" />
-                        ) : (
-                          <Clock className="w-3 h-3" />
-                        )}
-                        {item.verifactu_estado_nombre}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="flex items-center justify-between mb-4">
+            <TremorTitle>Listado de Facturas</TremorTitle>
+            <span className="text-sm text-slate-500">{totalCount} facturas en total</span>
           </div>
+
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <RefreshCw className="w-6 h-6 animate-spin text-[#02b1c4]" />
+              <span className="ml-2 text-slate-600">Cargando facturas...</span>
+            </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50">
+                      <th className="text-left py-3 px-4 font-medium text-slate-600">Fecha</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-600">Nº Factura</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-600">Mesa</th>
+                      <th className="text-right py-3 px-4 font-medium text-slate-600">Importe</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-600">Método</th>
+                      <th className="text-center py-3 px-4 font-medium text-slate-600">VeriFactu</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {listado.map((item) => (
+                      <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50">
+                        <td className="py-3 px-4">{formatDateES(item.fecha)}</td>
+                        <td className="py-3 px-4 font-medium">{item.numero_completo}</td>
+                        <td className="py-3 px-4">{item.mesa || "-"}</td>
+                        <td className="py-3 px-4 text-right font-medium">{formatCurrency(item.importe_total)}</td>
+                        <td className="py-3 px-4">{item.metodo_pago_nombre}</td>
+                        <td className="py-3 px-4 text-center">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                              item.verifactu_estado === "accepted"
+                                ? "bg-[#17c3b2]/10 text-[#17c3b2]"
+                                : item.verifactu_estado === "rejected"
+                                  ? "bg-[#fe6d73]/10 text-[#fe6d73]"
+                                  : "bg-[#ffcb77]/10 text-[#ffcb77]"
+                            }`}
+                          >
+                            {item.verifactu_estado === "accepted" ? (
+                              <CheckCircle className="w-3 h-3" />
+                            ) : item.verifactu_estado === "rejected" ? (
+                              <XCircle className="w-3 h-3" />
+                            ) : (
+                              <Clock className="w-3 h-3" />
+                            )}
+                            {item.verifactu_estado_nombre}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-200">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-slate-600">Mostrar</span>
+                  <Select
+                    value={pageSize.toString()}
+                    onValueChange={(v) => {
+                      setPageSize(Number(v))
+                      setCurrentPage(1)
+                    }}
+                  >
+                    <SelectTrigger className="w-[80px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="25">25</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <span className="text-sm text-slate-600">por página</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-slate-600">
+                    Mostrando {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, totalCount)} de{" "}
+                    {totalCount}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-1" />
+                    Anterior
+                  </Button>
+                  <span className="text-sm text-slate-600 px-2">
+                    Página {currentPage} de {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Siguiente
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </TremorCard>
       )}
 
@@ -758,20 +807,13 @@ export default function FacturacionPage() {
                 const diferencia = Number.parseFloat(item.diferencia) || 0
 
                 return (
-                  <Collapsible key={item.zreport_id} open={isExpanded}>
+                  <Collapsible key={item.zreport_id} open={isExpanded} onOpenChange={() => toggleRow(item)}>
                     <div
-                      className={`border rounded-lg ${estado.border} ${
-                        item.estado === "descuadre"
-                          ? "bg-[#fe6d73]/5"
-                          : item.estado === "propuesta"
-                            ? "bg-[#ffcb77]/5"
-                            : "bg-white"
-                      }`}
+                      className={`border rounded-lg ${estado.border} ${isExpanded ? "border-b-0 rounded-b-none" : ""}`}
                     >
                       <CollapsibleTrigger asChild>
                         <div
-                          className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50/50"
-                          onClick={() => toggleRow(item)}
+                          className={`flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 transition-colors ${estado.bg}`}
                         >
                           <div className="flex items-center gap-4">
                             {isExpanded ? (
@@ -781,266 +823,152 @@ export default function FacturacionPage() {
                             )}
                             <div>
                               <p className="font-medium text-[#364f6b]">{formatDateES(item.fecha)}</p>
-                              <p className="text-sm text-slate-500">{item.zreport_documento}</p>
+                              <p className="text-xs text-slate-500">{item.zreport_nombre}</p>
                             </div>
                           </div>
 
                           <div className="flex items-center gap-6">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${estado.bg} ${estado.text}`}>
-                              {estado.label}
-                            </span>
-
                             <div className="text-right">
-                              <p className="text-xs text-slate-500">Facturas</p>
-                              <p className="font-medium">{item.num_facturas}</p>
-                            </div>
-
-                            <div className="text-right">
-                              <p className="text-xs text-slate-500">Total Facturas</p>
-                              <p className="font-medium">{formatCurrencyES(item.total_facturas)}</p>
-                            </div>
-
-                            <div className="text-right">
-                              <p className="text-xs text-slate-500">Total Z-Report</p>
+                              <p className="text-xs text-slate-500">Z-Report</p>
                               <p className="font-medium">{formatCurrencyES(item.total_zreport)}</p>
                             </div>
-
                             <div className="text-right">
-                              <p className="text-xs text-slate-500">Ajustes</p>
-                              <p className="font-medium">{formatCurrencyES(item.total_ajustes)}</p>
+                              <p className="text-xs text-slate-500">Facturas</p>
+                              <p className="font-medium">{formatCurrencyES(item.total_facturas)}</p>
                             </div>
-
-                            <div className="text-right min-w-[100px]">
+                            <div className="text-right">
                               <p className="text-xs text-slate-500">Diferencia</p>
                               <p
-                                className={`font-bold ${
-                                  diferencia === 0
-                                    ? "text-[#17c3b2]"
-                                    : diferencia > 0
-                                      ? "text-[#02b1c4]"
-                                      : "text-[#fe6d73]"
-                                }`}
+                                className={`font-medium ${diferencia === 0 ? "text-[#17c3b2]" : diferencia > 0 ? "text-[#fe6d73]" : "text-[#ffcb77]"}`}
                               >
                                 {formatCurrencyES(diferencia)}
                               </p>
                             </div>
+                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${estado.bg} ${estado.text}`}>
+                              {estado.label}
+                            </span>
                           </div>
                         </div>
                       </CollapsibleTrigger>
+                    </div>
 
-                      <CollapsibleContent>
-                        <div className="border-t border-slate-100 p-4 space-y-4">
-                          {/* Sección 1: Facturas asociadas */}
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <h4 className="font-medium text-slate-700">Facturas asociadas</h4>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openModalAnadirFactura(item)}
-                                disabled={actionLoading}
-                              >
-                                <Plus className="w-4 h-4 mr-1" />
-                                Añadir factura
-                              </Button>
-                            </div>
-                            {facturasZReport[item.zreport_id]?.length > 0 ? (
-                              <table className="w-full text-sm">
-                                <thead>
-                                  <tr className="border-b border-slate-200 text-xs text-slate-500">
-                                    <th className="text-left py-2 px-2">Hora</th>
-                                    <th className="text-left py-2 px-2">Mesa</th>
-                                    <th className="text-left py-2 px-2">Factura</th>
-                                    <th className="text-right py-2 px-2">Importe</th>
-                                    <th className="text-left py-2 px-2">Método</th>
-                                    <th className="text-center py-2 px-2">Tipo</th>
-                                    <th className="text-right py-2 px-2">Acciones</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {facturasZReport[item.zreport_id].map((factura) => (
-                                    <tr key={factura.factura_id} className="border-b border-slate-50">
-                                      <td className="py-2 px-2">{factura.hora?.substring(0, 5) || "-"}</td>
-                                      <td className="py-2 px-2">{factura.table_name || "-"}</td>
-                                      <td className="py-2 px-2 font-medium">{factura.cuentica_identifier}</td>
-                                      <td className="py-2 px-2 text-right">{formatCurrencyES(factura.total_amount)}</td>
-                                      <td className="py-2 px-2 capitalize">{factura.payment_method}</td>
-                                      <td className="py-2 px-2 text-center">
-                                        <span
-                                          className={`px-2 py-0.5 rounded-full text-xs ${
-                                            factura.tipo_asociacion === "auto"
-                                              ? "bg-[#17c3b2]/10 text-[#17c3b2]"
-                                              : factura.tipo_asociacion === "manual"
-                                                ? "bg-[#02b1c4]/10 text-[#02b1c4]"
-                                                : "bg-[#ffcb77]/10 text-[#ffcb77]"
-                                          }`}
-                                        >
-                                          {factura.tipo_asociacion}
-                                        </span>
-                                      </td>
-                                      <td className="py-2 px-2 text-right">
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => openModalMoverFactura(item, factura)}
-                                          disabled={actionLoading}
-                                        >
-                                          <ArrowRightLeft className="w-4 h-4" />
-                                        </Button>
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            ) : (
-                              <p className="text-sm text-slate-500 italic">No hay facturas asociadas</p>
-                            )}
+                    <CollapsibleContent>
+                      <div className={`border border-t-0 rounded-b-lg p-4 ${estado.border} bg-white`}>
+                        {/* Facturas del Z-Report */}
+                        <div className="mb-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-medium text-slate-700">Facturas incluidas</h4>
+                            <Button variant="outline" size="sm" onClick={() => openModalAnadirFactura(item)}>
+                              <Plus className="w-4 h-4 mr-1" />
+                              Añadir factura
+                            </Button>
                           </div>
-
-                          {/* Sección 2: Ajustes */}
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <h4 className="font-medium text-slate-700">Ajustes</h4>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setModalAjuste({ open: true, item })}
-                                disabled={actionLoading}
-                              >
-                                <Plus className="w-4 h-4 mr-1" />
-                                Añadir ajuste
-                              </Button>
-                            </div>
-                            {ajustesZReport[item.zreport_id]?.length > 0 ? (
-                              <div className="space-y-1">
-                                {ajustesZReport[item.zreport_id].map((ajuste) => (
-                                  <div
-                                    key={ajuste.id}
-                                    className="flex items-center justify-between p-2 bg-slate-50 rounded"
-                                  >
-                                    <div className="flex items-center gap-3">
-                                      <span
-                                        className={`px-2 py-0.5 rounded text-xs font-medium ${
-                                          ajuste.tipo === "ajuste_positivo"
-                                            ? "bg-[#17c3b2]/10 text-[#17c3b2]"
-                                            : ajuste.tipo === "ajuste_negativo"
-                                              ? "bg-[#fe6d73]/10 text-[#fe6d73]"
-                                              : "bg-slate-200 text-slate-600"
-                                        }`}
-                                      >
-                                        {ajuste.tipo === "ajuste_positivo"
-                                          ? "+"
-                                          : ajuste.tipo === "ajuste_negativo"
-                                            ? "-"
-                                            : "📝"}
-                                      </span>
-                                      <span className="font-medium">{formatCurrencyES(ajuste.importe)}</span>
-                                      {ajuste.descripcion && (
-                                        <span className="text-slate-500 text-sm">{ajuste.descripcion}</span>
-                                      )}
-                                    </div>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleEliminarAjuste(ajuste.id, item)}
-                                      disabled={actionLoading}
-                                    >
-                                      <Trash2 className="w-4 h-4 text-[#fe6d73]" />
-                                    </Button>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <p className="text-sm text-slate-500 italic">No hay ajustes</p>
-                            )}
-                          </div>
-
-                          {/* Sección 3: Resumen y acciones */}
-                          <div className="border-t border-slate-200 pt-4">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-6 text-sm">
-                                <div>
-                                  <span className="text-slate-500">Total Facturas:</span>{" "}
-                                  <span className="font-medium">{formatCurrencyES(item.total_facturas)}</span>
-                                </div>
-                                <span className="text-slate-300">+</span>
-                                <div>
-                                  <span className="text-slate-500">Ajustes:</span>{" "}
-                                  <span className="font-medium">{formatCurrencyES(item.total_ajustes)}</span>
-                                </div>
-                                <span className="text-slate-300">=</span>
-                                <div>
-                                  <span className="text-slate-500">Total:</span>{" "}
-                                  <span className="font-medium">
-                                    {formatCurrencyES(
-                                      (Number.parseFloat(item.total_facturas) || 0) +
-                                        (Number.parseFloat(item.total_ajustes) || 0),
-                                    )}
-                                  </span>
-                                </div>
-                                <span className="text-slate-300">vs</span>
-                                <div>
-                                  <span className="text-slate-500">Z-Report:</span>{" "}
-                                  <span className="font-medium">{formatCurrencyES(item.total_zreport)}</span>
-                                </div>
-                                <span className="text-slate-300">→</span>
-                                <div>
-                                  <span className="text-slate-500">Diferencia:</span>{" "}
-                                  <span
-                                    className={`font-bold ${diferencia === 0 ? "text-[#17c3b2]" : "text-[#fe6d73]"}`}
-                                  >
-                                    {formatCurrencyES(diferencia)}
-                                  </span>
-                                </div>
-                              </div>
-
-                              <div className="flex items-center gap-2">
-                                {item.estado === "propuesta" && (
-                                  <>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => handleConfirmarCuadre(item)}
-                                      disabled={actionLoading}
-                                    >
-                                      <Check className="w-4 h-4 mr-1" />
-                                      Confirmar
-                                    </Button>
-                                  </>
-                                )}
-                                {item.estado === "descuadre" && (
-                                  <>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => setModalPendiente({ open: true, item })}
-                                      disabled={actionLoading}
-                                    >
-                                      <Pause className="w-4 h-4 mr-1" />
-                                      Marcar pendiente
-                                    </Button>
-                                    {diferencia === 0 && (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="border-b border-slate-200">
+                                  <th className="text-left py-2 px-3 font-medium text-slate-600">Nº Factura</th>
+                                  <th className="text-left py-2 px-3 font-medium text-slate-600">Hora</th>
+                                  <th className="text-right py-2 px-3 font-medium text-slate-600">Importe</th>
+                                  <th className="text-left py-2 px-3 font-medium text-slate-600">Método</th>
+                                  <th className="text-center py-2 px-3 font-medium text-slate-600">Acciones</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {(facturasZReport[item.zreport_id] || []).map((factura) => (
+                                  <tr key={factura.factura_id} className="border-b border-slate-100">
+                                    <td className="py-2 px-3">{factura.numero_completo}</td>
+                                    <td className="py-2 px-3">{factura.hora}</td>
+                                    <td className="py-2 px-3 text-right font-medium">
+                                      {formatCurrencyES(factura.importe)}
+                                    </td>
+                                    <td className="py-2 px-3">{factura.metodo_pago}</td>
+                                    <td className="py-2 px-3 text-center">
                                       <Button
+                                        variant="ghost"
                                         size="sm"
-                                        onClick={() => handleConfirmarCuadre(item)}
-                                        disabled={actionLoading}
-                                        className="bg-[#17c3b2] hover:bg-[#17c3b2]/90"
+                                        onClick={() => openModalMoverFactura(item, factura)}
                                       >
-                                        <Check className="w-4 h-4 mr-1" />
-                                        Confirmar cuadre
+                                        <ArrowRightLeft className="w-4 h-4" />
                                       </Button>
-                                    )}
-                                  </>
-                                )}
-                                {item.estado === "pendiente" && item.motivo_pendiente && (
-                                  <div className="text-sm text-slate-500 italic">Motivo: {item.motivo_pendiente}</div>
-                                )}
-                              </div>
-                            </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
                           </div>
                         </div>
-                      </CollapsibleContent>
-                    </div>
+
+                        {/* Ajustes */}
+                        {(ajustesZReport[item.zreport_id] || []).length > 0 && (
+                          <div className="mb-4">
+                            <h4 className="text-sm font-medium text-slate-700 mb-2">Ajustes aplicados</h4>
+                            <div className="space-y-2">
+                              {(ajustesZReport[item.zreport_id] || []).map((ajuste) => (
+                                <div
+                                  key={ajuste.ajuste_id}
+                                  className="flex items-center justify-between p-2 bg-slate-50 rounded"
+                                >
+                                  <div>
+                                    <span
+                                      className={`text-sm font-medium ${ajuste.tipo === "ajuste_positivo" ? "text-[#17c3b2]" : ajuste.tipo === "ajuste_negativo" ? "text-[#fe6d73]" : "text-slate-600"}`}
+                                    >
+                                      {ajuste.tipo === "ajuste_positivo"
+                                        ? "+"
+                                        : ajuste.tipo === "ajuste_negativo"
+                                          ? "-"
+                                          : ""}
+                                      {formatCurrencyES(Math.abs(ajuste.importe))}
+                                    </span>
+                                    {ajuste.descripcion && (
+                                      <span className="text-xs text-slate-500 ml-2">{ajuste.descripcion}</span>
+                                    )}
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleEliminarAjuste(ajuste.ajuste_id, item)}
+                                  >
+                                    <Trash2 className="w-4 h-4 text-slate-400" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Acciones */}
+                        <div className="flex items-center gap-2 pt-4 border-t border-slate-200">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setModalAjuste({ open: true, item })}
+                            disabled={actionLoading}
+                          >
+                            <Plus className="w-4 h-4 mr-1" />
+                            Añadir ajuste
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setModalPendiente({ open: true, item })}
+                            disabled={actionLoading}
+                          >
+                            <Pause className="w-4 h-4 mr-1" />
+                            Marcar pendiente
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="bg-[#17c3b2] hover:bg-[#14a89a] text-white ml-auto"
+                            onClick={() => handleConfirmarCuadre(item)}
+                            disabled={actionLoading || diferencia !== 0}
+                          >
+                            <Check className="w-4 h-4 mr-1" />
+                            Confirmar cuadre
+                          </Button>
+                        </div>
+                      </div>
+                    </CollapsibleContent>
                   </Collapsible>
                 )
               })}
@@ -1051,7 +979,7 @@ export default function FacturacionPage() {
 
       {/* Tab Ingresos */}
       {activeTab === "Ingresos" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <TremorCard>
             <TremorTitle>Ingresos por Categoría</TremorTitle>
             <div className="h-[300px] mt-4">
@@ -1060,45 +988,19 @@ export default function FacturacionPage() {
                   <Pie
                     data={tiposIngreso}
                     dataKey="total"
-                    nameKey="categoria_nombre"
+                    nameKey="categoria"
                     cx="50%"
                     cy="50%"
-                    innerRadius={60}
                     outerRadius={100}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                   >
                     {tiposIngreso.map((_, index) => (
                       <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip
-                    content={({ active, payload }) => {
-                      if (!active || !payload?.length) return null
-                      const data = payload[0].payload
-                      return (
-                        <div className="bg-white p-3 rounded-lg shadow-lg border border-slate-200">
-                          <p className="font-medium text-[#364f6b]">{data.categoria_nombre}</p>
-                          <p className="text-sm text-slate-600">{formatCurrency(data.total)}</p>
-                          <p className="text-xs text-slate-500">{data.pct_total?.toFixed(1)}% del total</p>
-                        </div>
-                      )
-                    }}
-                  />
+                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
                 </PieChart>
               </ResponsiveContainer>
-            </div>
-            <div className="mt-4 space-y-2">
-              {tiposIngreso.map((cat, index) => (
-                <div key={cat.categoria} className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
-                    />
-                    <span>{cat.categoria_nombre}</span>
-                  </div>
-                  <span className="font-medium">{formatCurrency(cat.total)}</span>
-                </div>
-              ))}
             </div>
           </TremorCard>
 
@@ -1106,61 +1008,12 @@ export default function FacturacionPage() {
             <TremorTitle>Evolución Mensual</TremorTitle>
             <div className="h-[300px] mt-4">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={dataMensual.slice().reverse()}>
-                  <XAxis
-                    dataKey="mes"
-                    tickFormatter={(val) => {
-                      if (!val) return ""
-                      try {
-                        const date = new Date(val)
-                        return isValid(date) ? format(date, "MMM yy", { locale: es }) : ""
-                      } catch {
-                        return ""
-                      }
-                    }}
-                    tick={{ fontSize: 12 }}
-                  />
-                  <YAxis yAxisId="left" tick={{ fontSize: 12 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                  <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} />
-                  <Tooltip
-                    content={({ active, payload, label }) => {
-                      if (!active || !payload?.length) return null
-                      return (
-                        <div className="bg-white p-3 rounded-lg shadow-lg border border-slate-200">
-                          <p className="font-medium text-[#364f6b] mb-2">
-                            {label && isValid(new Date(label))
-                              ? format(new Date(label), "MMMM yyyy", { locale: es })
-                              : "Fecha desconocida"}
-                          </p>
-                          {payload.map((p, i) => (
-                            <div key={i} className="flex items-center gap-2 text-sm">
-                              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
-                              <span className="text-slate-600">{p.name}:</span>
-                              <span className="font-medium">
-                                {p.name === "Facturas" ? p.value : formatCurrency(p.value as number)}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )
-                    }}
-                  />
-                  <Bar
-                    yAxisId="left"
-                    dataKey="total_facturado"
-                    fill="#17c3b2"
-                    name="Facturación"
-                    radius={[4, 4, 0, 0]}
-                  />
-                  <Line
-                    yAxisId="right"
-                    type="monotone"
-                    dataKey="num_facturas"
-                    stroke="#ffcb77"
-                    strokeWidth={2}
-                    dot={{ fill: "#ffcb77", r: 4 }}
-                    name="Facturas"
-                  />
+                <ComposedChart data={dataMensual}>
+                  <XAxis dataKey="mes_nombre" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                  <Bar dataKey="total_facturado" fill="#02b1c4" name="Facturado" />
+                  <Line type="monotone" dataKey="ticket_medio" stroke="#ffcb77" name="Ticket Medio" />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -1171,89 +1024,92 @@ export default function FacturacionPage() {
       {/* Tab Alertas */}
       {activeTab === "Alertas" && (
         <TremorCard>
-          <TremorTitle>Alertas de Facturación</TremorTitle>
-          <div className="space-y-3 mt-4">
-            {alertas.length === 0 ? (
-              <p className="text-center py-8 text-slate-500">No hay alertas activas</p>
-            ) : (
-              alertas.map((alerta, index) => (
+          <div className="flex items-center justify-between mb-4">
+            <TremorTitle>Alertas de Facturación</TremorTitle>
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-1 bg-[#fe6d73]/10 text-[#fe6d73] rounded text-sm font-medium">
+                {alertas_error} errores
+              </span>
+              <span className="px-2 py-1 bg-[#ffcb77]/10 text-[#ffcb77] rounded text-sm font-medium">
+                {alertas_warning} avisos
+              </span>
+            </div>
+          </div>
+
+          {alertas.length === 0 ? (
+            <div className="text-center py-12 text-slate-500">
+              <CheckCircle className="w-12 h-12 mx-auto mb-4 text-[#17c3b2]" />
+              <p>No hay alertas activas</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {alertas.map((alerta) => (
                 <div
-                  key={index}
+                  key={alerta.alerta_id}
                   className={`p-4 rounded-lg border ${
                     alerta.severidad === "error"
                       ? "bg-[#fe6d73]/5 border-[#fe6d73]/20"
                       : "bg-[#ffcb77]/5 border-[#ffcb77]/20"
                   }`}
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-3">
-                      {alerta.severidad === "error" ? (
-                        <XCircle className="w-5 h-5 text-[#fe6d73] mt-0.5" />
-                      ) : (
-                        <AlertTriangle className="w-5 h-5 text-[#ffcb77] mt-0.5" />
-                      )}
-                      <div>
-                        <p className="font-medium text-[#364f6b]">{alerta.mensaje}</p>
-                        <p className="text-sm text-slate-500 mt-1">
-                          {formatDateES(alerta.fecha_alerta)} · {alerta.tipo_alerta}
-                        </p>
-                        {alerta.referencia && <p className="text-sm text-slate-600 mt-1">Ref: {alerta.referencia}</p>}
-                      </div>
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle
+                      className={`w-5 h-5 mt-0.5 ${alerta.severidad === "error" ? "text-[#fe6d73]" : "text-[#ffcb77]"}`}
+                    />
+                    <div className="flex-1">
+                      <p className="font-medium text-[#364f6b]">{alerta.mensaje}</p>
+                      <p className="text-sm text-slate-500 mt-1">
+                        {formatDateES(alerta.fecha_alerta)} · {alerta.tipo_alerta}
+                      </p>
                     </div>
-                    {alerta.importe > 0 && (
-                      <span className="font-medium text-[#364f6b]">{formatCurrency(alerta.importe)}</span>
-                    )}
                   </div>
                 </div>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </TremorCard>
       )}
 
-      {/* Modal Crear Ajuste */}
-      <Dialog
-        open={modalAjuste.open}
-        onOpenChange={(open) => setModalAjuste({ open, item: open ? modalAjuste.item : null })}
-      >
+      {/* Modal Añadir Ajuste */}
+      <Dialog open={modalAjuste.open} onOpenChange={(open) => !open && setModalAjuste({ open: false, item: null })}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Crear Ajuste</DialogTitle>
+            <DialogTitle>Añadir Ajuste</DialogTitle>
             <DialogDescription>
-              Añadir un ajuste al cuadre del {modalAjuste.item && formatDateES(modalAjuste.item.fecha)}
+              Añade un ajuste para cuadrar el Z-Report del {modalAjuste.item && formatDateES(modalAjuste.item.fecha)}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
               <Label>Tipo de ajuste</Label>
-              <Select value={nuevoAjuste.tipo} onValueChange={(v) => setNuevoAjuste({ ...nuevoAjuste, tipo: v })}>
+              <Select value={nuevoAjuste.tipo} onValueChange={(v) => setNuevoAjuste((prev) => ({ ...prev, tipo: v }))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {AJUSTE_TIPOS.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>
-                      {t.label}
+                  {AJUSTE_TIPOS.map((tipo) => (
+                    <SelectItem key={tipo.value} value={tipo.value}>
+                      {tipo.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            <div className="space-y-2">
               <Label>Importe (€)</Label>
               <Input
                 type="number"
                 step="0.01"
                 value={nuevoAjuste.importe}
-                onChange={(e) => setNuevoAjuste({ ...nuevoAjuste, importe: e.target.value })}
+                onChange={(e) => setNuevoAjuste((prev) => ({ ...prev, importe: e.target.value }))}
                 placeholder="0.00"
               />
             </div>
-            <div>
+            <div className="space-y-2">
               <Label>Descripción (opcional)</Label>
               <Textarea
                 value={nuevoAjuste.descripcion}
-                onChange={(e) => setNuevoAjuste({ ...nuevoAjuste, descripcion: e.target.value })}
+                onChange={(e) => setNuevoAjuste((prev) => ({ ...prev, descripcion: e.target.value }))}
                 placeholder="Motivo del ajuste..."
               />
             </div>
@@ -1263,7 +1119,7 @@ export default function FacturacionPage() {
               Cancelar
             </Button>
             <Button onClick={handleCrearAjuste} disabled={actionLoading || !nuevoAjuste.importe}>
-              Crear ajuste
+              {actionLoading ? "Guardando..." : "Guardar ajuste"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1272,19 +1128,19 @@ export default function FacturacionPage() {
       {/* Modal Marcar Pendiente */}
       <Dialog
         open={modalPendiente.open}
-        onOpenChange={(open) => setModalPendiente({ open, item: open ? modalPendiente.item : null })}
+        onOpenChange={(open) => !open && setModalPendiente({ open: false, item: null })}
       >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Marcar como Pendiente</DialogTitle>
-            <DialogDescription>Indica el motivo por el que este cuadre queda pendiente de revisión.</DialogDescription>
+            <DialogDescription>Indica el motivo por el que este Z-Report queda pendiente de revisión</DialogDescription>
           </DialogHeader>
-          <div>
-            <Label>Motivo</Label>
+          <div className="py-4">
             <Textarea
               value={motivoPendiente}
               onChange={(e) => setMotivoPendiente(e.target.value)}
-              placeholder="Ej: Esperando ticket físico, revisar con encargado..."
+              placeholder="Motivo..."
+              rows={3}
             />
           </div>
           <DialogFooter>
@@ -1292,7 +1148,7 @@ export default function FacturacionPage() {
               Cancelar
             </Button>
             <Button onClick={handleMarcarPendiente} disabled={actionLoading || !motivoPendiente.trim()}>
-              Marcar pendiente
+              {actionLoading ? "Guardando..." : "Marcar pendiente"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1301,55 +1157,35 @@ export default function FacturacionPage() {
       {/* Modal Mover Factura */}
       <Dialog
         open={modalMoverFactura.open}
-        onOpenChange={(open) =>
-          setModalMoverFactura({
-            open,
-            item: open ? modalMoverFactura.item : null,
-            factura: open ? modalMoverFactura.factura : null,
-          })
-        }
+        onOpenChange={(open) => !open && setModalMoverFactura({ open: false, item: null, factura: null })}
       >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Mover Factura</DialogTitle>
             <DialogDescription>
-              Selecciona el Z-Report de destino para la factura {modalMoverFactura.factura?.cuentica_identifier}
+              Selecciona el Z-Report destino para la factura {modalMoverFactura.factura?.numero_completo}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2 max-h-[300px] overflow-y-auto">
-            {zreportsDisponibles.length === 0 ? (
-              <p className="text-sm text-slate-500 italic">No hay Z-Reports disponibles</p>
-            ) : (
-              zreportsDisponibles.map((z) => (
-                <div
-                  key={z.zreport_id}
-                  onClick={() => setSelectedZReport(z.zreport_id)}
-                  className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                    selectedZReport === z.zreport_id
-                      ? "border-[#02b1c4] bg-[#02b1c4]/5"
-                      : "border-slate-200 hover:bg-slate-50"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">{z.document_number}</p>
-                      <p className="text-sm text-slate-500">{formatDateES(z.fecha_real)}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm">{formatCurrencyES(z.total_amount)}</p>
-                      <p className="text-xs text-slate-500">Dif: {formatCurrencyES(z.diferencia_actual)}</p>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
+          <div className="py-4">
+            <Select value={selectedZReport} onValueChange={setSelectedZReport}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar Z-Report destino" />
+              </SelectTrigger>
+              <SelectContent>
+                {zreportsDisponibles.map((zr) => (
+                  <SelectItem key={zr.zreport_id} value={zr.zreport_id}>
+                    {zr.nombre} - {formatCurrencyES(zr.total)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setModalMoverFactura({ open: false, item: null, factura: null })}>
               Cancelar
             </Button>
             <Button onClick={handleMoverFactura} disabled={actionLoading || !selectedZReport}>
-              Mover factura
+              {actionLoading ? "Moviendo..." : "Mover factura"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1358,46 +1194,34 @@ export default function FacturacionPage() {
       {/* Modal Añadir Factura */}
       <Dialog
         open={modalAnadirFactura.open}
-        onOpenChange={(open) => setModalAnadirFactura({ open, item: open ? modalAnadirFactura.item : null })}
+        onOpenChange={(open) => !open && setModalAnadirFactura({ open: false, item: null })}
       >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Añadir Facturas</DialogTitle>
-            <DialogDescription>
-              Selecciona las facturas que quieres asociar al Z-Report {modalAnadirFactura.item?.zreport_documento}
-            </DialogDescription>
+            <DialogTitle>Añadir Facturas al Z-Report</DialogTitle>
+            <DialogDescription>Selecciona las facturas que quieres añadir a este Z-Report</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 max-h-[400px] overflow-y-auto">
+          <div className="py-4 max-h-[400px] overflow-y-auto">
             {facturasHuerfanas.length > 0 && (
-              <div>
-                <h4 className="font-medium text-slate-700 mb-2">Facturas sin asignar</h4>
-                <div className="space-y-1">
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-slate-700 mb-2">Facturas sin asignar (huérfanas)</h4>
+                <div className="space-y-2">
                   {facturasHuerfanas.map((f) => (
                     <div
                       key={f.factura_id}
-                      onClick={() => toggleFacturaSelection(f.factura_id)}
-                      className={`p-2 border rounded cursor-pointer transition-colors ${
-                        selectedFacturas.has(f.factura_id)
+                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                        selectedFacturas.has(f.factura_id.toString())
                           ? "border-[#02b1c4] bg-[#02b1c4]/5"
-                          : "border-slate-200 hover:bg-slate-50"
+                          : "border-slate-200 hover:border-slate-300"
                       }`}
+                      onClick={() => toggleFacturaSelection(f.factura_id.toString())}
                     >
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="checkbox"
-                            checked={selectedFacturas.has(f.factura_id)}
-                            onChange={() => {}}
-                            className="rounded"
-                          />
-                          <div>
-                            <p className="font-medium text-sm">{f.cuentica_identifier}</p>
-                            <p className="text-xs text-slate-500">
-                              {f.table_name || "Sin mesa"} · {formatDateES(f.invoice_date)}
-                            </p>
-                          </div>
+                        <div>
+                          <p className="font-medium">{f.numero_completo}</p>
+                          <p className="text-sm text-slate-500">{f.hora}</p>
                         </div>
-                        <span className="font-medium">{formatCurrencyES(f.total_amount)}</span>
+                        <p className="font-medium">{formatCurrencyES(f.importe)}</p>
                       </div>
                     </div>
                   ))}
@@ -1407,34 +1231,26 @@ export default function FacturacionPage() {
 
             {facturasAdyacentes.length > 0 && (
               <div>
-                <h4 className="font-medium text-slate-700 mb-2">Facturas de otros Z-Reports</h4>
-                <div className="space-y-1">
+                <h4 className="text-sm font-medium text-slate-700 mb-2">Facturas de otros Z-Reports</h4>
+                <div className="space-y-2">
                   {facturasAdyacentes.map((f) => (
                     <div
                       key={f.factura_id}
-                      onClick={() => toggleFacturaSelection(f.factura_id)}
-                      className={`p-2 border rounded cursor-pointer transition-colors ${
-                        selectedFacturas.has(f.factura_id)
+                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                        selectedFacturas.has(f.factura_id.toString())
                           ? "border-[#02b1c4] bg-[#02b1c4]/5"
-                          : "border-slate-200 hover:bg-slate-50"
+                          : "border-slate-200 hover:border-slate-300"
                       }`}
+                      onClick={() => toggleFacturaSelection(f.factura_id.toString())}
                     >
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="checkbox"
-                            checked={selectedFacturas.has(f.factura_id)}
-                            onChange={() => {}}
-                            className="rounded"
-                          />
-                          <div>
-                            <p className="font-medium text-sm">{f.cuentica_identifier}</p>
-                            <p className="text-xs text-slate-500">
-                              {f.table_name || "Sin mesa"} · Actual: {f.zreport_actual_doc}
-                            </p>
-                          </div>
+                        <div>
+                          <p className="font-medium">{f.numero_completo}</p>
+                          <p className="text-sm text-slate-500">
+                            {f.hora} · Origen: {f.zreport_origen}
+                          </p>
                         </div>
-                        <span className="font-medium">{formatCurrencyES(f.total_amount)}</span>
+                        <p className="font-medium">{formatCurrencyES(f.importe)}</p>
                       </div>
                     </div>
                   ))}
@@ -1443,7 +1259,7 @@ export default function FacturacionPage() {
             )}
 
             {facturasHuerfanas.length === 0 && facturasAdyacentes.length === 0 && (
-              <p className="text-center py-8 text-slate-500">No hay facturas disponibles para añadir</p>
+              <p className="text-center text-slate-500 py-8">No hay facturas disponibles para añadir</p>
             )}
           </div>
           <DialogFooter>
@@ -1451,7 +1267,7 @@ export default function FacturacionPage() {
               Cancelar
             </Button>
             <Button onClick={handleAnadirFacturas} disabled={actionLoading || selectedFacturas.size === 0}>
-              Añadir {selectedFacturas.size} factura{selectedFacturas.size !== 1 ? "s" : ""}
+              {actionLoading ? "Añadiendo..." : `Añadir ${selectedFacturas.size} factura(s)`}
             </Button>
           </DialogFooter>
         </DialogContent>

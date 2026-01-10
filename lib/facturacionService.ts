@@ -34,8 +34,21 @@ export async function fetchFacturacionListado(
     verifactuEstado?: string
     searchTerm?: string
   },
-): Promise<FacturacionListadoItem[]> {
-  let query = supabase.from("v_facturas_listado").select("*").order("created_at", { ascending: false })
+  pagination?: {
+    page: number
+    pageSize: number
+  },
+): Promise<{ data: FacturacionListadoItem[]; count: number }> {
+  const page = pagination?.page || 1
+  const pageSize = pagination?.pageSize || 50
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+
+  let query = supabase
+    .from("v_facturas_listado")
+    .select("*", { count: "exact" })
+    .order("fecha", { ascending: false })
+    .order("created_at", { ascending: false })
 
   if (startDate) {
     query = query.gte("fecha", startDate)
@@ -53,14 +66,94 @@ export async function fetchFacturacionListado(
     query = query.or(`numero_completo.ilike.%${filters.searchTerm}%,mesa.ilike.%${filters.searchTerm}%`)
   }
 
-  const { data, error } = await query.limit(500)
+  query = query.range(from, to)
+
+  const { data, error, count } = await query
 
   if (error) {
     console.error("Error fetching facturacion listado:", error)
-    return []
+    return { data: [], count: 0 }
   }
 
-  return data || []
+  return { data: data || [], count: count || 0 }
+}
+
+export async function fetchFacturacionKPIs(
+  startDate: string,
+  endDate: string,
+): Promise<{
+  total_facturado: number
+  total_tarjeta: number
+  total_efectivo: number
+  num_facturas: number
+  ticket_medio: number
+  base_imponible: number
+  iva_total: number
+  verifactu_ok: number
+  verifactu_error: number
+  verifactu_pendiente: number
+}> {
+  const { data, error } = await supabase
+    .from("v_facturas_listado")
+    .select("importe_total, base_imponible, iva, metodo_pago, metodo_pago_nombre, verifactu_estado")
+    .gte("fecha", startDate)
+    .lte("fecha", endDate)
+
+  if (error || !data) {
+    console.error("Error fetching facturacion KPIs:", error)
+    return {
+      total_facturado: 0,
+      total_tarjeta: 0,
+      total_efectivo: 0,
+      num_facturas: 0,
+      ticket_medio: 0,
+      base_imponible: 0,
+      iva_total: 0,
+      verifactu_ok: 0,
+      verifactu_error: 0,
+      verifactu_pendiente: 0,
+    }
+  }
+
+  const total_facturado = data.reduce((sum, f) => sum + (f.importe_total || 0), 0)
+  const base_imponible = data.reduce((sum, f) => sum + (f.base_imponible || 0), 0)
+  const iva_total = data.reduce((sum, f) => sum + (f.iva || 0), 0)
+  const total_tarjeta = data
+    .filter(
+      (f) =>
+        f.metodo_pago === "card" ||
+        f.metodo_pago === "tarjeta" ||
+        f.metodo_pago_nombre?.toLowerCase().includes("tarjeta"),
+    )
+    .reduce((sum, f) => sum + (f.importe_total || 0), 0)
+  const total_efectivo = data
+    .filter(
+      (f) =>
+        f.metodo_pago === "cash" ||
+        f.metodo_pago === "efectivo" ||
+        f.metodo_pago_nombre?.toLowerCase().includes("efectivo"),
+    )
+    .reduce((sum, f) => sum + (f.importe_total || 0), 0)
+  const num_facturas = data.length
+  const ticket_medio = num_facturas > 0 ? total_facturado / num_facturas : 0
+  const verifactu_ok = data.filter((f) => f.verifactu_estado === "accepted").length
+  const verifactu_error = data.filter((f) => f.verifactu_estado === "rejected").length
+  const verifactu_pendiente = data.filter(
+    (f) => f.verifactu_estado === "waiting_for_response" || f.verifactu_estado === "not_sent",
+  ).length
+
+  return {
+    total_facturado,
+    total_tarjeta,
+    total_efectivo,
+    num_facturas,
+    ticket_medio,
+    base_imponible,
+    iva_total,
+    verifactu_ok,
+    verifactu_error,
+    verifactu_pendiente,
+  }
 }
 
 export async function fetchCuadreDiario(startDate?: string, endDate?: string): Promise<FacturacionCuadreDiario[]> {

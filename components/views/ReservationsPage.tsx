@@ -801,23 +801,6 @@ const ReservationsPage: React.FC = () => {
                   <Tooltip
                     content={({ active, payload, label }) => {
                       if (!active || !payload || !payload.length) return null
-                      const currentYear = new Date().getFullYear()
-                      const currentMonth = new Date().getMonth() // 0-indexed
-                      const monthIndex = [
-                        "ene",
-                        "feb",
-                        "mar",
-                        "abr",
-                        "may",
-                        "jun",
-                        "jul",
-                        "ago",
-                        "sep",
-                        "oct",
-                        "nov",
-                        "dic",
-                      ].indexOf(label?.toLowerCase())
-                      const isCurrentOrFutureMonth = monthIndex >= currentMonth
 
                       return (
                         <div className="bg-white p-3 border border-slate-100 shadow-xl rounded-xl min-w-[200px]">
@@ -825,67 +808,33 @@ const ReservationsPage: React.FC = () => {
                             {label}
                           </p>
                           {payload
-                            .filter((entry: any) => entry.value !== null)
+                            .filter((entry: any) => entry.value !== null && entry.value !== undefined)
                             .map((entry: any, index: number) => {
-                              const year = entry.dataKey.replace("año_", "")
-                              const ocupacion = entry.payload[`ocup_${year}`]
-                              const diasOp = entry.payload[`dias_${year}`]
-                              const isCurrentYear = Number.parseInt(year) === currentYear
+                              // Determinar unidad según el dataKey
+                              const isOccupancy = entry.dataKey === "total.occupancy_rate"
+                              const isReservations = entry.dataKey === "total.reservations"
+                              const isPax = entry.dataKey === "total.pax"
+
+                              let unit = ""
+                              if (isOccupancy) unit = "%"
+                              else if (isReservations) unit = " reservas"
+                              else if (isPax) unit = " comensales"
+
+                              const formattedValue = isOccupancy
+                                ? entry.value?.toFixed(1)
+                                : entry.value?.toLocaleString("es-ES")
 
                               return (
                                 <div key={index} className="flex items-center gap-2 text-xs mb-1">
                                   <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
-                                  <span className="text-slate-500 font-medium w-12">{entry.name}</span>
+                                  <span className="text-slate-500 font-medium">{entry.name}:</span>
                                   <span className="font-bold text-slate-700">
-                                    {entry.value?.toLocaleString("es-ES")} {yearlyMetric}
+                                    {formattedValue}
+                                    {unit}
                                   </span>
-                                  {diasOp && (
-                                    <span className="text-slate-400 text-[10px]">
-                                      ({diasOp} días{ocupacion ? ` · ${ocupacion}%` : ""})
-                                    </span>
-                                  )}
                                 </div>
                               )
                             })}
-                          {(() => {
-                            const currentYearEntry = payload.find((e: any) => e.dataKey === `año_${currentYear}`)
-                            const prevYearEntry = payload.find((e: any) => e.dataKey === `año_${currentYear - 1}`)
-                            if (currentYearEntry?.value && prevYearEntry?.value && !isCurrentOrFutureMonth) {
-                              const diff = (
-                                ((currentYearEntry.value - prevYearEntry.value) / prevYearEntry.value) *
-                                100
-                              ).toFixed(1)
-                              const isPositive = Number.parseFloat(diff) >= 0
-                              return (
-                                <div className="mt-2 pt-2 border-t border-slate-100">
-                                  <div className="flex items-center justify-between text-xs">
-                                    <span className="text-slate-500">vs {currentYear - 1}:</span>
-                                    <span className={`font-bold ${isPositive ? "text-emerald-600" : "text-red-500"}`}>
-                                      {isPositive ? "+" : ""}
-                                      {diff}%
-                                    </span>
-                                  </div>
-                                </div>
-                              )
-                            }
-                            // Si estamos en el mes actual o futuro, mostrar aviso
-                            if (isCurrentOrFutureMonth && monthIndex === currentMonth) {
-                              const currentYearDias = payload.find((e: any) => e.dataKey === `año_${currentYear}`)
-                                ?.payload?.[`dias_${currentYear}`]
-                              const prevYearDias = payload.find((e: any) => e.dataKey === `año_${currentYear - 1}`)
-                                ?.payload?.[`dias_${currentYear - 1}`]
-                              if (currentYearDias && prevYearDias && currentYearDias < prevYearDias) {
-                                return (
-                                  <div className="mt-2 pt-2 border-t border-slate-100">
-                                    <p className="text-[10px] text-amber-600">
-                                      Mes en curso: {currentYearDias} días vs {prevYearDias} días
-                                    </p>
-                                  </div>
-                                )
-                              }
-                            }
-                            return null
-                          })()}
                         </div>
                       )
                     }}

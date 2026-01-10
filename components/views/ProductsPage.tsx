@@ -771,7 +771,9 @@ export default function ProductsPage() {
                     <TableBody>
                       {sortedProducts.map((product, idx) => (
                         <TableRow key={product.product_sku}>
-                          <TableCell className="font-medium text-slate-500">{idx + 1}</TableCell>
+                          <TableCell className="font-medium text-slate-500">
+                            {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : idx + 1}
+                          </TableCell>
                           <TableCell className="font-medium">{product.producto_nombre}</TableCell>
                           <TableCell className="text-right">{formatCurrency(product.precio_carta)}</TableCell>
                           <TableCell className="text-right">{formatCurrency(product.precio_medio_real)}</TableCell>
