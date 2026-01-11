@@ -2427,6 +2427,8 @@ export async function fetchFoodCostProducts(): Promise<FoodCostSummary> {
       food_cost_pct: Number.parseFloat(row.food_cost_pct) || 0,
       food_cost_peor_pct: Number.parseFloat(row.food_cost_peor_pct) || 0,
       tiene_patatas: row.tiene_patatas === true,
+      tiene_helado: row.tiene_helado === true,
+      tiene_ensalada: row.tiene_ensalada === true,
     }))
 
     // Calcular KPIs

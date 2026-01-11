@@ -1044,6 +1044,8 @@ export interface FoodCostProduct {
   food_cost_pct: number
   food_cost_peor_pct: number
   tiene_patatas: boolean
+  tiene_helado: boolean
+  tiene_ensalada: boolean
   precioManual: boolean // indica si el precio fue editado manualmente
 }
 

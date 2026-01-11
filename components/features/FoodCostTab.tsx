@@ -389,6 +389,16 @@ function ProductCard({ producto, onPriceUpdated }: { producto: FoodCostProduct; 
             🍟
           </span>
         )}
+        {producto.tiene_helado && (
+          <span className="text-lg" title="Incluye helado">
+            🍨
+          </span>
+        )}
+        {producto.tiene_ensalada && (
+          <span className="text-lg" title="Incluye ensalada">
+            🥗
+          </span>
+        )}
       </div>
 
       <div className="flex items-center gap-3 mb-3 text-sm">
