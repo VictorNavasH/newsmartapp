@@ -11,6 +11,7 @@ import type {
   PoolBancarioVencimiento,
   PoolBancarioPorBanco,
   PoolBancarioCalendarioMes,
+  TreasuryMonthlySummary, // Añadir import del nuevo tipo
 } from "@/types"
 
 // Helper para manejar errores de queries
@@ -311,6 +312,28 @@ export const fetchPoolBancarioCalendario = async (meses = 12): Promise<PoolBanca
     return data || []
   } catch (err) {
     console.error("[v0] Error fetching pool bancario calendario:", err)
+    return []
+  }
+}
+
+export const fetchTreasuryMonthlySummary = async (
+  startDate?: string,
+  endDate?: string,
+): Promise<TreasuryMonthlySummary[]> => {
+  try {
+    const { data, error } = await supabase.rpc("get_treasury_monthly_summary", {
+      p_fecha_inicio: startDate || null,
+      p_fecha_fin: endDate || null,
+    })
+
+    if (error) {
+      handleQueryError(error, "fetchTreasuryMonthlySummary")
+      return []
+    }
+
+    return data || []
+  } catch (err) {
+    console.error("[v0] Error fetching treasury monthly summary:", err)
     return []
   }
 }

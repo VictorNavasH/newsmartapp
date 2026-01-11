@@ -717,6 +717,15 @@ export interface TreasuryCategoryBreakdown {
   porcentaje_gastos: number
 }
 
+export interface TreasuryMonthlySummary {
+  mes: string // "2026-01"
+  mes_label: string // "Ene"
+  ingresos: number
+  gastos: number
+  balance: number
+  num_transacciones: number
+}
+
 // --- What-If Simulator ---
 
 export interface WhatIfReferenceData {
@@ -1025,6 +1034,7 @@ export interface BenchmarkResumen {
 
 export interface FoodCostProduct {
   sku: string
+  variantId: number | null // null para productos, número para variantes
   producto: string
   categoria: string
   tipo: string // "Comida" o "Bebida"
@@ -1034,6 +1044,7 @@ export interface FoodCostProduct {
   food_cost_pct: number
   food_cost_peor_pct: number
   tiene_patatas: boolean
+  precioManual: boolean // indica si el precio fue editado manualmente
 }
 
 export interface FoodCostSummary {

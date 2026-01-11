@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect, useMemo } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { TremorCard } from "@/components/ui/TremorCard"
@@ -12,8 +14,13 @@ import {
   ChefHat,
   Wine,
   UtensilsCrossed,
+  Pencil,
+  RotateCcw,
+  Check,
+  X,
+  Loader2,
 } from "lucide-react"
-import { fetchFoodCostProducts } from "@/lib/dataService"
+import { fetchFoodCostProducts, updateManualPrice, clearManualPrice } from "@/lib/dataService"
 import type { FoodCostSummary, FoodCostProduct } from "@/types"
 import { formatCurrency } from "@/lib/utils"
 
@@ -60,13 +67,14 @@ export function FoodCostTab() {
   const [selectedTipo, setSelectedTipo] = useState<"Comida" | "Bebida">("Comida")
   const [selectedCategory, setSelectedCategory] = useState("TODOS")
 
+  const loadData = async () => {
+    setLoading(true)
+    const result = await fetchFoodCostProducts()
+    setData(result)
+    setLoading(false)
+  }
+
   useEffect(() => {
-    async function loadData() {
-      setLoading(true)
-      const result = await fetchFoodCostProducts()
-      setData(result)
-      setLoading(false)
-    }
     loadData()
   }, [])
 
@@ -298,7 +306,11 @@ export function FoodCostTab() {
 
               <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {productos.map((producto) => (
-                  <ProductCard key={producto.sku} producto={producto} />
+                  <ProductCard
+                    key={`${producto.sku}-${producto.variantId || "base"}`}
+                    producto={producto}
+                    onPriceUpdated={loadData}
+                  />
                 ))}
               </div>
             </TremorCard>
@@ -309,9 +321,64 @@ export function FoodCostTab() {
   )
 }
 
-function ProductCard({ producto }: { producto: FoodCostProduct }) {
+function ProductCard({ producto, onPriceUpdated }: { producto: FoodCostProduct; onPriceUpdated: () => void }) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [editValue, setEditValue] = useState("")
+  const [saving, setSaving] = useState(false)
+  const [resetting, setResetting] = useState(false)
+
   const fcColor = getFoodCostColor(producto.food_cost_pct)
   const fcBg = getFoodCostBg(producto.food_cost_pct)
+
+  const handleEditClick = () => {
+    setEditValue(producto.pvp.toFixed(2))
+    setIsEditing(true)
+  }
+
+  const handleCancel = () => {
+    setIsEditing(false)
+    setEditValue("")
+  }
+
+  const handleSave = async () => {
+    const newPrice = Number.parseFloat(editValue)
+    if (isNaN(newPrice) || newPrice <= 0) {
+      return
+    }
+
+    setSaving(true)
+    const result = await updateManualPrice(producto.sku, producto.variantId, newPrice)
+    setSaving(false)
+
+    if (result.success) {
+      setIsEditing(false)
+      onPriceUpdated()
+    } else {
+      alert("Error al guardar: " + result.error)
+    }
+  }
+
+  const handleReset = async () => {
+    if (!confirm("¿Resetear al precio del TPV?")) return
+
+    setResetting(true)
+    const result = await clearManualPrice(producto.sku, producto.variantId)
+    setResetting(false)
+
+    if (result.success) {
+      onPriceUpdated()
+    } else {
+      alert("Error al resetear: " + result.error)
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleSave()
+    } else if (e.key === "Escape") {
+      handleCancel()
+    }
+  }
 
   return (
     <div className={`p-4 rounded-xl border border-slate-200 ${fcBg} transition-all hover:shadow-md`}>
@@ -325,9 +392,47 @@ function ProductCard({ producto }: { producto: FoodCostProduct }) {
       </div>
 
       <div className="flex items-center gap-3 mb-3 text-sm">
-        <div>
+        <div className="flex items-center gap-1">
           <span className="text-slate-500">PVP</span>
-          <span className="ml-1 font-medium text-[#364f6b]">{formatCurrency(producto.pvp)}</span>
+          {isEditing ? (
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                step="0.01"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="w-16 px-1 py-0.5 text-sm border border-[#02b1c4] rounded focus:outline-none focus:ring-1 focus:ring-[#02b1c4]"
+                autoFocus
+              />
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="p-0.5 text-[#17c3b2] hover:bg-[#17c3b2]/20 rounded"
+                title="Guardar"
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+              </button>
+              <button
+                onClick={handleCancel}
+                className="p-0.5 text-slate-400 hover:bg-slate-200 rounded"
+                title="Cancelar"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1">
+              <span className="ml-1 font-medium text-[#364f6b]">{formatCurrency(producto.pvp)}</span>
+              <button
+                onClick={handleEditClick}
+                className="p-0.5 text-slate-400 hover:text-[#02b1c4] hover:bg-[#02b1c4]/10 rounded transition-colors"
+                title="Editar precio"
+              >
+                <Pencil className="h-3 w-3" />
+              </button>
+            </div>
+          )}
         </div>
         <div className="text-slate-300">|</div>
         <div>
@@ -362,22 +467,38 @@ function ProductCard({ producto }: { producto: FoodCostProduct }) {
         </div>
       </div>
 
-      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-200/50">
-        {producto.food_cost_pct > 30 ? (
-          <>
-            <AlertCircle className="h-4 w-4 text-[#fe6d73]" />
-            <span className="text-xs text-[#fe6d73] font-medium">Crítico - Revisar</span>
-          </>
-        ) : producto.food_cost_pct >= 20 ? (
-          <>
-            <AlertTriangle className="h-4 w-4 text-[#ffcb77]" />
-            <span className="text-xs text-[#ffcb77] font-medium">Atención</span>
-          </>
-        ) : (
-          <>
-            <CheckCircle2 className="h-4 w-4 text-[#17c3b2]" />
-            <span className="text-xs text-[#17c3b2] font-medium">Óptimo</span>
-          </>
+      <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-200/50">
+        <div className="flex items-center gap-2">
+          {producto.food_cost_pct > 30 ? (
+            <>
+              <AlertCircle className="h-4 w-4 text-[#fe6d73]" />
+              <span className="text-xs text-[#fe6d73] font-medium">Crítico</span>
+            </>
+          ) : producto.food_cost_pct >= 20 ? (
+            <>
+              <AlertTriangle className="h-4 w-4 text-[#ffcb77]" />
+              <span className="text-xs text-[#ffcb77] font-medium">Atención</span>
+            </>
+          ) : (
+            <>
+              <CheckCircle2 className="h-4 w-4 text-[#17c3b2]" />
+              <span className="text-xs text-[#17c3b2] font-medium">Óptimo</span>
+            </>
+          )}
+        </div>
+
+        {producto.precioManual && (
+          <div className="flex items-center gap-1">
+            <span className="text-[10px] text-[#02b1c4] font-medium">PVP Manual</span>
+            <button
+              onClick={handleReset}
+              disabled={resetting}
+              className="p-0.5 text-slate-400 hover:text-[#fe6d73] hover:bg-[#fe6d73]/10 rounded transition-colors"
+              title="Resetear al precio TPV"
+            >
+              {resetting ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+            </button>
+          </div>
         )}
       </div>
     </div>

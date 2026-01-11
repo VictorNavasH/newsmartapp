@@ -151,6 +151,7 @@ import {
   fetchPoolBancarioVencimientos, // Added
   fetchPoolBancarioPorBanco, // Added
   fetchPoolBancarioCalendario, // Added
+  fetchTreasuryMonthlySummary, // Añadir import
 } from "@/lib/treasuryService"
 import { BRAND_COLORS } from "@/constants"
 import type {
@@ -166,6 +167,7 @@ import type {
   PoolBancarioVencimiento, // Added
   PoolBancarioPorBanco, // Added
   PoolBancarioCalendarioMes, // Added
+  TreasuryMonthlySummary, // Añadir import del tipo
 } from "@/types"
 import { format, parseISO, subMonths } from "date-fns"
 import { es } from "date-fns/locale"
@@ -554,6 +556,7 @@ export default function TreasuryPage() {
   const [poolVencimientos, setPoolVencimientos] = useState<PoolBancarioVencimiento[]>([])
   const [poolPorBanco, setPoolPorBanco] = useState<PoolBancarioPorBanco[]>([])
   const [poolCalendario, setPoolCalendario] = useState<PoolBancarioCalendarioMes[]>([])
+  const [monthlySummaries, setMonthlySummaries] = useState<TreasuryMonthlySummary[]>([]) // Añadir estado para monthly summaries
 
   const flattenedCategories = useMemo(() => {
     const result: { id: string; name: string; parentId?: string }[] = []
@@ -588,11 +591,12 @@ export default function TreasuryPage() {
       const startStr = dateRange.from ? format(dateRange.from, "yyyy-MM-dd") : undefined
       const endStr = dateRange.to ? format(dateRange.to, "yyyy-MM-dd") : undefined
 
-      const [kpisData, accountsData, categoriesData, byCategData] = await Promise.all([
+      const [kpisData, accountsData, categoriesData, byCategData, monthlySummaryData] = await Promise.all([
         fetchTreasuryKPIs(startStr, endStr),
         fetchTreasuryAccounts(),
         fetchTreasuryCategories(),
         fetchTreasuryByCategory(startStr, endStr),
+        fetchTreasuryMonthlySummary(startStr, endStr), // Llamar a fetchTreasuryMonthlySummary
       ])
 
       // Pool Bancario - cargar por separado para no bloquear si las vistas no existen
@@ -628,6 +632,7 @@ export default function TreasuryPage() {
       setAccounts(accountsData)
       setCategories(categoriesData)
       setCategoryBreakdown(byCategData)
+      setMonthlySummaries(monthlySummaryData || []) // Actualizar estado monthlySummaries
       // Pool Bancario
       setPoolResumen(poolResumenData)
       setPoolPrestamos(poolPrestamosData)
@@ -850,31 +855,15 @@ export default function TreasuryPage() {
   }, [transactions, kpis])
 
   const monthlyData = useMemo(() => {
-    if (transactions.length === 0) return []
+    if (monthlySummaries.length === 0) return []
 
-    const monthlyTotals: Record<string, { ingresos: number; gastos: number }> = {}
-
-    transactions.forEach((tx) => {
-      const month = tx.booking_date.substring(0, 7)
-      if (!monthlyTotals[month]) {
-        monthlyTotals[month] = { ingresos: 0, gastos: 0 }
-      }
-      if (tx.amount > 0) {
-        monthlyTotals[month].ingresos += tx.amount
-      } else {
-        monthlyTotals[month].gastos += Math.abs(tx.amount)
-      }
-    })
-
-    return Object.entries(monthlyTotals)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .slice(-6)
-      .map(([month, data]) => ({
-        month,
-        monthLabel: format(parseISO(`${month}-01`), "MMM", { locale: es }),
-        ...data,
-      }))
-  }, [transactions])
+    return monthlySummaries.map((item) => ({
+      month: item.mes,
+      monthLabel: item.mes_label,
+      ingresos: item.ingresos,
+      gastos: item.gastos,
+    }))
+  }, [monthlySummaries])
 
   const topCategoriesData = useMemo(() => {
     const filtered = categoryBreakdown.filter((cat) => cat.category_id !== null && cat.total_gastos > 0)

@@ -2416,6 +2416,8 @@ export async function fetchFoodCostProducts(): Promise<FoodCostSummary> {
 
     const productos: FoodCostProduct[] = (data || []).map((row: any) => ({
       sku: row.sku || "",
+      variantId: row.variant_id ?? null,
+      precioManual: row.precio_manual === true,
       producto: row.nombre_producto || "",
       categoria: row.categoria || "Sin categoría",
       tipo: row.tipo || "Comida",
@@ -2478,5 +2480,71 @@ export async function fetchFoodCostProducts(): Promise<FoodCostSummary> {
       },
       por_categoria: [],
     }
+  }
+}
+
+export async function updateManualPrice(
+  sku: string,
+  variantId: number | null,
+  newPrice: number,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (variantId !== null) {
+      // Es una variante
+      const { error } = await supabase.rpc("update_variant_manual_price", {
+        p_variant_id: variantId,
+        p_manual_price: newPrice,
+      })
+      if (error) {
+        console.error("[updateManualPrice] Error variante:", error.message)
+        return { success: false, error: error.message }
+      }
+    } else {
+      // Es un producto
+      const { error } = await supabase.rpc("update_manual_price", {
+        p_sku: sku,
+        p_manual_price: newPrice,
+      })
+      if (error) {
+        console.error("[updateManualPrice] Error producto:", error.message)
+        return { success: false, error: error.message }
+      }
+    }
+    return { success: true }
+  } catch (err: any) {
+    console.error("[updateManualPrice] Exception:", err)
+    return { success: false, error: err.message || "Error desconocido" }
+  }
+}
+
+export async function clearManualPrice(
+  sku: string,
+  variantId: number | null,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (variantId !== null) {
+      // Es una variante - resetear a null
+      const { error } = await supabase.rpc("update_variant_manual_price", {
+        p_variant_id: variantId,
+        p_manual_price: null,
+      })
+      if (error) {
+        console.error("[clearManualPrice] Error variante:", error.message)
+        return { success: false, error: error.message }
+      }
+    } else {
+      // Es un producto
+      const { error } = await supabase.rpc("clear_manual_price", {
+        p_sku: sku,
+      })
+      if (error) {
+        console.error("[clearManualPrice] Error producto:", error.message)
+        return { success: false, error: error.message }
+      }
+    }
+    return { success: true }
+  } catch (err: any) {
+    console.error("[clearManualPrice] Exception:", err)
+    return { success: false, error: err.message || "Error desconocido" }
   }
 }
