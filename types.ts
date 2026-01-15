@@ -874,6 +874,9 @@ export interface FacturacionListadoItem {
   cliente_cif: string | null
   created_at: string
   updated_at: string
+  table_id: string | null
+  order_numbers: string | null
+  webhook_payload: string | null
 }
 
 export interface CuadreListadoItem {

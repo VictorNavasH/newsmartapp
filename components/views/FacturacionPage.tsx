@@ -18,14 +18,12 @@ import {
   ChevronRight,
   Plus,
   ArrowRightLeft,
-  Pause,
-  Check,
   Trash2,
   Filter,
   RefreshCw,
   ChevronLeft,
+  Eye,
 } from "lucide-react"
-import { ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
 
 import { PageHeader } from "@/components/layout/PageHeader"
 import { PageContent } from "@/components/layout/PageContent"
@@ -35,19 +33,9 @@ import { MetricGroupCard } from "@/components/ui/MetricGroupCard"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
 import { formatCurrency } from "@/lib/utils"
 import {
@@ -161,6 +149,9 @@ export default function FacturacionPage() {
   const [alertas, setAlertas] = useState<FacturacionAlerta[]>([])
   const [dataMensual, setDataMensual] = useState<FacturacionMensual[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Added state for factura detalle
+  const [facturaDetalle, setFacturaDetalle] = useState<FacturacionListadoItem | null>(null)
 
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(50)
@@ -490,18 +481,31 @@ export default function FacturacionPage() {
     setSelectedFacturas(newSelection)
   }
 
-  const formatDateES = (dateStr: string) => {
+  const formatDateES = (dateStr: string | Date | null | undefined) => {
     if (!dateStr) return "-"
     try {
       const date = new Date(dateStr)
-      if (!isValid(date)) return dateStr
+      if (!isValid(date)) return String(dateStr)
       return format(date, "dd/MM/yyyy", { locale: es })
     } catch {
-      return dateStr
+      return String(dateStr)
     }
   }
 
-  const formatCurrencyES = (value: string | number) => {
+  const getConsumoItems = (payload: any) => {
+    if (!payload) return []
+    try {
+      const data = typeof payload === "string" ? JSON.parse(payload) : payload
+      const orders = data?.Transaction?.Orders || []
+      const items = orders.flatMap((order: any) => order.Items || [])
+      return items.filter((item: any) => item.PaymentStatus === 2)
+    } catch (e) {
+      return []
+    }
+  }
+
+  const formatCurrencyES = (value: string | number | undefined) => {
+    if (value === undefined) return "0,00 €"
     const num = typeof value === "string" ? Number.parseFloat(value) : value
     if (isNaN(num)) return "0,00 €"
     return num.toLocaleString("es-ES", { style: "currency", currency: "EUR" })
@@ -675,6 +679,8 @@ export default function FacturacionPage() {
                       <th className="text-right py-3 px-4 font-medium text-slate-600">Importe</th>
                       <th className="text-left py-3 px-4 font-medium text-slate-600">Método</th>
                       <th className="text-center py-3 px-4 font-medium text-slate-600">VeriFactu</th>
+                      {/* Added column Ver */}
+                      <th className="text-center py-3 px-4 font-medium text-slate-600">Ver</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -708,6 +714,16 @@ export default function FacturacionPage() {
                             )}
                             {item.verifactu_estado_nombre}
                           </span>
+                        </td>
+                        {/* Added cell with Eye icon */}
+                        <td className="py-3 px-4 text-center">
+                          <button
+                            onClick={() => setFacturaDetalle(item)}
+                            className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+                            title="Ver detalle"
+                          >
+                            <Eye className="w-4 h-4 text-[#02b1c4]" />
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -908,71 +924,41 @@ export default function FacturacionPage() {
                         {/* Ajustes */}
                         {(ajustesZReport[item.zreport_id] || []).length > 0 && (
                           <div className="mb-4">
-                            <h4 className="text-sm font-medium text-slate-700 mb-2">Ajustes aplicados</h4>
-                            <div className="space-y-2">
-                              {(ajustesZReport[item.zreport_id] || []).map((ajuste) => (
-                                <div
-                                  key={ajuste.ajuste_id}
-                                  className="flex items-center justify-between p-2 bg-slate-50 rounded"
-                                >
-                                  <div>
-                                    <span
-                                      className={`text-sm font-medium ${ajuste.tipo === "ajuste_positivo" ? "text-[#17c3b2]" : ajuste.tipo === "ajuste_negativo" ? "text-[#fe6d73]" : "text-slate-600"}`}
-                                    >
-                                      {ajuste.tipo === "ajuste_positivo"
-                                        ? "+"
-                                        : ajuste.tipo === "ajuste_negativo"
-                                          ? "-"
-                                          : ""}
-                                      {formatCurrencyES(Math.abs(ajuste.importe))}
-                                    </span>
-                                    {ajuste.descripcion && (
-                                      <span className="text-xs text-slate-500 ml-2">{ajuste.descripcion}</span>
-                                    )}
-                                  </div>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleEliminarAjuste(ajuste.ajuste_id, item)}
-                                  >
-                                    <Trash2 className="w-4 h-4 text-slate-400" />
-                                  </Button>
-                                </div>
-                              ))}
+                            <h4 className="text-sm font-medium text-slate-700">Ajustes</h4>
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-sm">
+                                <thead>
+                                  <tr className="border-b border-slate-200">
+                                    <th className="text-left py-2 px-3 font-medium text-slate-600">Tipo</th>
+                                    <th className="text-right py-2 px-3 font-medium text-slate-600">Importe</th>
+                                    <th className="text-left py-2 px-3 font-medium text-slate-600">Descripción</th>
+                                    <th className="text-center py-2 px-3 font-medium text-slate-600">Acciones</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {ajustesZReport[item.zreport_id]?.map((ajuste) => (
+                                    <tr key={ajuste.id} className="border-b border-slate-100">
+                                      <td className="py-2 px-3">{ajuste.tipo}</td>
+                                      <td className="py-2 px-3 text-right font-medium">
+                                        {formatCurrencyES(ajuste.importe)}
+                                      </td>
+                                      <td className="py-2 px-3">{ajuste.descripcion}</td>
+                                      <td className="py-2 px-3 text-center">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => handleEliminarAjuste(ajuste.id, item)}
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
                             </div>
                           </div>
                         )}
-
-                        {/* Acciones */}
-                        <div className="flex items-center gap-2 pt-4 border-t border-slate-200">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setModalAjuste({ open: true, item })}
-                            disabled={actionLoading}
-                          >
-                            <Plus className="w-4 h-4 mr-1" />
-                            Añadir ajuste
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setModalPendiente({ open: true, item })}
-                            disabled={actionLoading}
-                          >
-                            <Pause className="w-4 h-4 mr-1" />
-                            Marcar pendiente
-                          </Button>
-                          <Button
-                            size="sm"
-                            className="bg-[#17c3b2] hover:bg-[#14a89a] text-white ml-auto"
-                            onClick={() => handleConfirmarCuadre(item)}
-                            disabled={actionLoading || diferencia !== 0}
-                          >
-                            <Check className="w-4 h-4 mr-1" />
-                            Confirmar cuadre
-                          </Button>
-                        </div>
                       </div>
                     </CollapsibleContent>
                   </Collapsible>
@@ -983,303 +969,156 @@ export default function FacturacionPage() {
         </TremorCard>
       )}
 
-      {/* Tab Ingresos */}
-      {activeTab === "Ingresos" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <TremorCard>
-            <TremorTitle>Ingresos por Categoría</TremorTitle>
-            <div className="h-[300px] mt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={tiposIngreso}
-                    dataKey="total"
-                    nameKey="categoria"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={100}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {tiposIngreso.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </TremorCard>
+      {/* Factura Detalle Sheet */}
+      <Sheet open={!!facturaDetalle} onOpenChange={(open) => !open && setFacturaDetalle(null)}>
+        <SheetContent side="right" className="w-[450px] sm:w-[500px] p-0 overflow-y-auto">
+          <SheetHeader className="px-6 pt-6 pb-4 border-b border-slate-100">
+            <SheetTitle className="text-lg font-bold text-[#364f6b]">Detalle de Factura</SheetTitle>
+            {facturaDetalle && <p className="text-sm text-slate-500">{facturaDetalle.cuentica_identifier}</p>}
+          </SheetHeader>
 
-          <TremorCard>
-            <TremorTitle>Evolución Mensual</TremorTitle>
-            <div className="h-[300px] mt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={dataMensual}>
-                  <XAxis dataKey="mes_nombre" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                  <Bar dataKey="total_facturado" fill="#02b1c4" name="Facturado" />
-                  <Line type="monotone" dataKey="ticket_medio" stroke="#ffcb77" name="Ticket Medio" />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-          </TremorCard>
-        </div>
-      )}
-
-      {/* Tab Alertas */}
-      {activeTab === "Alertas" && (
-        <TremorCard>
-          <div className="flex items-center justify-between mb-4">
-            <TremorTitle>Alertas de Facturación</TremorTitle>
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-1 bg-[#fe6d73]/10 text-[#fe6d73] rounded text-sm font-medium">
-                {alertas_error} errores
-              </span>
-              <span className="px-2 py-1 bg-[#ffcb77]/10 text-[#ffcb77] rounded text-sm font-medium">
-                {alertas_warning} avisos
-              </span>
-            </div>
-          </div>
-
-          {alertas.length === 0 ? (
-            <div className="text-center py-12 text-slate-500">
-              <CheckCircle className="w-12 h-12 mx-auto mb-4 text-[#17c3b2]" />
-              <p>No hay alertas activas</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {alertas.map((alerta) => (
-                <div
-                  key={alerta.alerta_id}
-                  className={`p-4 rounded-lg border ${
-                    alerta.severidad === "error"
-                      ? "bg-[#fe6d73]/5 border-[#fe6d73]/20"
-                      : "bg-[#ffcb77]/5 border-[#ffcb77]/20"
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle
-                      className={`w-5 h-5 mt-0.5 ${alerta.severidad === "error" ? "text-[#fe6d73]" : "text-[#ffcb77]"}`}
-                    />
-                    <div className="flex-1">
-                      <p className="font-medium text-[#364f6b]">{alerta.mensaje}</p>
-                      <p className="text-sm text-slate-500 mt-1">
-                        {formatDateES(alerta.fecha_alerta)} · {alerta.tipo_alerta}
-                      </p>
-                    </div>
+          {facturaDetalle && (
+            <div className="px-6 py-4 space-y-6">
+              {/* Información General */}
+              <div>
+                <h4 className="text-sm font-semibold text-slate-700 mb-3">Información General</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-slate-500">Fecha</p>
+                    <p className="text-sm font-medium text-slate-700">{formatDateES(facturaDetalle.fecha)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Mesa</p>
+                    <p className="text-sm font-medium text-slate-700">{facturaDetalle.mesa || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Método de Pago</p>
+                    <p className="text-sm font-medium text-slate-700">{facturaDetalle.metodo_pago_nombre}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Nº Pedido</p>
+                    <p className="text-sm font-medium text-slate-700">{facturaDetalle.order_numbers || "-"}</p>
                   </div>
                 </div>
-              ))}
+              </div>
+
+              {/* Importes */}
+              <div className="border-t border-slate-100 pt-4">
+                <h4 className="text-sm font-semibold text-slate-700 mb-3">Importes</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-slate-500">Base Imponible</span>
+                    <span className="text-sm font-medium text-slate-700">
+                      {formatCurrencyES(facturaDetalle.base_imponible)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-slate-500">IVA</span>
+                    <span className="text-sm font-medium text-slate-700">{formatCurrencyES(facturaDetalle.iva)}</span>
+                  </div>
+                  {Number(facturaDetalle.propinas) > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-sm text-slate-500">Propinas</span>
+                      <span className="text-sm font-medium text-slate-700">
+                        {formatCurrencyES(facturaDetalle.propinas)}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between pt-2 border-t border-slate-100">
+                    <span className="text-sm font-semibold text-slate-700">Total</span>
+                    <span className="text-sm font-bold text-[#02b1c4]">
+                      {formatCurrencyES(facturaDetalle.importe_total)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Estado VeriFactu */}
+              <div className="border-t border-slate-100 pt-4">
+                <h4 className="text-sm font-semibold text-slate-700 mb-3">Estado VeriFactu</h4>
+                <span
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${
+                    facturaDetalle.verifactu_estado === "accepted"
+                      ? "bg-[#17c3b2]/10 text-[#17c3b2]"
+                      : facturaDetalle.verifactu_estado === "rejected"
+                        ? "bg-[#fe6d73]/10 text-[#fe6d73]"
+                        : facturaDetalle.verifactu_estado === "signed"
+                          ? "bg-[#227c9d]/10 text-[#227c9d]"
+                          : "bg-[#ffcb77]/10 text-[#ffcb77]"
+                  }`}
+                >
+                  {facturaDetalle.verifactu_estado === "accepted" || facturaDetalle.verifactu_estado === "signed" ? (
+                    <CheckCircle className="w-4 h-4" />
+                  ) : facturaDetalle.verifactu_estado === "rejected" ? (
+                    <XCircle className="w-4 h-4" />
+                  ) : (
+                    <Clock className="w-4 h-4" />
+                  )}
+                  {facturaDetalle.verifactu_estado_nombre}
+                </span>
+              </div>
+
+              {/* Cliente (si existe) */}
+              {(facturaDetalle.cliente_nombre || facturaDetalle.cliente_cif) && (
+                <div className="border-t border-slate-100 pt-4">
+                  <h4 className="text-sm font-semibold text-slate-700 mb-3">Cliente</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    {facturaDetalle.cliente_nombre && (
+                      <div>
+                        <p className="text-xs text-slate-500">Nombre</p>
+                        <p className="text-sm font-medium text-slate-700">{facturaDetalle.cliente_nombre}</p>
+                      </div>
+                    )}
+                    {facturaDetalle.cliente_cif && (
+                      <div>
+                        <p className="text-xs text-slate-500">CIF/NIF</p>
+                        <p className="text-sm font-medium text-slate-700">{facturaDetalle.cliente_cif}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Detalle de Consumo */}
+              {facturaDetalle.webhook_payload && (
+                <div className="border-t border-slate-100 pt-4">
+                  <h4 className="text-sm font-semibold text-slate-700 mb-3">Detalle de Consumo</h4>
+                  <div className="space-y-3">
+                    {getConsumoItems(facturaDetalle.webhook_payload).length > 0 ? (
+                      getConsumoItems(facturaDetalle.webhook_payload).map((item: any, idx: number) => (
+                        <div key={idx} className="pb-2 border-b border-slate-50 last:border-0">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <span className="text-sm font-medium text-slate-700">
+                                {item.Quantity || 1}x{" "}
+                                {item.ItemData?.Localization?.es || item.ItemData?.Name || "Producto"}
+                              </span>
+                              {item.ItemOptions && item.ItemOptions.length > 0 && (
+                                <div className="mt-1 space-y-0.5">
+                                  {item.ItemOptions.map((opt: any, optIdx: number) => (
+                                    <p key={optIdx} className="text-xs text-[#02b1c4]">
+                                      - {opt.Localization?.es || opt.Name || "Opción"}
+                                    </p>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            <span className="text-sm font-medium text-slate-700 ml-3">
+                              {formatCurrencyES(item.PriceTotal || 0)}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-slate-500">Sin detalle de consumo disponible</p>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
-        </TremorCard>
-      )}
-
-      {/* Modal Añadir Ajuste */}
-      <Dialog open={modalAjuste.open} onOpenChange={(open) => !open && setModalAjuste({ open: false, item: null })}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Añadir Ajuste</DialogTitle>
-            <DialogDescription>
-              Añade un ajuste para cuadrar el Z-Report del {modalAjuste.item && formatDateES(modalAjuste.item.fecha)}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Tipo de ajuste</Label>
-              <Select value={nuevoAjuste.tipo} onValueChange={(v) => setNuevoAjuste((prev) => ({ ...prev, tipo: v }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {AJUSTE_TIPOS.map((tipo) => (
-                    <SelectItem key={tipo.value} value={tipo.value}>
-                      {tipo.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Importe (€)</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={nuevoAjuste.importe}
-                onChange={(e) => setNuevoAjuste((prev) => ({ ...prev, importe: e.target.value }))}
-                placeholder="0.00"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Descripción (opcional)</Label>
-              <Textarea
-                value={nuevoAjuste.descripcion}
-                onChange={(e) => setNuevoAjuste((prev) => ({ ...prev, descripcion: e.target.value }))}
-                placeholder="Motivo del ajuste..."
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setModalAjuste({ open: false, item: null })}>
-              Cancelar
-            </Button>
-            <Button onClick={handleCrearAjuste} disabled={actionLoading || !nuevoAjuste.importe}>
-              {actionLoading ? "Guardando..." : "Guardar ajuste"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Modal Marcar Pendiente */}
-      <Dialog
-        open={modalPendiente.open}
-        onOpenChange={(open) => !open && setModalPendiente({ open: false, item: null })}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Marcar como Pendiente</DialogTitle>
-            <DialogDescription>Indica el motivo por el que este Z-Report queda pendiente de revisión</DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Textarea
-              value={motivoPendiente}
-              onChange={(e) => setMotivoPendiente(e.target.value)}
-              placeholder="Motivo..."
-              rows={3}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setModalPendiente({ open: false, item: null })}>
-              Cancelar
-            </Button>
-            <Button onClick={handleMarcarPendiente} disabled={actionLoading || !motivoPendiente.trim()}>
-              {actionLoading ? "Guardando..." : "Marcar pendiente"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Modal Mover Factura */}
-      <Dialog
-        open={modalMoverFactura.open}
-        onOpenChange={(open) => !open && setModalMoverFactura({ open: false, item: null, factura: null })}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Mover Factura</DialogTitle>
-            <DialogDescription>
-              Selecciona el Z-Report destino para la factura {modalMoverFactura.factura?.cuentica_identifier}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Select value={selectedZReport} onValueChange={setSelectedZReport}>
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar Z-Report destino" />
-              </SelectTrigger>
-              <SelectContent>
-                {zreportsDisponibles.map((zr) => (
-                  <SelectItem key={zr.zreport_id} value={zr.zreport_id}>
-                    {zr.nombre} - {formatCurrencyES(zr.total)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setModalMoverFactura({ open: false, item: null, factura: null })}>
-              Cancelar
-            </Button>
-            <Button onClick={handleMoverFactura} disabled={actionLoading || !selectedZReport}>
-              {actionLoading ? "Moviendo..." : "Mover factura"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Modal Añadir Factura */}
-      <Dialog
-        open={modalAnadirFactura.open}
-        onOpenChange={(open) => !open && setModalAnadirFactura({ open: false, item: null })}
-      >
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Añadir Facturas al Z-Report</DialogTitle>
-            <DialogDescription>Selecciona las facturas que quieres añadir a este Z-Report</DialogDescription>
-          </DialogHeader>
-          <div className="py-4 max-h-[400px] overflow-y-auto">
-            {facturasHuerfanas.length > 0 && (
-              <div className="mb-4">
-                <h4 className="text-sm font-medium text-slate-700 mb-2">Facturas sin asignar (huérfanas)</h4>
-                <div className="space-y-2">
-                  {facturasHuerfanas.map((f) => (
-                    <div
-                      key={f.factura_id}
-                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                        selectedFacturas.has(f.factura_id.toString())
-                          ? "border-[#02b1c4] bg-[#02b1c4]/5"
-                          : "border-slate-200 hover:border-slate-300"
-                      }`}
-                      onClick={() => toggleFacturaSelection(f.factura_id.toString())}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">{f.cuentica_identifier}</p>
-                          <p className="text-sm text-slate-500">
-                            {f.hora} · Origen: {f.zreport_origen}
-                          </p>
-                        </div>
-                        <p className="font-medium">{formatCurrencyES(f.importe)}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {facturasAdyacentes.length > 0 && (
-              <div>
-                <h4 className="text-sm font-medium text-slate-700 mb-2">Facturas de otros Z-Reports</h4>
-                <div className="space-y-2">
-                  {facturasAdyacentes.map((f) => (
-                    <div
-                      key={f.factura_id}
-                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                        selectedFacturas.has(f.factura_id.toString())
-                          ? "border-[#02b1c4] bg-[#02b1c4]/5"
-                          : "border-slate-200 hover:border-slate-300"
-                      }`}
-                      onClick={() => toggleFacturaSelection(f.factura_id.toString())}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">{f.cuentica_identifier}</p>
-                          <p className="text-sm text-slate-500">
-                            {f.hora} · Origen: {f.zreport_origen}
-                          </p>
-                        </div>
-                        <p className="font-medium">{formatCurrencyES(f.importe)}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {facturasHuerfanas.length === 0 && facturasAdyacentes.length === 0 && (
-              <p className="text-center text-slate-500 py-8">No hay facturas disponibles para añadir</p>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setModalAnadirFactura({ open: false, item: null })}>
-              Cancelar
-            </Button>
-            <Button onClick={handleAnadirFacturas} disabled={actionLoading || selectedFacturas.size === 0}>
-              {actionLoading ? "Añadiendo..." : `Añadir ${selectedFacturas.size} factura(s)`}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </PageContent>
   )
 }
