@@ -11,6 +11,7 @@ import {
   Clock,
   ShoppingBag,
   Calculator,
+  Truck,
 } from "lucide-react"
 
 export const APP_NAME = "NÜA Smart Dashboard"
@@ -21,6 +22,7 @@ export const NAVIGATION_ITEMS = [
   { name: "Ingresos", icon: DollarSign, path: "/revenue" },
   { name: "Gastos", icon: PieChart, path: "/expenses" },
   { name: "Costes", icon: Calculator, path: "/costs" },
+  { name: "Compras", icon: Truck, path: "/purchases" },
   { name: "Productos", icon: ShoppingBag, path: "/products" },
   { name: "Operaciones", icon: Clock, path: "/operations" },
   { name: "Facturación", icon: FileText, path: "/invoices" },
@@ -111,4 +113,5 @@ export const CARD_TOOLTIPS = {
   expensePending: "Gastos pendientes de pago que aún no han vencido.",
   expenseOverdue: "Gastos vencidos sin pagar. Requieren atención inmediata.",
   expenseByTag: "Distribución de gastos agrupados por etiqueta/categoría.",
+  purchases: "Resumen de compras realizadas en el periodo seleccionado.",
 } as const

@@ -368,14 +368,34 @@ export default function ProductsPage() {
 
   // Products by category for Patrones tab
   const productsByCategory = useMemo(() => {
-    const map = new Map<string, ProductMixItem[]>()
+    const categoryMap = new Map<string, Map<string, ProductMixItem>>()
+
     productData.forEach((p) => {
-      const existing = map.get(p.categoria_nombre) || []
-      existing.push(p)
-      map.set(p.categoria_nombre, existing)
+      if (!categoryMap.has(p.categoria_nombre)) {
+        categoryMap.set(p.categoria_nombre, new Map())
+      }
+      const skuMap = categoryMap.get(p.categoria_nombre)!
+      const existing = skuMap.get(p.product_sku)
+
+      if (existing) {
+        // Agregar unidades y facturado
+        existing.unidades += p.unidades
+        existing.facturado += p.facturado
+      } else {
+        // Clonar para no mutar el original
+        skuMap.set(p.product_sku, { ...p })
+      }
     })
-    map.forEach((products) => products.sort((a, b) => b.facturado - a.facturado))
-    return map
+
+    // Convertir a Map<string, ProductMixItem[]> ordenado por facturado
+    const result = new Map<string, ProductMixItem[]>()
+    categoryMap.forEach((skuMap, categoria) => {
+      const products = Array.from(skuMap.values())
+      products.sort((a, b) => b.facturado - a.facturado)
+      result.set(categoria, products)
+    })
+
+    return result
   }, [productData])
 
   // Get unique categories for filter
@@ -1026,12 +1046,12 @@ export default function ProductsPage() {
                       </div>
                       <div className="space-y-1">
                         {products.slice(0, 3).map((p, idx) => (
-                          <div key={p.product_sku} className="flex justify-between text-sm">
-                            <span className="text-slate-600 truncate max-w-[150px]">
+                          <div key={p.product_sku} className="flex justify-between text-sm gap-2">
+                            <span className="text-slate-600 truncate flex-1 min-w-0">
                               <span className="mr-1">{idx === 0 ? "🥇" : idx === 1 ? "🥈" : "🥉"}</span>
                               {p.producto_nombre}
                             </span>
-                            <span className="font-medium" style={{ color: BRAND_COLORS.primary }}>
+                            <span className="font-medium shrink-0" style={{ color: BRAND_COLORS.primary }}>
                               {formatCurrency(p.facturado)}
                             </span>
                           </div>

@@ -939,14 +939,6 @@ export interface AjusteCuadre {
   created_at: string
 }
 
-export interface CrearAjusteParams {
-  fecha: string
-  zreport_id: string
-  tipo: "ajuste_positivo" | "ajuste_negativo" | "comentario"
-  importe: number
-  descripcion?: string
-}
-
 export type CuadreEstadoFilter = "todos" | "pendientes" | "cuadrados" | "descuadres"
 
 // Mantener el tipo antiguo por compatibilidad
@@ -1063,4 +1055,66 @@ export interface FoodCostSummary {
     productos: number
     food_cost_promedio: number
   }[]
+}
+
+// ============================================
+// COMPRAS
+// ============================================
+
+// NEW: Tipos para la pestaña Compras
+
+export interface CompraPedidoItem {
+  name: string
+  quantityOrdered: number
+  quantityReceived: number
+}
+
+export interface CompraPedido {
+  id: string
+  gstock_supplier_id: string
+  proveedor: string
+  numero_pedido: string
+  fecha_pedido: string
+  pedido_base: number
+  pedido_iva: number
+  pedido_total: number
+  pedido_observaciones: string | null
+  pedido_items: CompraPedidoItem[] | null
+  estado: "pendiente" | "enviado" | "autorizado" | "recepcionado"
+  estado_label: string
+  estado_color: string
+  // Datos del albarán (solo si recepcionado)
+  albaran_id: string | null
+  albaran_ref: string | null
+  albaran_fecha: string | null
+  albaran_total: number | null
+  importe_coincide: boolean | null
+  diferencia_importe: number | null
+  albaran_incidencias: string | null
+}
+
+export interface CompraKPIs {
+  pedidos_pendientes: number
+  importe_pedidos_pendientes: number
+  albaranes_sin_facturar: number
+  importe_sin_facturar: number
+  facturas_pendientes_revision: number
+  facturas_conciliadas: number
+}
+
+export interface CompraAlbaranDisponible {
+  id: string
+  numero_albaran: string // Número del albarán
+  proveedor: string // Nombre del proveedor
+  fecha: string // Fecha
+  importe_total: number // Importe en €
+  gstock_supplier_id: string | null
+}
+
+export interface CompraProveedor {
+  gstock_supplier_id: string
+  nombre: string
+  nif: string | null
+  num_pedidos: number
+  num_albaranes: number
 }
