@@ -646,7 +646,9 @@ export default function FacturacionPage() {
       </div>
 
       {/* Menu Bar */}
-      <MenuBar items={facturacionMenuItems} activeItem={activeTab} onItemClick={setActiveTab} className="mb-6" />
+      <div className="flex justify-center">
+        <MenuBar items={facturacionMenuItems} activeItem={activeTab} onItemClick={setActiveTab} className="mb-6" />
+      </div>
 
       {/* Tab Facturas */}
       {activeTab === "Facturas" && (
@@ -881,7 +883,7 @@ export default function FacturacionPage() {
                               <tbody>
                                 {(facturasZReport[item.zreport_id] || []).map((factura) => (
                                   <tr key={factura.factura_id} className="border-b border-slate-100">
-                                    <td className="py-2 px-3">{factura.numero_completo}</td>
+                                    <td className="py-2 px-3">{factura.cuentica_identifier}</td>
                                     <td className="py-2 px-3">{factura.hora}</td>
                                     <td className="py-2 px-3 text-right font-medium">
                                       {formatCurrencyES(factura.importe)}
@@ -1167,7 +1169,7 @@ export default function FacturacionPage() {
           <DialogHeader>
             <DialogTitle>Mover Factura</DialogTitle>
             <DialogDescription>
-              Selecciona el Z-Report destino para la factura {modalMoverFactura.factura?.numero_completo}
+              Selecciona el Z-Report destino para la factura {modalMoverFactura.factura?.cuentica_identifier}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
@@ -1222,8 +1224,10 @@ export default function FacturacionPage() {
                     >
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="font-medium">{f.numero_completo}</p>
-                          <p className="text-sm text-slate-500">{f.hora}</p>
+                          <p className="font-medium">{f.cuentica_identifier}</p>
+                          <p className="text-sm text-slate-500">
+                            {f.hora} · Origen: {f.zreport_origen}
+                          </p>
                         </div>
                         <p className="font-medium">{formatCurrencyES(f.importe)}</p>
                       </div>
@@ -1249,7 +1253,7 @@ export default function FacturacionPage() {
                     >
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="font-medium">{f.numero_completo}</p>
+                          <p className="font-medium">{f.cuentica_identifier}</p>
                           <p className="text-sm text-slate-500">
                             {f.hora} · Origen: {f.zreport_origen}
                           </p>
