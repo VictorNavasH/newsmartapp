@@ -852,13 +852,13 @@ export default function ComprasPage() {
       </div>
 
       <Sheet open={!!pedidoDetalle} onOpenChange={(open) => !open && setPedidoDetalle(null)}>
-        <SheetContent side="right" className="w-[450px] sm:max-w-[450px] overflow-y-auto">
-          <SheetHeader className="border-b border-slate-100 pb-4">
+        <SheetContent side="right" className="w-[450px] sm:max-w-[450px] overflow-y-auto p-0">
+          <SheetHeader className="border-b border-slate-100 pb-4 px-6 pt-6">
             <SheetTitle className="text-lg font-bold text-[#364f6b]">Detalle Pedido</SheetTitle>
           </SheetHeader>
 
           {pedidoDetalle && (
-            <div className="py-4 space-y-6">
+            <div className="px-6 py-4 space-y-6">
               {/* Información básica */}
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
@@ -950,7 +950,7 @@ export default function ComprasPage() {
                 </div>
               )}
 
-              {/* Tabla de productos (solo si hay items) */}
+              {/*Tabla de productos (solo si hay items) */}
               {pedidoDetalle.pedido_items && pedidoDetalle.pedido_items.length > 0 && (
                 <div className="space-y-3">
                   <h4 className="font-semibold text-slate-700 text-sm">
