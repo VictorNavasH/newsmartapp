@@ -1067,6 +1067,7 @@ export interface CompraPedidoItem {
   name: string
   quantityOrdered: number
   quantityReceived: number
+  formatOrderedId: number | null
 }
 
 export interface CompraPedido {
@@ -1117,4 +1118,10 @@ export interface CompraProveedor {
   nif: string | null
   num_pedidos: number
   num_albaranes: number
+}
+
+// NEW: Añadir tipo ProductFormat para formatos de productos
+export interface ProductFormat {
+  gstock_format_id: number
+  name: string
 }

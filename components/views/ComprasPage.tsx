@@ -38,6 +38,7 @@ import {
   vincularAlbaranes,
   confirmarConciliacion,
   descartarConciliacion,
+  fetchProductFormats, // Añadir import de fetchProductFormats
 } from "@/lib/comprasService"
 import { BRAND_COLORS } from "@/constants"
 import type {
@@ -94,6 +95,7 @@ export default function ComprasPage() {
   const [albaranesDisponibles, setAlbaranesDisponibles] = useState<CompraAlbaranDisponible[]>([])
   const [proveedores, setProveedores] = useState<CompraProveedor[]>([])
   const [kpis, setKpis] = useState<CompraKPIs | null>(null)
+  const [formatosMap, setFormatosMap] = useState<Map<string, string>>(new Map()) // Cambiado a Map<string, string>
 
   // Filters - Pedidos
   const [estadoPedidoFilter, setEstadoPedidoFilter] = useState<string>("todos")
@@ -131,6 +133,12 @@ export default function ComprasPage() {
       iconColor: "text-[#17c3b2]",
     },
   ]
+
+  useEffect(() => {
+    fetchProductFormats().then((data) => {
+      setFormatosMap(new Map(data.map((f) => [String(f.gstock_format_id), f.name])))
+    })
+  }, [])
 
   // Load data
   useEffect(() => {
@@ -961,6 +969,7 @@ export default function ComprasPage() {
                       <thead className="bg-slate-50">
                         <tr>
                           <th className="text-left py-2 px-3 font-semibold text-slate-600">Producto</th>
+                          <th className="text-left py-2 px-3 font-semibold text-slate-600">Formato</th>
                           <th className="text-right py-2 px-3 font-semibold text-slate-600">Pedido</th>
                           {pedidoDetalle.estado === "recepcionado" && (
                             <>
@@ -973,9 +982,13 @@ export default function ComprasPage() {
                       <tbody>
                         {pedidoDetalle.pedido_items.map((item, idx) => {
                           const isOk = Math.abs(item.quantityOrdered - item.quantityReceived) <= 0.1
+                          const formatName = item.formatOrderedId
+                            ? formatosMap.get(String(item.formatOrderedId)) || "-"
+                            : "-"
                           return (
                             <tr key={idx} className="border-t border-slate-100">
                               <td className="py-2 px-3 text-slate-800">{item.name}</td>
+                              <td className="py-2 px-3 text-slate-600">{formatName}</td>
                               <td className="py-2 px-3 text-right text-slate-600">{item.quantityOrdered}</td>
                               {pedidoDetalle.estado === "recepcionado" && (
                                 <>
