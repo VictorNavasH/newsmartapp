@@ -1494,6 +1494,35 @@ export const fetchExpensesByTags = async (
   }
 }
 
+export const fetchExpensesByDueDate = async (
+  dueDateStart: string,
+  dueDateEnd: string,
+  status?: "paid" | "pending" | "overdue",
+): Promise<Expense[]> => {
+  try {
+    const params: Record<string, any> = {
+      p_due_date_inicio: dueDateStart,
+      p_due_date_fin: dueDateEnd,
+    }
+
+    if (status) {
+      params.p_status = status
+    }
+
+    const { data, error } = await supabase.rpc("get_gastos_by_due_date", params)
+
+    if (error) {
+      console.error("[v0] Error fetching expenses by due date:", error)
+      return []
+    }
+
+    return data || []
+  } catch (err) {
+    console.error("[v0] Error in fetchExpensesByDueDate:", err)
+    return []
+  }
+}
+
 // Fetch expense summary by tags
 export const fetchExpenseSummaryByTags = async (
   tags?: string[],

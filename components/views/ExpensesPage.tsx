@@ -15,6 +15,9 @@ import {
   ChevronUp,
   TrendingUp,
   Receipt,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { TremorCard, TremorTitle } from "@/components/ui/TremorCard"
@@ -23,11 +26,31 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { MenuBar } from "@/components/ui/menu-bar"
-import { fetchExpenseTags, fetchExpensesByTags, fetchExpenseSummaryByTags } from "@/lib/dataService"
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import {
+  fetchExpenseTags,
+  fetchExpensesByTags,
+  fetchExpenseSummaryByTags,
+  fetchExpensesByDueDate,
+} from "@/lib/dataService"
 import { BRAND_COLORS } from "@/constants"
 import type { ExpenseTag, Expense, ExpenseTagSummary, DateRange } from "@/types"
 import { ResponsiveContainer, PieChart as RechartsPieChart, Pie, Tooltip as RechartsTooltip } from "recharts"
-import { format, startOfMonth } from "date-fns"
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  addDays,
+  addMonths,
+  subMonths,
+  isSameMonth,
+  isSameDay,
+  parseISO,
+  isToday,
+} from "date-fns"
+import { es } from "date-fns/locale"
 
 type StatusFilter = "all" | "partial" | "pending" | "overdue"
 type ProviderStatusFilter = "all" | "partial" | "pending" | "overdue"
@@ -57,7 +80,7 @@ const CATEGORY_COLORS = [
   "#f97316",
 ]
 
-type ExpenseTab = "categoria" | "proveedor"
+type ExpenseTab = "categoria" | "proveedor" | "calendario"
 
 export default function ExpensesPage() {
   // State
@@ -83,6 +106,12 @@ export default function ExpensesPage() {
   const [selectedProvider, setSelectedProvider] = useState<string>("all")
   const [providerStatusFilter, setProviderStatusFilter] = useState<ProviderStatusFilter>("all")
 
+  // State for calendar
+  const [calendarMonth, setCalendarMonth] = useState<Date>(new Date())
+  const [calendarExpenses, setCalendarExpenses] = useState<Expense[]>([])
+  const [loadingCalendar, setLoadingCalendar] = useState(false)
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null)
+
   // useRef para medir altura de tarjeta izquierda y aplicarla a la derecha
   const leftCardRef = useRef<HTMLDivElement>(null)
   const [rightCardHeight, setRightCardHeight] = useState<number | undefined>(undefined)
@@ -102,16 +131,25 @@ export default function ExpensesPage() {
       gradient: "radial-gradient(circle, rgba(34,124,157,0.15) 0%, rgba(34,124,157,0) 70%)",
       iconColor: "text-[#227c9d]",
     },
+    {
+      icon: Calendar,
+      label: "Calendario",
+      href: "#",
+      gradient: "radial-gradient(circle, rgba(255,203,119,0.15) 0%, rgba(255,203,119,0) 70%)",
+      iconColor: "text-[#ffcb77]",
+    },
   ]
 
   const handleExpenseMenuClick = (label: string) => {
     if (label === "Por Categoría") setActiveTab("categoria")
     else if (label === "Por Proveedor") setActiveTab("proveedor")
+    else if (label === "Calendario") setActiveTab("calendario")
   }
 
   const getActiveMenuLabel = () => {
     if (activeTab === "categoria") return "Por Categoría"
-    return "Por Proveedor"
+    if (activeTab === "proveedor") return "Por Proveedor"
+    return "Calendario"
   }
 
   // Data for pie chart
@@ -235,6 +273,24 @@ export default function ExpensesPage() {
 
     loadExpenses()
   }, [selectedTags, dateRange, statusFilter])
+
+  // Cargar gastos para el calendario usando la nueva RPC
+  useEffect(() => {
+    if (activeTab !== "calendario") return
+
+    const loadCalendarExpenses = async () => {
+      setLoadingCalendar(true)
+      const startDate = format(startOfMonth(calendarMonth), "yyyy-MM-dd")
+      const endDate = format(endOfMonth(calendarMonth), "yyyy-MM-dd")
+
+      // Usar la nueva RPC que filtra por due_date en lugar de fecha de documento
+      const data = await fetchExpensesByDueDate(startDate, endDate)
+      setCalendarExpenses(data)
+      setLoadingCalendar(false)
+    }
+
+    loadCalendarExpenses()
+  }, [activeTab, calendarMonth])
 
   // Toggle tag selection
   const toggleTag = (tagName: string) => {
@@ -374,6 +430,54 @@ export default function ExpensesPage() {
   const handleDateChange = (range: { from: Date; to: Date }) => {
     setDateRange(range)
   }
+
+  // Function to get expenses for a specific day
+  const getExpensesForDay = (day: Date): Expense[] => {
+    return calendarExpenses.filter((expense) => {
+      if (!expense.due_date) return false
+      const dueDate = parseISO(expense.due_date)
+      return isSameDay(dueDate, day)
+    })
+  }
+
+  // Function to get the predominant status of a day
+  const getDayStatus = (dayExpenses: Expense[]): "partial" | "pending" | "overdue" | null => {
+    if (dayExpenses.length === 0) return null
+    if (dayExpenses.some((e) => e.status === "overdue")) return "overdue"
+    if (dayExpenses.some((e) => e.status === "pending")) return "pending"
+    return "partial"
+  }
+
+  // Generate calendar days
+  const calendarDays = useMemo(() => {
+    const monthStart = startOfMonth(calendarMonth)
+    const monthEnd = endOfMonth(calendarMonth)
+    const startDate = startOfWeek(monthStart, { weekStartsOn: 1 })
+    const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 })
+
+    const days: Date[] = []
+    let day = startDate
+    while (day <= endDate) {
+      days.push(day)
+      day = addDays(day, 1)
+    }
+    return days
+  }, [calendarMonth])
+
+  // Calendar KPIs
+  const calendarKPIs = useMemo(() => {
+    const total = calendarExpenses.reduce((sum, e) => sum + e.total_amount, 0)
+    const pagado = calendarExpenses.filter((e) => e.status === "partial").reduce((sum, e) => sum + e.total_amount, 0)
+    const pendiente = calendarExpenses.filter((e) => e.status === "pending").reduce((sum, e) => sum + e.total_amount, 0)
+    const vencido = calendarExpenses.filter((e) => e.status === "overdue").reduce((sum, e) => sum + e.total_amount, 0)
+    return { total, pagado, pendiente, vencido }
+  }, [calendarExpenses])
+
+  // Expenses for the selected day
+  const selectedDayExpenses = useMemo(() => {
+    if (!selectedDay) return []
+    return getExpensesForDay(selectedDay)
+  }, [selectedDay, calendarExpenses])
 
   return (
     <div className="relative min-h-screen bg-slate-50 pb-20">
@@ -1233,6 +1337,258 @@ export default function ExpensesPage() {
             </TremorCard>
           </div>
         )}
+
+        {activeTab === "calendario" && (
+          <div className="space-y-6">
+            {/* KPIs del mes */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <TremorCard>
+                <div className="flex items-center gap-2 mb-2">
+                  <FileText className="w-4 h-4 text-[#02b1c4]" />
+                  <span className="text-xs font-medium text-slate-500">Total Mes</span>
+                </div>
+                <p className="text-2xl font-bold text-[#364f6b]">{formatCurrency(calendarKPIs.total)}</p>
+              </TremorCard>
+              <TremorCard>
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle className="w-4 h-4 text-[#17c3b2]" />
+                  <span className="text-xs font-medium text-slate-500">Pagado</span>
+                </div>
+                <p className="text-2xl font-bold text-[#17c3b2]">{formatCurrency(calendarKPIs.pagado)}</p>
+              </TremorCard>
+              <TremorCard>
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock className="w-4 h-4 text-[#ffcb77]" />
+                  <span className="text-xs font-medium text-slate-500">Pendiente</span>
+                </div>
+                <p className="text-2xl font-bold text-[#ffcb77]">{formatCurrency(calendarKPIs.pendiente)}</p>
+              </TremorCard>
+              <TremorCard>
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle className="w-4 h-4 text-[#fe6d73]" />
+                  <span className="text-xs font-medium text-slate-500">Vencido</span>
+                </div>
+                <p className="text-2xl font-bold text-[#fe6d73]">{formatCurrency(calendarKPIs.vencido)}</p>
+              </TremorCard>
+            </div>
+
+            {/* Calendario */}
+            <TremorCard>
+              {/* Header del calendario */}
+              <div className="flex items-center justify-between mb-6">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setCalendarMonth(subMonths(calendarMonth, 1))}
+                  className="hover:bg-slate-100"
+                >
+                  <ChevronLeft className="w-5 h-5 text-slate-600" />
+                </Button>
+                <h2 className="text-xl font-bold text-[#364f6b] capitalize">
+                  {format(calendarMonth, "MMMM yyyy", { locale: es })}
+                </h2>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setCalendarMonth(addMonths(calendarMonth, 1))}
+                  className="hover:bg-slate-100"
+                >
+                  <ChevronRight className="w-5 h-5 text-slate-600" />
+                </Button>
+              </div>
+
+              {/* Dias de la semana */}
+              <div className="grid grid-cols-7 gap-1 mb-2">
+                {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((day) => (
+                  <div key={day} className="text-center text-xs font-bold text-slate-500 py-2">
+                    {day}
+                  </div>
+                ))}
+              </div>
+
+              {/* Grid del calendario */}
+              {loadingCalendar ? (
+                <div className="flex items-center justify-center py-20">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#02b1c4]"></div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-7 gap-1">
+                  {calendarDays.map((day, idx) => {
+                    const dayExpenses = getExpensesForDay(day)
+                    const dayStatus = getDayStatus(dayExpenses)
+                    const isCurrentMonth = isSameMonth(day, calendarMonth)
+                    const isSelected = selectedDay && isSameDay(day, selectedDay)
+                    const dayIsToday = isToday(day)
+                    const totalDay = dayExpenses.reduce((sum, e) => sum + e.total_amount, 0)
+
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => dayExpenses.length > 0 && setSelectedDay(day)}
+                        disabled={dayExpenses.length === 0}
+                        className={`
+                          relative min-h-[80px] p-2 rounded-lg border transition-all
+                          ${!isCurrentMonth ? "bg-slate-50 text-slate-300" : "bg-white"}
+                          ${isSelected ? "ring-2 ring-[#02b1c4] border-[#02b1c4]" : "border-slate-100"}
+                          ${dayExpenses.length > 0 ? "cursor-pointer hover:border-[#02b1c4]/50 hover:shadow-sm" : "cursor-default"}
+                          ${dayIsToday ? "bg-[#02b1c4]/5" : ""}
+                        `}
+                      >
+                        <span
+                          className={`
+                            text-sm font-medium
+                            ${!isCurrentMonth ? "text-slate-300" : "text-slate-700"}
+                            ${dayIsToday ? "text-[#02b1c4] font-bold" : ""}
+                          `}
+                        >
+                          {format(day, "d")}
+                        </span>
+
+                        {dayExpenses.length > 0 && isCurrentMonth && (
+                          <div className="mt-1 space-y-1">
+                            {/* Indicador de cantidad de pagos */}
+                            <div
+                              className={`
+                                inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold text-white
+                                ${dayStatus === "overdue" ? "bg-[#fe6d73]" : ""}
+                                ${dayStatus === "pending" ? "bg-[#ffcb77]" : ""}
+                                ${dayStatus === "partial" ? "bg-[#17c3b2]" : ""}
+                              `}
+                            >
+                              {dayExpenses.length}
+                            </div>
+                            {/* Importe total del dia */}
+                            <p className="text-[10px] font-medium text-slate-500 truncate">
+                              {totalDay.toLocaleString("es-ES", { maximumFractionDigits: 0 })} €
+                            </p>
+                          </div>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Leyenda */}
+              <div className="flex items-center justify-center gap-6 mt-6 pt-4 border-t border-slate-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-[#17c3b2]"></div>
+                  <span className="text-xs text-slate-600">Pagado</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-[#ffcb77]"></div>
+                  <span className="text-xs text-slate-600">Pendiente</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-[#fe6d73]"></div>
+                  <span className="text-xs text-slate-600">Vencido</span>
+                </div>
+              </div>
+            </TremorCard>
+          </div>
+        )}
+
+        <Sheet open={!!selectedDay} onOpenChange={(open) => !open && setSelectedDay(null)}>
+          <SheetContent className="w-[400px] sm:w-[450px] p-0 overflow-y-auto">
+            <SheetHeader className="px-6 pt-6 pb-4 border-b border-slate-100">
+              <SheetTitle className="text-lg font-bold text-[#364f6b]">
+                Pagos del {selectedDay ? format(selectedDay, "d 'de' MMMM", { locale: es }) : ""}
+              </SheetTitle>
+            </SheetHeader>
+
+            <div className="px-6 py-4 space-y-4">
+              {/* Resumen del dia */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="p-3 rounded-lg bg-[#17c3b2]/10 border border-[#17c3b2]/20 text-center">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Pagado</p>
+                  <p className="text-sm font-bold text-[#17c3b2]">
+                    {formatCurrency(
+                      selectedDayExpenses
+                        .filter((e) => e.status === "partial")
+                        .reduce((sum, e) => sum + e.total_amount, 0),
+                    )}
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg bg-[#ffcb77]/10 border border-[#ffcb77]/20 text-center">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Pendiente</p>
+                  <p className="text-sm font-bold text-[#ffcb77]">
+                    {formatCurrency(
+                      selectedDayExpenses
+                        .filter((e) => e.status === "pending")
+                        .reduce((sum, e) => sum + e.total_amount, 0),
+                    )}
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg bg-[#fe6d73]/10 border border-[#fe6d73]/20 text-center">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Vencido</p>
+                  <p className="text-sm font-bold text-[#fe6d73]">
+                    {formatCurrency(
+                      selectedDayExpenses
+                        .filter((e) => e.status === "overdue")
+                        .reduce((sum, e) => sum + e.total_amount, 0),
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              {/* Lista de pagos */}
+              <div className="space-y-3">
+                {selectedDayExpenses.map((expense) => (
+                  <div
+                    key={expense.id}
+                    className={`
+                      p-4 rounded-xl border bg-white
+                      ${expense.status === "overdue" ? "border-l-4 border-l-[#fe6d73]" : ""}
+                      ${expense.status === "pending" ? "border-l-4 border-l-[#ffcb77]" : ""}
+                      ${expense.status === "partial" ? "border-l-4 border-l-[#17c3b2]" : ""}
+                    `}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <p className="font-bold text-[#364f6b]">{expense.proveedor}</p>
+                        <p className="text-xs text-slate-500">{expense.document_number}</p>
+                      </div>
+                      <Badge
+                        className={`
+                          ${expense.status === "partial" ? "bg-[#17c3b2]/15 text-[#17c3b2]" : ""}
+                          ${expense.status === "pending" ? "bg-[#ffcb77]/15 text-[#ffcb77]" : ""}
+                          ${expense.status === "overdue" ? "bg-[#fe6d73]/15 text-[#fe6d73]" : ""}
+                        `}
+                      >
+                        {expense.status === "partial" && "Pagado"}
+                        {expense.status === "pending" && "Pendiente"}
+                        {expense.status === "overdue" && "Vencido"}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-slate-500">{expense.categoria_nombre}</span>
+                      <span className="text-lg font-bold text-[#364f6b]">{formatCurrency(expense.total_amount)}</span>
+                    </div>
+                  </div>
+                ))}
+
+                {selectedDayExpenses.length === 0 && (
+                  <div className="text-center py-8 text-slate-400">
+                    <Calendar className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>No hay pagos para este día</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Total del dia */}
+              {selectedDayExpenses.length > 0 && (
+                <div className="pt-4 border-t border-slate-100">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-slate-500">Total del día</span>
+                    <span className="text-xl font-bold text-[#364f6b]">
+                      {formatCurrency(selectedDayExpenses.reduce((sum, e) => sum + e.total_amount, 0))}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
     </div>
   )

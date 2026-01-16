@@ -267,9 +267,12 @@ export default function ProductsPage() {
     return Array.from(map.values())
   }, [filteredProducts])
 
-  // Sorted products
+  // Sorted products - Filtrar productos sin ventas reales (solo voids)
   const sortedProducts = useMemo(() => {
-    return [...aggregatedProducts].sort((a, b) => {
+    // Excluir productos con unidades = 0 o facturado = 0 (solo tuvieron anulaciones)
+    const productosConVentas = aggregatedProducts.filter((p) => p.unidades > 0 && p.facturado > 0)
+
+    return [...productosConVentas].sort((a, b) => {
       const aVal = a[sortField]
       const bVal = b[sortField]
       if (typeof aVal === "string" && typeof bVal === "string") {

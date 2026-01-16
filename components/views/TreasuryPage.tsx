@@ -934,20 +934,22 @@ export default function TreasuryPage() {
 
   return (
     <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
-      <PageHeader icon={Landmark} title="Tesorería" subtitle="Control de cuentas bancarias y movimientos" />
-
-      {/* Date Range Picker */}
-      <div className="flex justify-end">
-        <DateRangePickerExpenses
-          from={dateRange.from}
-          to={dateRange.to}
-          onChange={(range) => {
-            if (range.from && range.to) {
-              setDateRange({ from: range.from, to: range.to })
-            }
-          }}
-        />
-      </div>
+      <PageHeader
+        icon={Landmark}
+        title="Tesorería"
+        subtitle="Control de cuentas bancarias y movimientos"
+        actions={
+          <DateRangePickerExpenses
+            from={dateRange.from}
+            to={dateRange.to}
+            onChange={(range) => {
+              if (range.from && range.to) {
+                setDateRange({ from: range.from, to: range.to })
+              }
+            }}
+          />
+        }
+      />
 
       <div className="flex justify-center mb-6">
         <MenuBar items={treasuryMenuItems} activeItem={activeTab} onItemClick={(label) => setActiveTab(label)} />
