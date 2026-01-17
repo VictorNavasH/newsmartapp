@@ -16,6 +16,11 @@ import {
   ShoppingCart,
   FileText,
   Eye,
+  BarChart3,
+  ChevronRight,
+  ChevronDown,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { TremorCard, TremorTitle } from "@/components/ui/TremorCard"
@@ -38,7 +43,12 @@ import {
   vincularAlbaranes,
   confirmarConciliacion,
   descartarConciliacion,
-  fetchProductFormats, // Añadir import de fetchProductFormats
+  fetchProductFormats,
+  fetchComprasAnalisisKPIs,
+  fetchComprasDistribucion,
+  fetchComprasTopProductos,
+  fetchComprasEvolucionMensual,
+  fetchComprasTablaJerarquica,
 } from "@/lib/comprasService"
 import { BRAND_COLORS } from "@/constants"
 import type {
@@ -48,12 +58,29 @@ import type {
   CompraProveedor,
   CompraKPIs,
   DateRange,
+  CompraDistribucionCategoria,
+  CompraTablaJerarquica,
+  CompraAnalisisKPI,
+  CompraTopProducto,
+  CompraEvolucionMensual,
 } from "@/types"
-import { format, startOfMonth } from "date-fns"
+import { format, startOfMonth, subMonths } from "date-fns"
 import { es } from "date-fns/locale"
 import { toast } from "sonner"
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts"
 
-type ComprasTab = "pedidos" | "conciliacion"
+type ComprasTab = "pedidos" | "conciliacion" | "analisis"
 
 // Colores de estados de pedidos
 const ESTADO_PEDIDO_CONFIG: Record<string, { label: string }> = {
@@ -80,6 +107,8 @@ const ESTADO_PAGO_CONFIG: Record<string, { label: string; color: string }> = {
   abono: { label: "Abono", color: "#02b1c4" },
 }
 
+const CHART_COLORS = ["#02b1c4", "#17c3b2", "#ffcb77", "#fe6d73", "#364f6b", "#94a3b8"]
+
 export default function ComprasPage() {
   // State
   const [activeTab, setActiveTab] = useState<ComprasTab>("pedidos")
@@ -95,7 +124,17 @@ export default function ComprasPage() {
   const [albaranesDisponibles, setAlbaranesDisponibles] = useState<CompraAlbaranDisponible[]>([])
   const [proveedores, setProveedores] = useState<CompraProveedor[]>([])
   const [kpis, setKpis] = useState<CompraKPIs | null>(null)
-  const [formatosMap, setFormatosMap] = useState<Map<string, string>>(new Map()) // Cambiado a Map<string, string>
+  const [formatosMap, setFormatosMap] = useState<Map<string, string>>(new Map())
+
+  const [analisisKPIs, setAnalisisKPIs] = useState<CompraAnalisisKPI | null>(null)
+  const [evolucionMensual, setEvolucionMensual] = useState<CompraEvolucionMensual[]>([])
+  const [distribucion, setDistribucion] = useState<CompraDistribucionCategoria[]>([])
+  const [topProductos, setTopProductos] = useState<CompraTopProducto[]>([])
+  const [tablaJerarquica, setTablaJerarquica] = useState<CompraTablaJerarquica[]>([])
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+  const [selectedFamilia, setSelectedFamilia] = useState<string | null>(null)
+  const [analisisLoading, setAnalisisLoading] = useState(false)
+  const [periodoAnalisis, setPeriodoAnalisis] = useState<string>("3m")
 
   // Filters - Pedidos
   const [estadoPedidoFilter, setEstadoPedidoFilter] = useState<string>("todos")
@@ -116,7 +155,6 @@ export default function ComprasPage() {
   // State for drawer of order detail
   const [pedidoDetalle, setPedidoDetalle] = useState<CompraPedido | null>(null)
 
-  // Menu items
   const comprasMenuItems = [
     {
       icon: Package,
@@ -131,6 +169,13 @@ export default function ComprasPage() {
       href: "#",
       gradient: "radial-gradient(circle, rgba(23,195,178,0.15) 0%, rgba(23,195,178,0) 70%)",
       iconColor: "text-[#17c3b2]",
+    },
+    {
+      icon: BarChart3,
+      label: "Análisis",
+      href: "#",
+      gradient: "radial-gradient(circle, rgba(255,203,119,0.15) 0%, rgba(255,203,119,0) 70%)",
+      iconColor: "text-[#ffcb77]",
     },
   ]
 
@@ -163,6 +208,60 @@ export default function ComprasPage() {
     setProveedores(proveedoresData)
     setKpis(kpisData)
     setLoading(false)
+  }
+
+  useEffect(() => {
+    if (activeTab === "analisis") {
+      loadAnalisisData()
+    }
+  }, [activeTab, periodoAnalisis, selectedFamilia])
+
+  async function loadAnalisisData() {
+    setAnalisisLoading(true)
+
+    // Calcular fechas según el periodo seleccionado
+    const today = new Date()
+    let fechaDesde: Date
+    let mesesNum: number
+    switch (periodoAnalisis) {
+      case "1m":
+        fechaDesde = subMonths(today, 1)
+        mesesNum = 1
+        break
+      case "3m":
+        fechaDesde = subMonths(today, 3)
+        mesesNum = 3
+        break
+      case "6m":
+        fechaDesde = subMonths(today, 6)
+        mesesNum = 6
+        break
+      case "12m":
+        fechaDesde = subMonths(today, 12)
+        mesesNum = 12
+        break
+      default:
+        fechaDesde = subMonths(today, 3)
+        mesesNum = 3
+    }
+
+    const fechaDesdeStr = format(fechaDesde, "yyyy-MM-dd")
+    const fechaHastaStr = format(today, "yyyy-MM-dd")
+
+    const [kpisData, distribucionData, topData, evolucionData, tablaData] = await Promise.all([
+      fetchComprasAnalisisKPIs({ fechaDesde: fechaDesdeStr, fechaHasta: fechaHastaStr }),
+      fetchComprasDistribucion({ fechaDesde: fechaDesdeStr, fechaHasta: fechaHastaStr }),
+      fetchComprasTopProductos({ fechaDesde: fechaDesdeStr, fechaHasta: fechaHastaStr, limite: 500 }),
+      fetchComprasEvolucionMensual(mesesNum),
+      fetchComprasTablaJerarquica({ fechaDesde: fechaDesdeStr, fechaHasta: fechaHastaStr }),
+    ])
+
+    setAnalisisKPIs(kpisData)
+    setDistribucion(distribucionData)
+    setTopProductos(topData)
+    setEvolucionMensual(evolucionData)
+    setTablaJerarquica(tablaData)
+    setAnalisisLoading(false)
   }
 
   // Load facturas when tab changes to conciliación
@@ -229,10 +328,22 @@ export default function ComprasPage() {
     }
   }
 
-  // Handle tab change
   const handleTabChange = (item: string) => {
     if (item === "Pedidos") setActiveTab("pedidos")
     else if (item === "Conciliación") setActiveTab("conciliacion")
+    else if (item === "Análisis") setActiveTab("analisis")
+  }
+
+  const toggleRowExpanded = (key: string) => {
+    setExpandedRows((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(key)) {
+        newSet.delete(key)
+      } else {
+        newSet.add(key)
+      }
+      return newSet
+    })
   }
 
   // Acciones de conciliación
@@ -286,6 +397,49 @@ export default function ComprasPage() {
     )
   }
 
+  // Agrupar distribución por familia
+  const distribucionAgrupada = useMemo(() => {
+    const grupos = new Map<string, { familia: string; total: number; porcentaje: number }>()
+    distribucion.forEach((item) => {
+      const existing = grupos.get(item.familia)
+      if (existing) {
+        existing.total += item.total
+        existing.porcentaje += item.porcentaje
+      } else {
+        grupos.set(item.familia, {
+          familia: item.familia,
+          total: item.total,
+          porcentaje: item.porcentaje,
+        })
+      }
+    })
+    return Array.from(grupos.values()).sort((a, b) => b.total - a.total)
+  }, [distribucion])
+
+  const distribucionPorCategoria = useMemo(() => {
+    const grupos = new Map<string, CompraDistribucionCategoria[]>()
+    distribucion.forEach((item) => {
+      const key = item.categoria
+      if (!grupos.has(key)) {
+        grupos.set(key, [])
+      }
+      grupos.get(key)!.push(item)
+    })
+    return grupos
+  }, [distribucion])
+
+  const tablaAgrupada = useMemo(() => {
+    const grupos = new Map<string, CompraTablaJerarquica[]>()
+    tablaJerarquica.forEach((item) => {
+      const key = item.categoria
+      if (!grupos.has(key)) {
+        grupos.set(key, [])
+      }
+      grupos.get(key)!.push(item)
+    })
+    return grupos
+  }, [tablaJerarquica])
+
   return (
     <div className="relative min-h-screen bg-slate-50 pb-20">
       <PageHeader icon={ShoppingCart} title="Compras" subtitle="Gestión de pedidos y conciliación de facturas" />
@@ -294,12 +448,14 @@ export default function ComprasPage() {
         <div className="flex justify-center">
           <MenuBar
             items={comprasMenuItems}
-            activeItem={activeTab === "pedidos" ? "Pedidos" : "Conciliación"}
+            activeItem={
+              activeTab === "pedidos" ? "Pedidos" : activeTab === "conciliacion" ? "Conciliación" : "Análisis"
+            }
             onItemClick={handleTabChange}
           />
         </div>
 
-        {kpis && (
+        {activeTab !== "analisis" && kpis && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Pedidos Pendientes */}
             <TremorCard>
@@ -358,7 +514,7 @@ export default function ComprasPage() {
           </div>
         )}
 
-        {loading ? (
+        {loading && activeTab !== "analisis" ? (
           <Skeleton className="h-[400px] w-full rounded-xl" />
         ) : (
           <>
@@ -855,11 +1011,410 @@ export default function ComprasPage() {
                 </div>
               </>
             )}
+
+            {activeTab === "analisis" && (
+              <>
+                {/* Selector de período */}
+                <div className="flex items-center gap-2">
+                  <div className="flex bg-white rounded-lg border border-slate-200 p-1">
+                    {[
+                      { value: "1m", label: "1 mes" },
+                      { value: "3m", label: "3 meses" },
+                      { value: "6m", label: "6 meses" },
+                      { value: "12m", label: "12 meses" },
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => setPeriodoAnalisis(option.value)}
+                        className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                          option.value === periodoAnalisis
+                            ? "bg-[#02b1c4] text-white"
+                            : "text-slate-600 hover:bg-slate-100"
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {selectedFamilia && (
+                    <Badge
+                      variant="outline"
+                      className="bg-[#02b1c4]/10 text-[#02b1c4] border-[#02b1c4]/30 cursor-pointer"
+                      onClick={() => setSelectedFamilia(null)}
+                    >
+                      {selectedFamilia} <X className="h-3 w-3 ml-1" />
+                    </Badge>
+                  )}
+
+                  <Button variant="outline" size="icon" onClick={loadAnalisisData} className="ml-auto bg-transparent">
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                {analisisLoading ? (
+                  <Skeleton className="h-[400px] w-full rounded-xl" />
+                ) : (
+                  <>
+                    {/* KPIs de Análisis */}
+                    {analisisKPIs && (
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <TremorCard>
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <ShoppingCart className="w-5 h-5 text-[#02b1c4]" />
+                              <h3 className="font-bold text-[#364f6b] text-sm">Total Compras</h3>
+                            </div>
+                          </div>
+                          <p className="text-3xl font-bold text-[#364f6b]">
+                            {formatCurrency(analisisKPIs.total_compras)}
+                          </p>
+                          <p className="text-sm text-slate-500 mt-1">en el período</p>
+                        </TremorCard>
+
+                        <TremorCard>
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <FileText className="w-5 h-5 text-[#17c3b2]" />
+                              <h3 className="font-bold text-[#364f6b] text-sm">Albaranes</h3>
+                            </div>
+                          </div>
+                          <p className="text-3xl font-bold text-[#364f6b]">{analisisKPIs.num_albaranes}</p>
+                          <p className="text-sm text-slate-500 mt-1">recepcionados</p>
+                        </TremorCard>
+
+                        <TremorCard>
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <Package className="w-5 h-5 text-[#ffcb77]" />
+                              <h3 className="font-bold text-[#364f6b] text-sm">Ticket Medio</h3>
+                            </div>
+                          </div>
+                          <p className="text-3xl font-bold text-[#364f6b]">
+                            {formatCurrency(analisisKPIs.ticket_medio)}
+                          </p>
+                          <p className="text-sm text-slate-500 mt-1">por albarán</p>
+                        </TremorCard>
+
+                        <TremorCard>
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              {(analisisKPIs.variacion_vs_anterior ?? 0) >= 0 ? (
+                                <TrendingUp className="w-5 h-5 text-[#fe6d73]" />
+                              ) : (
+                                <TrendingDown className="w-5 h-5 text-[#17c3b2]" />
+                              )}
+                              <h3 className="font-bold text-[#364f6b] text-sm">vs. Período Anterior</h3>
+                            </div>
+                          </div>
+                          <p
+                            className={`text-3xl font-bold ${(analisisKPIs.variacion_vs_anterior ?? 0) >= 0 ? "text-[#fe6d73]" : "text-[#17c3b2]"}`}
+                          >
+                            {(analisisKPIs.variacion_vs_anterior ?? 0) >= 0 ? "+" : ""}
+                            {(analisisKPIs.variacion_vs_anterior ?? 0).toFixed(1)}%
+                          </p>
+                          <p className="text-sm text-slate-500 mt-1">variación</p>
+                        </TremorCard>
+                      </div>
+                    )}
+
+                    {/* Gráficos */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* Evolución Mensual */}
+                      <TremorCard>
+                        <TremorTitle>Evolución Mensual</TremorTitle>
+                        <div className="h-[300px] mt-4">
+                          {evolucionMensual.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                              <LineChart data={evolucionMensual}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                                <XAxis dataKey="mes_label" tick={{ fill: "#64748b", fontSize: 12 }} />
+                                <YAxis
+                                  tick={{ fill: "#64748b", fontSize: 12 }}
+                                  tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                                />
+                                <RechartsTooltip
+                                  contentStyle={{
+                                    backgroundColor: "white",
+                                    border: "1px solid #e2e8f0",
+                                    borderRadius: "8px",
+                                  }}
+                                  formatter={(value: number) => [formatCurrency(value), "Total"]}
+                                />
+                                <Line
+                                  type="monotone"
+                                  dataKey="total"
+                                  stroke="#02b1c4"
+                                  strokeWidth={3}
+                                  dot={{ fill: "#02b1c4", strokeWidth: 2, r: 4 }}
+                                  activeDot={{ r: 6 }}
+                                />
+                              </LineChart>
+                            </ResponsiveContainer>
+                          ) : (
+                            <div className="flex items-center justify-center h-full text-slate-400">
+                              Sin datos para el período
+                            </div>
+                          )}
+                        </div>
+                      </TremorCard>
+
+                      {/* Distribución por Familia */}
+                      <TremorCard>
+                        <TremorTitle>Distribución por Familia</TremorTitle>
+                        <p className="text-sm text-slate-500 mb-2">Click en una porción para filtrar</p>
+                        <div className="flex flex-col lg:flex-row gap-4">
+                          {/* Gráfico Donut */}
+                          <div className="h-[200px] lg:w-1/2">
+                            {distribucionAgrupada.length > 0 ? (
+                              <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                  <Pie
+                                    data={distribucionAgrupada}
+                                    dataKey="total"
+                                    nameKey="familia"
+                                    cx="50%"
+                                    cy="50%"
+                                    outerRadius={80}
+                                    onClick={(_, index) => {
+                                      const item = distribucionAgrupada[index]
+                                      if (selectedFamilia === item.familia) {
+                                        setSelectedFamilia(null)
+                                      } else {
+                                        setSelectedFamilia(item.familia)
+                                      }
+                                    }}
+                                    style={{ cursor: "pointer" }}
+                                  >
+                                    {distribucionAgrupada.map((entry, index) => (
+                                      <Cell
+                                        key={`cell-${index}`}
+                                        fill={CHART_COLORS[index % CHART_COLORS.length]}
+                                        opacity={selectedFamilia && selectedFamilia !== entry.familia ? 0.3 : 1}
+                                      />
+                                    ))}
+                                  </Pie>
+                                  <RechartsTooltip
+                                    content={({ active, payload }) => {
+                                      if (!active || !payload || !payload.length) return null
+                                      const data = payload[0].payload
+                                      return (
+                                        <div className="bg-white p-3 border border-slate-100 shadow-xl rounded-xl min-w-[180px]">
+                                          <p className="text-sm font-bold text-slate-700 mb-2 border-b border-slate-100 pb-1">
+                                            {data.familia}
+                                          </p>
+                                          <div className="space-y-1">
+                                            <div className="flex justify-between text-xs">
+                                              <span className="text-slate-500">Importe:</span>
+                                              <span className="font-bold text-[#02b1c4]">
+                                                {formatCurrency(data.total)}
+                                              </span>
+                                            </div>
+                                            <div className="flex justify-between text-xs">
+                                              <span className="text-slate-500">Porcentaje:</span>
+                                              <span className="font-bold text-slate-700">
+                                                {data.porcentaje.toFixed(1)}%
+                                              </span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )
+                                    }}
+                                  />
+                                </PieChart>
+                              </ResponsiveContainer>
+                            ) : (
+                              <div className="flex items-center justify-center h-full text-slate-400">
+                                Sin datos para el período
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="lg:w-1/2 max-h-[200px] overflow-y-auto">
+                            <table className="w-full text-sm">
+                              <tbody>
+                                {distribucionAgrupada.map((item, index) => (
+                                  <tr
+                                    key={item.familia}
+                                    onClick={() => {
+                                      if (selectedFamilia === item.familia) {
+                                        setSelectedFamilia(null)
+                                      } else {
+                                        setSelectedFamilia(item.familia)
+                                      }
+                                    }}
+                                    className={`cursor-pointer transition-all ${
+                                      selectedFamilia === item.familia
+                                        ? "bg-slate-100"
+                                        : selectedFamilia
+                                          ? "opacity-40 hover:opacity-70"
+                                          : "hover:bg-slate-50"
+                                    }`}
+                                  >
+                                    <td className="py-2 pl-2">
+                                      <div className="flex items-center gap-2">
+                                        <div
+                                          className="w-3 h-3 rounded-full flex-shrink-0"
+                                          style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
+                                        />
+                                        <span className="font-medium text-slate-700 whitespace-nowrap">
+                                          {item.familia}
+                                        </span>
+                                      </div>
+                                    </td>
+                                    <td className="py-2 text-right font-bold text-[#02b1c4] whitespace-nowrap">
+                                      {formatCurrency(item.total)}
+                                    </td>
+                                    <td className="py-2 pr-2 text-right text-slate-500 whitespace-nowrap">
+                                      ({item.porcentaje.toFixed(1)}%)
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </TremorCard>
+                    </div>
+
+                    {/* Tabla Jerárquica y Top Productos */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* Tabla Jerárquica - Usar tablaAgrupada con más detalles visibles */}
+                      <TremorCard>
+                        <TremorTitle>Desglose por Categoría</TremorTitle>
+                        <div className="mt-4 max-h-[400px] overflow-y-auto">
+                          {tablaAgrupada.size > 0 ? (
+                            <div className="space-y-1">
+                              {Array.from(tablaAgrupada.entries()).map(([categoria, items]) => {
+                                const totalCategoria = items.reduce((sum, i) => sum + (i.total_con_iva || 0), 0)
+                                const isExpanded = expandedRows.has(categoria)
+
+                                return (
+                                  <div key={categoria} className="border border-slate-100 rounded-lg overflow-hidden">
+                                    <button
+                                      onClick={() => toggleRowExpanded(categoria)}
+                                      className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 transition-colors"
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        {isExpanded ? (
+                                          <ChevronDown className="h-4 w-4 text-slate-400" />
+                                        ) : (
+                                          <ChevronRight className="h-4 w-4 text-slate-400" />
+                                        )}
+                                        <span className="font-semibold text-slate-700">{categoria}</span>
+                                        <Badge variant="outline" className="text-xs">
+                                          {items.length} tipos
+                                        </Badge>
+                                      </div>
+                                      <span className="font-bold text-[#02b1c4]">{formatCurrency(totalCategoria)}</span>
+                                    </button>
+
+                                    {isExpanded && (
+                                      <div className="bg-white divide-y divide-slate-100">
+                                        {items.map((item, idx) => {
+                                          const porcentaje =
+                                            totalCategoria > 0 ? (item.total_con_iva / totalCategoria) * 100 : 0
+                                          return (
+                                            <div
+                                              key={idx}
+                                              className="flex items-center justify-between px-4 py-3 text-sm hover:bg-slate-50"
+                                            >
+                                              <div className="flex-1 pl-6">
+                                                <div className="flex items-center gap-2">
+                                                  <span className="font-medium text-slate-700">
+                                                    {item.tipo || item.familia || "Sin clasificar"}
+                                                  </span>
+                                                  {item.subtipo && item.subtipo !== item.tipo && (
+                                                    <span className="text-xs text-slate-400">({item.subtipo})</span>
+                                                  )}
+                                                </div>
+                                                <div className="text-xs text-slate-400 mt-0.5">
+                                                  {item.num_lineas} compras
+                                                </div>
+                                              </div>
+                                              <div className="flex items-center gap-6 text-right">
+                                                <div className="w-16">
+                                                  <div className="text-xs text-slate-400">% Cat.</div>
+                                                  <div className="font-medium text-slate-600">
+                                                    {porcentaje.toFixed(1)}%
+                                                  </div>
+                                                </div>
+                                                <div className="w-24">
+                                                  <div className="text-xs text-slate-400">Total</div>
+                                                  <div className="font-bold text-[#02b1c4]">
+                                                    {formatCurrency(item.total_con_iva)}
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          )
+                                        })}
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-center h-[200px] text-slate-400">
+                              Sin datos para el período
+                            </div>
+                          )}
+                        </div>
+                      </TremorCard>
+
+                      {/* Top Productos */}
+                      <TremorCard>
+                        <TremorTitle>Productos</TremorTitle>
+                        <div className="mt-4 max-h-[400px] overflow-y-auto">
+                          {topProductos.length > 0 ? (
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="border-b border-slate-200">
+                                  <th className="text-left py-2 px-2 font-semibold text-slate-600">Producto</th>
+                                  <th className="text-left py-2 px-2 font-semibold text-slate-600">Formato</th>
+                                  <th className="text-right py-2 px-2 font-semibold text-slate-600">Cantidad</th>
+                                  <th className="text-right py-2 px-2 font-semibold text-slate-600">Total</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {topProductos.map((producto, idx) => (
+                                  <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50">
+                                    <td className="py-2 px-2">
+                                      <div>
+                                        <p className="font-medium text-slate-800">{producto.producto}</p>
+                                        {producto.formato && (
+                                          <p className="text-xs text-slate-400">{producto.formato}</p>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td className="py-2 px-2 text-left text-slate-600">{producto.formato ?? "-"}</td>
+                                    <td className="py-2 px-2 text-right text-slate-600">{producto.cantidad}</td>
+                                    <td className="py-2 px-2 text-right font-medium text-[#02b1c4]">
+                                      {formatCurrency(producto.total)}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          ) : (
+                            <div className="flex items-center justify-center h-[200px] text-slate-400">
+                              Sin datos para el período
+                            </div>
+                          )}
+                        </div>
+                      </TremorCard>
+                    </div>
+                  </>
+                )}
+              </>
+            )}
           </>
         )}
       </div>
 
-      <Sheet open={!!pedidoDetalle} onOpenChange={(open) => !open && setPedidoDetalle(null)}>
+      {/* Sheet de detalle de pedido */}
+      <Sheet open={!!pedidoDetalle} onOpenChange={() => setPedidoDetalle(null)}>
         <SheetContent side="right" className="w-[450px] sm:max-w-[450px] overflow-y-auto p-0">
           <SheetHeader className="border-b border-slate-100 pb-4 px-6 pt-6">
             <SheetTitle className="text-lg font-bold text-[#364f6b]">Detalle Pedido</SheetTitle>

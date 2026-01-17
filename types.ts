@@ -1128,3 +1128,46 @@ export interface ProductFormat {
   gstock_format_id: number
   name: string
 }
+
+export interface CompraAnalisisKPI {
+  total_compras: number
+  num_albaranes: number
+  ticket_medio: number
+  variacion_vs_anterior: number
+}
+
+export interface CompraEvolucionMensual {
+  mes: string
+  mes_label: string
+  total: number
+  num_albaranes: number
+}
+
+export interface CompraDistribucionCategoria {
+  categoria: string
+  familia: string | null
+  tipo: string | null
+  total: number
+  porcentaje: number
+  num_albaranes: number
+}
+
+export interface CompraTopProducto {
+  producto: string
+  formato: string | null
+  categoria: string
+  familia: string | null
+  total: number
+  cantidad: number
+  num_albaranes: number
+}
+
+export interface CompraTablaJerarquica {
+  categoria: string
+  familia: string | null
+  tipo: string | null
+  subtipo: string | null
+  total: number
+  porcentaje: number
+  num_albaranes: number
+}

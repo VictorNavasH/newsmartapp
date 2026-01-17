@@ -6,6 +6,11 @@ import type {
   CompraProveedor,
   CompraKPIs,
   ProductFormat,
+  CompraAnalisisKPI,
+  CompraEvolucionMensual,
+  CompraDistribucionCategoria,
+  CompraTopProducto,
+  CompraTablaJerarquica,
 } from "@/types"
 
 // ============================================
@@ -195,5 +200,153 @@ export async function fetchProductFormats(): Promise<ProductFormat[]> {
     return []
   }
 
+  return data || []
+}
+
+// ============================================
+// ANÁLISIS DE COMPRAS
+// ============================================
+
+export async function fetchComprasAnalisisKPIs(params: {
+  fechaDesde: string
+  fechaHasta: string
+}): Promise<CompraAnalisisKPI | null> {
+  console.log("[v0] fetchComprasAnalisisKPIs llamando RPC compras_kpis con:", {
+    fecha_inicio: params.fechaDesde,
+    fecha_fin: params.fechaHasta,
+  })
+
+  const { data, error } = await supabase.rpc("compras_kpis", {
+    fecha_inicio: params.fechaDesde,
+    fecha_fin: params.fechaHasta,
+  })
+
+  if (error) {
+    console.error("[fetchComprasAnalisisKPIs] Error:", error.message)
+    return null
+  }
+
+  console.log("[v0] fetchComprasAnalisisKPIs data:", data)
+
+  const rawData = data?.[0] || data
+  if (!rawData) return null
+
+  return {
+    total_compras: rawData.total_gastado || 0,
+    num_albaranes: rawData.num_albaranes || 0,
+    ticket_medio: rawData.ticket_medio || 0,
+    variacion_vs_anterior: rawData.variacion_porcentaje ?? 0,
+  }
+}
+
+export async function fetchComprasEvolucionMensual(meses = 12): Promise<CompraEvolucionMensual[]> {
+  console.log("[v0] fetchComprasEvolucionMensual llamando RPC compras_evolucion_mensual con:", { meses_atras: meses })
+
+  const { data, error } = await supabase.rpc("compras_evolucion_mensual", {
+    meses_atras: meses,
+  })
+
+  if (error) {
+    console.error("[fetchComprasEvolucionMensual] Error:", error.message)
+    return []
+  }
+
+  console.log("[v0] fetchComprasEvolucionMensual data:", data)
+
+  return (data || []).map((item: any) => ({
+    mes: item.mes,
+    mes_label: item.mes_texto || item.mes,
+    total: item.total_con_iva || 0,
+    total_sin_iva: item.total_sin_iva || 0,
+    num_albaranes: item.num_albaranes || 0,
+  }))
+}
+
+export async function fetchComprasDistribucion(params: {
+  fechaDesde: string
+  fechaHasta: string
+}): Promise<CompraDistribucionCategoria[]> {
+  console.log("[v0] fetchComprasDistribucion llamando RPC compras_distribucion con:", {
+    fecha_inicio: params.fechaDesde,
+    fecha_fin: params.fechaHasta,
+  })
+
+  const { data, error } = await supabase.rpc("compras_distribucion", {
+    fecha_inicio: params.fechaDesde,
+    fecha_fin: params.fechaHasta,
+  })
+
+  if (error) {
+    console.error("[fetchComprasDistribucion] Error:", error.message)
+    return []
+  }
+
+  console.log("[v0] fetchComprasDistribucion data:", data)
+
+  return (data || []).map((item: any) => ({
+    categoria: item.categoria,
+    familia: item.familia || null,
+    tipo: item.tipo || null,
+    total: item.total_con_iva || 0,
+    porcentaje: item.porcentaje || 0,
+    num_albaranes: item.num_lineas || 0,
+  }))
+}
+
+export async function fetchComprasTopProductos(params: {
+  fechaDesde: string
+  fechaHasta: string
+  limite?: number
+}): Promise<CompraTopProducto[]> {
+  console.log("[v0] fetchComprasTopProductos llamando RPC compras_top_productos con:", {
+    fecha_inicio: params.fechaDesde,
+    fecha_fin: params.fechaHasta,
+    limite: params.limite || 10,
+  })
+
+  const { data, error } = await supabase.rpc("compras_top_productos", {
+    fecha_inicio: params.fechaDesde,
+    fecha_fin: params.fechaHasta,
+    limite: params.limite || 10,
+  })
+
+  if (error) {
+    console.error("[fetchComprasTopProductos] Error:", error.message)
+    return []
+  }
+
+  console.log("[v0] fetchComprasTopProductos data:", data)
+
+  return (data || []).map((item: any) => ({
+    producto: item.producto,
+    formato: item.formato || null,
+    categoria: item.categoria,
+    familia: item.familia || null,
+    total: item.total_con_iva || 0,
+    cantidad: item.cantidad || 0,
+    num_albaranes: item.num_albaranes || 0,
+  }))
+}
+
+export async function fetchComprasTablaJerarquica(params: {
+  fechaDesde: string
+  fechaHasta: string
+}): Promise<CompraTablaJerarquica[]> {
+  console.log("[v0] fetchComprasTablaJerarquica llamando RPC compras_tabla_jerarquica con:", {
+    fecha_inicio: params.fechaDesde,
+    fecha_fin: params.fechaHasta,
+  })
+
+  const { data, error } = await supabase.rpc("compras_tabla_jerarquica", {
+    fecha_inicio: params.fechaDesde,
+    fecha_fin: params.fechaHasta,
+  })
+
+  if (error) {
+    console.error("[fetchComprasTablaJerarquica] Error:", error.message)
+    return []
+  }
+
+  console.log("[v0] fetchComprasTablaJerarquica data:", data)
   return data || []
 }
