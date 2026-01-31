@@ -193,7 +193,7 @@ export async function fetchKPIs(): Promise<CompraKPIs | null> {
 // ============================================
 
 export async function fetchProductFormats(): Promise<ProductFormat[]> {
-  const { data, error } = await supabase.from("gstock_product_formats").select("gstock_format_id, name").order("name")
+  const { data, error } = await supabase.from("gstock_product_formats").select("id, name").order("name")
 
   if (error) {
     console.error("[fetchProductFormats] Error:", error.message)
@@ -211,11 +211,6 @@ export async function fetchComprasAnalisisKPIs(params: {
   fechaDesde: string
   fechaHasta: string
 }): Promise<CompraAnalisisKPI | null> {
-  console.log("[v0] fetchComprasAnalisisKPIs llamando RPC compras_kpis con:", {
-    fecha_inicio: params.fechaDesde,
-    fecha_fin: params.fechaHasta,
-  })
-
   const { data, error } = await supabase.rpc("compras_kpis", {
     fecha_inicio: params.fechaDesde,
     fecha_fin: params.fechaHasta,
@@ -225,8 +220,6 @@ export async function fetchComprasAnalisisKPIs(params: {
     console.error("[fetchComprasAnalisisKPIs] Error:", error.message)
     return null
   }
-
-  console.log("[v0] fetchComprasAnalisisKPIs data:", data)
 
   const rawData = data?.[0] || data
   if (!rawData) return null
@@ -240,8 +233,6 @@ export async function fetchComprasAnalisisKPIs(params: {
 }
 
 export async function fetchComprasEvolucionMensual(meses = 12): Promise<CompraEvolucionMensual[]> {
-  console.log("[v0] fetchComprasEvolucionMensual llamando RPC compras_evolucion_mensual con:", { meses_atras: meses })
-
   const { data, error } = await supabase.rpc("compras_evolucion_mensual", {
     meses_atras: meses,
   })
@@ -250,8 +241,6 @@ export async function fetchComprasEvolucionMensual(meses = 12): Promise<CompraEv
     console.error("[fetchComprasEvolucionMensual] Error:", error.message)
     return []
   }
-
-  console.log("[v0] fetchComprasEvolucionMensual data:", data)
 
   return (data || []).map((item: any) => ({
     mes: item.mes,
@@ -266,11 +255,6 @@ export async function fetchComprasDistribucion(params: {
   fechaDesde: string
   fechaHasta: string
 }): Promise<CompraDistribucionCategoria[]> {
-  console.log("[v0] fetchComprasDistribucion llamando RPC compras_distribucion con:", {
-    fecha_inicio: params.fechaDesde,
-    fecha_fin: params.fechaHasta,
-  })
-
   const { data, error } = await supabase.rpc("compras_distribucion", {
     fecha_inicio: params.fechaDesde,
     fecha_fin: params.fechaHasta,
@@ -280,8 +264,6 @@ export async function fetchComprasDistribucion(params: {
     console.error("[fetchComprasDistribucion] Error:", error.message)
     return []
   }
-
-  console.log("[v0] fetchComprasDistribucion data:", data)
 
   return (data || []).map((item: any) => ({
     categoria: item.categoria,
@@ -298,12 +280,6 @@ export async function fetchComprasTopProductos(params: {
   fechaHasta: string
   limite?: number
 }): Promise<CompraTopProducto[]> {
-  console.log("[v0] fetchComprasTopProductos llamando RPC compras_top_productos con:", {
-    fecha_inicio: params.fechaDesde,
-    fecha_fin: params.fechaHasta,
-    limite: params.limite || 10,
-  })
-
   const { data, error } = await supabase.rpc("compras_top_productos", {
     fecha_inicio: params.fechaDesde,
     fecha_fin: params.fechaHasta,
@@ -314,8 +290,6 @@ export async function fetchComprasTopProductos(params: {
     console.error("[fetchComprasTopProductos] Error:", error.message)
     return []
   }
-
-  console.log("[v0] fetchComprasTopProductos data:", data)
 
   return (data || []).map((item: any) => ({
     producto: item.producto,
@@ -332,11 +306,6 @@ export async function fetchComprasTablaJerarquica(params: {
   fechaDesde: string
   fechaHasta: string
 }): Promise<CompraTablaJerarquica[]> {
-  console.log("[v0] fetchComprasTablaJerarquica llamando RPC compras_tabla_jerarquica con:", {
-    fecha_inicio: params.fechaDesde,
-    fecha_fin: params.fechaHasta,
-  })
-
   const { data, error } = await supabase.rpc("compras_tabla_jerarquica", {
     fecha_inicio: params.fechaDesde,
     fecha_fin: params.fechaHasta,
@@ -347,6 +316,5 @@ export async function fetchComprasTablaJerarquica(params: {
     return []
   }
 
-  console.log("[v0] fetchComprasTablaJerarquica data:", data)
   return data || []
 }

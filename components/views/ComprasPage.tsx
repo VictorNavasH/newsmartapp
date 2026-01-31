@@ -51,6 +51,7 @@ import {
   fetchComprasTablaJerarquica,
 } from "@/lib/comprasService"
 import { BRAND_COLORS } from "@/constants"
+import { formatCurrency, formatDateFromString } from "@/lib/utils"
 import type {
   CompraPedido,
   CompraFacturaConciliacion,
@@ -181,7 +182,7 @@ export default function ComprasPage() {
 
   useEffect(() => {
     fetchProductFormats().then((data) => {
-      setFormatosMap(new Map(data.map((f) => [String(f.gstock_format_id), f.name])))
+      setFormatosMap(new Map(data.map((f) => [String(f.id), f.name])))
     })
   }, [])
 
@@ -316,17 +317,7 @@ export default function ComprasPage() {
     return result
   }, [pedidos, estadoPedidoFilter, proveedorPedidoFilter, searchPedidos])
 
-  // Helpers
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(value)
-
-  const formatDate = (dateStr: string) => {
-    try {
-      return format(new Date(dateStr), "dd/MM/yyyy", { locale: es })
-    } catch {
-      return dateStr
-    }
-  }
+  const formatDate = (dateStr: string) => formatDateFromString(dateStr)
 
   const handleTabChange = (item: string) => {
     if (item === "Pedidos") setActiveTab("pedidos")
@@ -401,13 +392,14 @@ export default function ComprasPage() {
   const distribucionAgrupada = useMemo(() => {
     const grupos = new Map<string, { familia: string; total: number; porcentaje: number }>()
     distribucion.forEach((item) => {
-      const existing = grupos.get(item.familia)
+      const familiaKey = item.familia || "Sin familia"
+      const existing = grupos.get(familiaKey)
       if (existing) {
         existing.total += item.total
         existing.porcentaje += item.porcentaje
       } else {
-        grupos.set(item.familia, {
-          familia: item.familia,
+        grupos.set(familiaKey, {
+          familia: familiaKey,
           total: item.total,
           porcentaje: item.porcentaje,
         })
@@ -467,10 +459,7 @@ export default function ComprasPage() {
               </div>
               <p className="text-3xl font-bold text-[#364f6b]">{Number(kpis.pedidos_pendientes) || 0}</p>
               <p className="text-sm text-slate-500 mt-1">
-                {Number(kpis.importe_pedidos_pendientes || 0).toLocaleString("es-ES", {
-                  style: "currency",
-                  currency: "EUR",
-                })}
+                {formatCurrency(Number(kpis.importe_pedidos_pendientes || 0))}
               </p>
             </TremorCard>
 
@@ -484,7 +473,7 @@ export default function ComprasPage() {
               </div>
               <p className="text-3xl font-bold text-[#364f6b]">{Number(kpis.albaranes_sin_facturar) || 0}</p>
               <p className="text-sm text-slate-500 mt-1">
-                {Number(kpis.importe_sin_facturar || 0).toLocaleString("es-ES", { style: "currency", currency: "EUR" })}
+                {formatCurrency(Number(kpis.importe_sin_facturar || 0))}
               </p>
             </TremorCard>
 
@@ -530,9 +519,9 @@ export default function ComprasPage() {
                       <SelectValue placeholder="Proveedor" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="todos">Todos los proveedores</SelectItem>
-                      {proveedores.map((p) => (
-                        <SelectItem key={p.gstock_supplier_id} value={p.gstock_supplier_id}>
+                      <SelectItem key="todos" value="todos">Todos los proveedores</SelectItem>
+                      {proveedores.map((p, i) => (
+                        <SelectItem key={`prov-pedido-${p.gstock_supplier_id}-${i}`} value={p.gstock_supplier_id}>
                           {p.nombre}
                         </SelectItem>
                       ))}
@@ -737,9 +726,9 @@ export default function ComprasPage() {
                       <SelectValue placeholder="Proveedor" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="todos">Todos los proveedores</SelectItem>
-                      {proveedores.map((p) => (
-                        <SelectItem key={p.gstock_supplier_id} value={p.gstock_supplier_id}>
+                      <SelectItem key="todos" value="todos">Todos los proveedores</SelectItem>
+                      {proveedores.map((p, i) => (
+                        <SelectItem key={`prov-conc-${p.gstock_supplier_id}-${i}`} value={p.gstock_supplier_id}>
                           {p.nombre}
                         </SelectItem>
                       ))}
@@ -770,7 +759,7 @@ export default function ComprasPage() {
                       </TremorCard>
                     ) : (
                       <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-2">
-                        {facturas.map((factura) => {
+                        {facturas.map((factura, i) => {
                           const estadoConc = factura.estado_conciliacion
                             ? ESTADO_CONCILIACION_CONFIG[factura.estado_conciliacion]
                             : null
@@ -779,12 +768,11 @@ export default function ComprasPage() {
 
                           return (
                             <div
-                              key={factura.id}
-                              className={`bg-white rounded-xl border p-4 cursor-pointer transition-all ${
-                                isSelected
-                                  ? "border-[#227c9d] ring-2 ring-[#227c9d]/20"
-                                  : "border-slate-200 hover:border-slate-300"
-                              }`}
+                              key={`factura-${factura.id}-${i}`}
+                              className={`bg-white rounded-xl border p-4 cursor-pointer transition-all ${isSelected
+                                ? "border-[#227c9d] ring-2 ring-[#227c9d]/20"
+                                : "border-slate-200 hover:border-slate-300"
+                                }`}
                               onClick={() => setFacturaSeleccionada(factura)}
                             >
                               {/* Header */}
@@ -873,8 +861,8 @@ export default function ComprasPage() {
                               {factura.albaranes_vinculados && factura.albaranes_vinculados.length > 0 && (
                                 <div className="text-sm mb-3">
                                   <span className="text-slate-500">Albaranes: </span>
-                                  {factura.albaranes_vinculados.map((alb, i) => (
-                                    <Badge key={i} variant="outline" className="mr-1">
+                                  {(factura.albaranes_vinculados || []).map((alb: string, i: number) => (
+                                    <Badge key={`${factura.id}-alb-${i}`} variant="outline" className="mr-1">
                                       {alb}
                                     </Badge>
                                   ))}
@@ -899,9 +887,9 @@ export default function ComprasPage() {
                                   </Button>
                                 )}
 
-                                {!factura.estado_conciliacion ||
-                                factura.estado_conciliacion === "revision" ||
-                                factura.estado_conciliacion === "probable" ? (
+                                {(!factura.estado_conciliacion ||
+                                  factura.estado_conciliacion === "revision" ||
+                                  factura.estado_conciliacion === "probable") ? (
                                   <Button
                                     size="sm"
                                     variant="outline"
@@ -968,11 +956,10 @@ export default function ComprasPage() {
                             return (
                               <div
                                 key={albaran.id}
-                                className={`bg-white rounded-lg border p-3 cursor-pointer transition-all ${
-                                  isSelected
-                                    ? "border-[#17c3b2] bg-[#17c3b2]/5"
-                                    : "border-slate-200 hover:border-slate-300"
-                                }`}
+                                className={`bg-white rounded-lg border p-3 cursor-pointer transition-all ${isSelected
+                                  ? "border-[#17c3b2] bg-[#17c3b2]/5"
+                                  : "border-slate-200 hover:border-slate-300"
+                                  }`}
                                 onClick={() => toggleAlbaranSeleccion(albaran.id)}
                               >
                                 <div className="flex items-center justify-between">
@@ -1026,11 +1013,10 @@ export default function ComprasPage() {
                       <button
                         key={option.value}
                         onClick={() => setPeriodoAnalisis(option.value)}
-                        className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                          option.value === periodoAnalisis
-                            ? "bg-[#02b1c4] text-white"
-                            : "text-slate-600 hover:bg-slate-100"
-                        }`}
+                        className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${option.value === periodoAnalisis
+                          ? "bg-[#02b1c4] text-white"
+                          : "text-slate-600 hover:bg-slate-100"
+                          }`}
                       >
                         {option.label}
                       </button>
@@ -1188,7 +1174,7 @@ export default function ComprasPage() {
                                   >
                                     {distribucionAgrupada.map((entry, index) => (
                                       <Cell
-                                        key={`cell-${index}`}
+                                        key={`cell-dist-${entry.familia || index}-${index}`}
                                         fill={CHART_COLORS[index % CHART_COLORS.length]}
                                         opacity={selectedFamilia && selectedFamilia !== entry.familia ? 0.3 : 1}
                                       />
@@ -1235,7 +1221,7 @@ export default function ComprasPage() {
                               <tbody>
                                 {distribucionAgrupada.map((item, index) => (
                                   <tr
-                                    key={item.familia}
+                                    key={`dist-row-${item.familia || index}-${index}`}
                                     onClick={() => {
                                       if (selectedFamilia === item.familia) {
                                         setSelectedFamilia(null)
@@ -1243,13 +1229,12 @@ export default function ComprasPage() {
                                         setSelectedFamilia(item.familia)
                                       }
                                     }}
-                                    className={`cursor-pointer transition-all ${
-                                      selectedFamilia === item.familia
-                                        ? "bg-slate-100"
-                                        : selectedFamilia
-                                          ? "opacity-40 hover:opacity-70"
-                                          : "hover:bg-slate-50"
-                                    }`}
+                                    className={`cursor-pointer transition-all ${selectedFamilia === item.familia
+                                      ? "bg-slate-100"
+                                      : selectedFamilia
+                                        ? "opacity-40 hover:opacity-70"
+                                        : "hover:bg-slate-50"
+                                      }`}
                                   >
                                     <td className="py-2 pl-2">
                                       <div className="flex items-center gap-2">
@@ -1285,12 +1270,12 @@ export default function ComprasPage() {
                         <div className="mt-4 max-h-[400px] overflow-y-auto">
                           {tablaAgrupada.size > 0 ? (
                             <div className="space-y-1">
-                              {Array.from(tablaAgrupada.entries()).map(([categoria, items]) => {
+                              {Array.from(tablaAgrupada.entries()).map(([categoria, items], i) => {
                                 const totalCategoria = items.reduce((sum, i) => sum + (i.total_con_iva || 0), 0)
                                 const isExpanded = expandedRows.has(categoria)
 
                                 return (
-                                  <div key={categoria} className="border border-slate-100 rounded-lg overflow-hidden">
+                                  <div key={`cat-group-${categoria || i}-${i}`} className="border border-slate-100 rounded-lg overflow-hidden">
                                     <button
                                       onClick={() => toggleRowExpanded(categoria)}
                                       className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 transition-colors"
@@ -1316,7 +1301,7 @@ export default function ComprasPage() {
                                             totalCategoria > 0 ? (item.total_con_iva / totalCategoria) * 100 : 0
                                           return (
                                             <div
-                                              key={idx}
+                                              key={`${categoria}-item-${idx}`}
                                               className="flex items-center justify-between px-4 py-3 text-sm hover:bg-slate-50"
                                             >
                                               <div className="flex-1 pl-6">
@@ -1379,7 +1364,7 @@ export default function ComprasPage() {
                               </thead>
                               <tbody>
                                 {topProductos.map((producto, idx) => (
-                                  <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50">
+                                  <tr key={`top-prod-${idx}`} className="border-b border-slate-100 hover:bg-slate-50">
                                     <td className="py-2 px-2">
                                       <div>
                                         <p className="font-medium text-slate-800">{producto.producto}</p>
@@ -1541,7 +1526,7 @@ export default function ComprasPage() {
                             ? formatosMap.get(String(item.formatOrderedId)) || "-"
                             : "-"
                           return (
-                            <tr key={idx} className="border-t border-slate-100">
+                            <tr key={`pedido-item-${idx}`} className="border-t border-slate-100">
                               <td className="py-2 px-3 text-slate-800">{item.name}</td>
                               <td className="py-2 px-3 text-slate-600">{formatName}</td>
                               <td className="py-2 px-3 text-right text-slate-600">{item.quantityOrdered}</td>

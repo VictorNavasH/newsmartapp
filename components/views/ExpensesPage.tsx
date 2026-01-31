@@ -34,6 +34,7 @@ import {
   fetchExpensesByDueDate,
 } from "@/lib/dataService"
 import { BRAND_COLORS } from "@/constants"
+import { formatCurrency } from "@/lib/utils"
 import type { ExpenseTag, Expense, ExpenseTagSummary, DateRange } from "@/types"
 import { ResponsiveContainer, PieChart as RechartsPieChart, Pie, Tooltip as RechartsTooltip } from "recharts"
 import {
@@ -420,11 +421,6 @@ export default function ExpensesPage() {
     }
   }
 
-  // Format currency
-  const formatCurrency = (value: number | undefined | null) => {
-    const safeValue = value ?? 0
-    return safeValue.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €"
-  }
 
   // Handle date change
   const handleDateChange = (range: { from: Date; to: Date }) => {
@@ -1459,7 +1455,7 @@ export default function ExpensesPage() {
                             </div>
                             {/* Importe total del dia */}
                             <p className="text-[10px] font-medium text-slate-500 truncate">
-                              {totalDay.toLocaleString("es-ES", { maximumFractionDigits: 0 })} €
+                              {formatCurrency(totalDay)}
                             </p>
                           </div>
                         )}

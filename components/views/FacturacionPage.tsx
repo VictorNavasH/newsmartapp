@@ -37,7 +37,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrency, formatDateFromString } from "@/lib/utils"
 import {
   fetchFacturacionListado,
   fetchFacturacionKPIs,
@@ -481,16 +481,7 @@ export default function FacturacionPage() {
     setSelectedFacturas(newSelection)
   }
 
-  const formatDateES = (dateStr: string | Date | null | undefined) => {
-    if (!dateStr) return "-"
-    try {
-      const date = new Date(dateStr)
-      if (!isValid(date)) return String(dateStr)
-      return format(date, "dd/MM/yyyy", { locale: es })
-    } catch {
-      return String(dateStr)
-    }
-  }
+  const formatDateES = (dateStr: string | Date | null | undefined) => formatDateFromString(dateStr)
 
   const getConsumoItems = (payload: any) => {
     if (!payload) return []
@@ -504,12 +495,7 @@ export default function FacturacionPage() {
     }
   }
 
-  const formatCurrencyES = (value: string | number | undefined) => {
-    if (value === undefined) return "0,00 €"
-    const num = typeof value === "string" ? Number.parseFloat(value) : value
-    if (isNaN(num)) return "0,00 €"
-    return num.toLocaleString("es-ES", { style: "currency", currency: "EUR" })
-  }
+  const formatCurrencyES = (value: string | number | undefined) => formatCurrency(value)
 
   const activeTabStyle = `data-[state=active]:bg-[#02b1c4] data-[state=active]:text-white data-[state=active]:shadow-sm transition-all duration-200`
 

@@ -5,7 +5,7 @@ import { WeekReservationsCard } from "@/components/features/WeekReservationsCard
 import { MetricGroupCard } from "@/components/ui/MetricGroupCard"
 import { TremorCard, TremorTitle } from "@/components/ui/TremorCard"
 import { fetchRealTimeData, fetchFinancialKPIs, fetchLaborCostAnalysis, fetchWeekRevenue } from "@/lib/dataService"
-import type { RealTimeData, FinancialKPIs, LaborCostDay, WeekRevenueDay } from "@/types"
+import type { RealTimeData, FinancialKPIs, LaborCostDay, WeekRevenueDay, RechartsTooltipProps } from "@/types"
 import {
   Banknote,
   Receipt,
@@ -23,7 +23,8 @@ import {
 } from "lucide-react"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { PageContent } from "@/components/layout/PageContent"
-import { formatCurrency, formatTime, formatDateLong } from "@/lib/utils"
+import { formatCurrency, formatNumber, formatTime, formatDateLong } from "@/lib/utils"
+import { BRAND_COLORS, CHART_CONFIG } from "@/constants"
 import {
   BarChart as RechartsBarChart,
   Bar,
@@ -140,7 +141,7 @@ export function DashboardPage() {
     return { totalFacturado, totalPrevision, previsionSemana, porcentajeTotal }
   }, [weekRevenueData, weekOffset])
 
-  const LaborCostTooltip = ({ active, payload, label }: any) => {
+  const LaborCostTooltip = ({ active, payload, label }: RechartsTooltipProps) => {
     if (!active || !payload || payload.length === 0) return null
 
     const data = payload[0]?.payload
@@ -154,14 +155,14 @@ export function DashboardPage() {
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded" style={{ backgroundColor: "#17c3b2" }} />
+              <div className="w-3 h-3 rounded" style={{ backgroundColor: BRAND_COLORS.success }} />
               <span className="text-xs text-slate-500">Ventas netas</span>
             </div>
             <span className="text-xs font-bold text-[#364f6b]">{formatCurrency(data.ventas_netas)}</span>
           </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded" style={{ backgroundColor: "#fe6d73" }} />
+              <div className="w-3 h-3 rounded" style={{ backgroundColor: BRAND_COLORS.error }} />
               <span className="text-xs text-slate-500">Coste laboral</span>
             </div>
             <span className="text-xs font-bold text-[#364f6b]">{formatCurrency(data.coste_laboral)}</span>
@@ -188,7 +189,7 @@ export function DashboardPage() {
     )
   }
 
-  const WeekRevenueTooltip = ({ active, payload, label }: any) => {
+  const WeekRevenueTooltip = ({ active, payload, label }: RechartsTooltipProps) => {
     if (!active || !payload || !payload.length) return null
     const data = payload[0]?.payload
     if (!data) return null
@@ -207,7 +208,7 @@ export function DashboardPage() {
                 <span className="text-slate-500">Facturado</span>
               </div>
               <span className="font-bold text-slate-700">
-                {data.facturadoReal.toLocaleString("es-ES", { style: "currency", currency: "EUR" })}
+                {formatCurrency(data.facturadoReal)}
               </span>
             </div>
           )}
@@ -217,7 +218,7 @@ export function DashboardPage() {
               <span className="text-slate-500">Previsión</span>
             </div>
             <span className="font-bold text-slate-700">
-              {data.prevision.toLocaleString("es-ES", { style: "currency", currency: "EUR" })}
+              {formatCurrency(data.prevision)}
             </span>
           </div>
           {data.tipoDia !== "futuro" && data.porcentajeAlcanzado > 0 && (
@@ -345,7 +346,7 @@ export function DashboardPage() {
                     layout="vertical"
                     margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e2e8f0" />
+                    <CartesianGrid {...CHART_CONFIG.grid} horizontal={true} vertical={false} />
                     <XAxis
                       type="number"
                       tickFormatter={(value) => formatCurrency(value)}
@@ -405,7 +406,7 @@ export function DashboardPage() {
                 <div className="flex-1 bg-slate-50 rounded-xl p-3 border border-slate-100">
                   <span className="text-xs font-medium text-slate-500 uppercase">Comensales</span>
                   <p className="text-xl font-bold text-[#364f6b] mt-1">
-                    {currentKPIs.comensales.toLocaleString("es-ES")}
+                    {formatNumber(currentKPIs.comensales)}
                   </p>
                 </div>
               </div>
@@ -456,7 +457,7 @@ export function DashboardPage() {
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={laborChartData} margin={{ top: 20, right: 60, bottom: 20, left: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <CartesianGrid {...CHART_CONFIG.grid} />
                   <XAxis
                     dataKey="fechaCorta"
                     tick={{ fontSize: 11, fill: "#64748b" }}
@@ -555,7 +556,7 @@ export function DashboardPage() {
               <div className="bg-[#17c3b2]/10 px-3 py-1 rounded-lg text-center">
                 <span className="text-[10px] text-[#17c3b2] font-bold block">Prev. Semana</span>
                 <span className="text-lg font-bold text-[#17c3b2] leading-tight">
-                  {Math.round(weekRevenueTotals.previsionSemana).toLocaleString("es-ES")} €
+                  {formatNumber(Math.round(weekRevenueTotals.previsionSemana))} €
                 </span>
               </div>
 
@@ -563,7 +564,7 @@ export function DashboardPage() {
               <div className="bg-[#02b1c4]/10 px-3 py-1 rounded-lg text-center">
                 <span className="text-[10px] text-[#02b1c4] font-bold block">Facturado</span>
                 <span className="text-lg font-bold text-[#02b1c4] leading-tight">
-                  {Math.round(weekRevenueTotals.totalFacturado).toLocaleString("es-ES")} €
+                  {formatNumber(Math.round(weekRevenueTotals.totalFacturado))} €
                   <span className="text-xs font-normal ml-1">({weekRevenueTotals.porcentajeTotal.toFixed(0)}%)</span>
                 </span>
               </div>
@@ -573,7 +574,7 @@ export function DashboardPage() {
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={weekRevenueChartData} margin={{ top: 20, right: 60, bottom: 20, left: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <CartesianGrid {...CHART_CONFIG.grid} />
                   <XAxis
                     dataKey="label"
                     tick={{ fontSize: 11, fill: "#64748b" }}

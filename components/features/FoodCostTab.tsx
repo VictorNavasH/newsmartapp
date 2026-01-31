@@ -305,9 +305,9 @@ export function FoodCostTab() {
               </div>
 
               <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {productos.map((producto) => (
+                {productos.map((producto, idx) => (
                   <ProductCard
-                    key={`${producto.sku}-${producto.variantId || "base"}`}
+                    key={`${producto.sku}-${producto.variantId ?? "base"}-${idx}`}
                     producto={producto}
                     onPriceUpdated={loadData}
                   />

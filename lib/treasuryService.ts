@@ -71,17 +71,6 @@ export const fetchTreasuryTransactions = async (
   offset = 0,
 ): Promise<TreasuryTransaction[]> => {
   try {
-    console.log("[v0] fetchTreasuryTransactions - params:", {
-      startDate,
-      endDate,
-      accountId,
-      categoryId,
-      tipo,
-      search,
-      limit,
-      offset,
-    })
-
     const { data, error } = await supabase.rpc("get_treasury_transactions", {
       p_fecha_inicio: startDate || null,
       p_fecha_fin: endDate || null,
@@ -91,12 +80,6 @@ export const fetchTreasuryTransactions = async (
       p_search: search || null,
       p_limit: limit,
       p_offset: offset,
-    })
-
-    console.log("[v0] fetchTreasuryTransactions - response:", {
-      error: error ? { code: error.code, message: error.message } : null,
-      dataCount: data?.length || 0,
-      firstRecord: data?.[0] ? JSON.stringify(data[0]).substring(0, 200) : null,
     })
 
     if (error) {
@@ -186,8 +169,6 @@ export const fetchTreasuryByCategory = async (
   endDate?: string,
 ): Promise<TreasuryCategoryBreakdown[]> => {
   try {
-    console.log("[v0] fetchTreasuryByCategory - params:", { startDate, endDate })
-
     const { data, error } = await supabase.rpc("get_treasury_by_category", {
       p_fecha_inicio: startDate || null,
       p_fecha_fin: endDate || null,
@@ -197,9 +178,6 @@ export const fetchTreasuryByCategory = async (
       handleQueryError(error, "fetchTreasuryByCategory")
       return []
     }
-
-    console.log("[v0] fetchTreasuryByCategory - raw data:", JSON.stringify(data))
-    console.log("[v0] fetchTreasuryByCategory - count:", data?.length || 0)
 
     return data || []
   } catch (err) {
@@ -217,7 +195,6 @@ export const fetchPoolBancarioResumen = async (): Promise<PoolBancarioResumen | 
       return null
     }
 
-    console.log("[v0] fetchPoolBancarioResumen data:", JSON.stringify(data))
     return data
   } catch (err) {
     console.error("[v0] Error fetching pool bancario resumen:", err)
@@ -237,7 +214,6 @@ export const fetchPoolBancarioPrestamos = async (): Promise<PoolBancarioPrestamo
       return []
     }
 
-    console.log("[v0] fetchPoolBancarioPrestamos data:", JSON.stringify(data))
     return data || []
   } catch (err) {
     console.error("[v0] Error fetching pool bancario prestamos:", err)
@@ -267,7 +243,6 @@ export const fetchPoolBancarioVencimientos = async (limit = 10): Promise<PoolBan
       return []
     }
 
-    console.log("[v0] fetchPoolBancarioVencimientos data:", JSON.stringify(data))
     return data || []
   } catch (err) {
     console.error("[v0] Error fetching pool bancario vencimientos:", err)
@@ -287,7 +262,6 @@ export const fetchPoolBancarioPorBanco = async (): Promise<PoolBancarioPorBanco[
       return []
     }
 
-    console.log("[v0] fetchPoolBancarioPorBanco data:", JSON.stringify(data))
     return data || []
   } catch (err) {
     console.error("[v0] Error fetching pool bancario por banco:", err)
@@ -308,7 +282,6 @@ export const fetchPoolBancarioCalendario = async (meses = 12): Promise<PoolBanca
       return []
     }
 
-    console.log("[v0] fetchPoolBancarioCalendario data:", JSON.stringify(data))
     return data || []
   } catch (err) {
     console.error("[v0] Error fetching pool bancario calendario:", err)

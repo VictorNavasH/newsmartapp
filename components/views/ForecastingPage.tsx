@@ -33,6 +33,7 @@ import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
 import { BRAND_COLORS } from "@/constants"
+import { formatCurrency } from "@/lib/utils"
 import { fetchForecastData, fetchForecastCalendar } from "@/lib/dataService"
 import { fetchWhatIfReferenceData } from "@/lib/whatIfService"
 import type { ForecastDay, ForecastKPIs, ForecastPrecision, WhatIfReferenceData } from "@/types"
@@ -89,9 +90,6 @@ const getOccupancyLabelFromLevel = (nivel: string) => {
       return "Tranquilo"
   }
 }
-
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(value)
 
 export default function ForecastingPage() {
   const [loading, setLoading] = useState(true)
@@ -466,7 +464,7 @@ export default function ForecastingPage() {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Predicción Hoy</p>
-                <p className="text-2xl font-bold" style={{ color: "#364f6b" }}>
+                <p className="text-2xl font-bold" style={{ color: BRAND_COLORS.dark }}>
                   {kpis?.prediccion_hoy ?? 0} <span className="text-sm font-normal">pax</span>
                 </p>
               </div>
@@ -481,7 +479,7 @@ export default function ForecastingPage() {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Reservas Hoy</p>
-                <p className="text-2xl font-bold" style={{ color: "#364f6b" }}>
+                <p className="text-2xl font-bold" style={{ color: BRAND_COLORS.dark }}>
                   {kpis?.reservas_hoy ?? 0} <span className="text-sm font-normal">pax</span>
                 </p>
               </div>
@@ -496,7 +494,7 @@ export default function ForecastingPage() {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Ocupación Semana</p>
-                <p className="text-2xl font-bold" style={{ color: "#364f6b" }}>
+                <p className="text-2xl font-bold" style={{ color: BRAND_COLORS.dark }}>
                   {kpis?.ocupacion_semana?.toFixed(0) ?? 0}
                   <span className="text-sm font-normal">%</span>
                 </p>
@@ -512,7 +510,7 @@ export default function ForecastingPage() {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Precisión Modelo</p>
-                <p className="text-2xl font-bold" style={{ color: "#364f6b" }}>
+                <p className="text-2xl font-bold" style={{ color: BRAND_COLORS.dark }}>
                   {kpis?.precision_modelo?.toFixed(0) ?? 0}
                   <span className="text-sm font-normal">%</span>
                 </p>
@@ -544,7 +542,7 @@ export default function ForecastingPage() {
                       <YAxis tick={{ fontSize: 12 }} domain={[0, CAPACIDAD_DIA]} />
                       <Tooltip
                         contentStyle={{ borderRadius: 8 }}
-                        formatter={(value: number, name: string, props: any) => {
+                        formatter={(value: number, name: string, props: { color: string }) => {
                           if (name === "confirmados") return [`${value} pax`, "Confirmados"]
                           if (name === "estimado")
                             return [`${value} pax (+${props.payload.walkInRate}% walk-ins)`, "Estimado"]
@@ -578,7 +576,7 @@ export default function ForecastingPage() {
                       <YAxis tick={{ fontSize: 12 }} />
                       <Tooltip
                         contentStyle={{ borderRadius: 8 }}
-                        formatter={(value: number, name: string, props: any) => {
+                        formatter={(value: number, name: string, props: { color: string }) => {
                           if (name === "comida")
                             return [`${value} pax (${props.payload.ocupacion_comida?.toFixed(0) || 0}%)`, "Comida"]
                           if (name === "cena")
@@ -1103,8 +1101,8 @@ export default function ForecastingPage() {
                         <div
                           className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-md border text-xs font-semibold uppercase tracking-wide"
                           style={{
-                            borderColor: "#227c9d",
-                            color: "#227c9d",
+                            borderColor: BRAND_COLORS.accent,
+                            color: BRAND_COLORS.accent,
                             backgroundColor: "transparent",
                           }}
                         >

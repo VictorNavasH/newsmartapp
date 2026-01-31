@@ -101,7 +101,14 @@ export const fetchWeatherForecast = async (): Promise<WeatherDay[]> => {
       .limit(7)
 
     if (error) {
-      console.error("[v0] Error fetching weather from Supabase:", error)
+      console.error("[v0] Error fetching weather from Supabase (Full Log):", {
+        error,
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        stringified: JSON.stringify(error, Object.getOwnPropertyNames(error)),
+      })
       return []
     }
 

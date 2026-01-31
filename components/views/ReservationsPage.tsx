@@ -19,6 +19,7 @@ import type {
   YearlyComparisonData,
   YearlyTrendInsight,
   MonthlyReservationData,
+  RechartsPayloadEntry,
 } from "@/types"
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, LineChart } from "recharts"
 import {
@@ -40,7 +41,7 @@ import { PageHeader } from "@/components/layout/PageHeader"
 import { PageContent } from "@/components/layout/PageContent"
 import { CHART_CONFIG, CARD_TOOLTIPS, BRAND_COLORS } from "@/constants"
 import { ResponsiveContainer } from "recharts"
-import { formatDateLong, formatDateShort } from "@/lib/utils"
+import { formatDateLong, formatDateShort, formatNumber } from "@/lib/utils"
 
 type PeriodKey = "hoy" | "ayer" | "semana" | "mes" | "trimestre" | "custom"
 type YearlyMetric = "comensales" | "reservas"
@@ -128,13 +129,6 @@ const ReservationsPage: React.FC = () => {
     const from = new Date(businessToday)
     const to = new Date(businessToday)
 
-    console.log(
-      "[v0] ReservationsPage setPeriod called with:",
-      period,
-      "today:",
-      businessToday.toISOString().split("T")[0],
-    )
-
     switch (period) {
       case "hoy":
         // businessToday ya está configurado
@@ -204,15 +198,6 @@ const ReservationsPage: React.FC = () => {
     const loadComparison = async () => {
       setLoadingComparison(true)
       try {
-        console.log("[v0] loadComparison called with:", {
-          startDay: compareRange.startDay,
-          startMonth: compareRange.startMonth,
-          endDay: compareRange.endDay,
-          endMonth: compareRange.endMonth,
-          yearA: compareYearA,
-          yearB: compareYearB,
-        })
-
         const data = await fetchPeriodComparison(
           compareRange.startDay,
           compareRange.startMonth,
@@ -221,8 +206,6 @@ const ReservationsPage: React.FC = () => {
           compareYearA,
           compareYearB,
         )
-
-        console.log("[v0] fetchPeriodComparison result:", data)
 
         setPeriodComparisonData(data)
       } catch (error) {
@@ -808,8 +791,8 @@ const ReservationsPage: React.FC = () => {
                             {label}
                           </p>
                           {payload
-                            .filter((entry: any) => entry.value !== null && entry.value !== undefined)
-                            .map((entry: any, index: number) => {
+                            .filter((entry: RechartsPayloadEntry) => entry.value !== null && entry.value !== undefined)
+                            .map((entry: RechartsPayloadEntry, index: number) => {
                               // Determinar unidad según el dataKey
                               const isOccupancy = entry.dataKey === "total.occupancy_rate"
                               const isReservations = entry.dataKey === "total.reservations"
@@ -822,7 +805,7 @@ const ReservationsPage: React.FC = () => {
 
                               const formattedValue = isOccupancy
                                 ? entry.value?.toFixed(1)
-                                : entry.value?.toLocaleString("es-ES")
+                                : entry.value != null ? formatNumber(entry.value) : "-"
 
                               return (
                                 <div key={index} className="flex items-center gap-2 text-xs mb-1">
@@ -971,8 +954,8 @@ const ReservationsPage: React.FC = () => {
                     {yearlyTrendInsight.percentageChange.toFixed(1)}% vs {yearlyTrendInsight.previousYear}
                   </div>
                   <div className="text-xs text-slate-400 mt-1">
-                    {yearlyTrendInsight.currentYear}: {yearlyTrendInsight.currentYearTotal.toLocaleString("es-ES")} |{" "}
-                    {yearlyTrendInsight.previousYear}: {yearlyTrendInsight.previousYearTotal.toLocaleString("es-ES")}
+                    {yearlyTrendInsight.currentYear}: {formatNumber(yearlyTrendInsight.currentYearTotal)} |{" "}
+                    {yearlyTrendInsight.previousYear}: {formatNumber(yearlyTrendInsight.previousYearTotal)}
                   </div>
                 </div>
 
@@ -983,7 +966,7 @@ const ReservationsPage: React.FC = () => {
                     {yearlyTrendInsight.bestMonth.mes}
                   </div>
                   <div className="text-xs text-slate-400">
-                    {yearlyTrendInsight.bestMonth.valor.toLocaleString("es-ES")} {yearlyMetric}
+                    {formatNumber(yearlyTrendInsight.bestMonth.valor)} {yearlyMetric}
                   </div>
                 </div>
 
@@ -999,10 +982,10 @@ const ReservationsPage: React.FC = () => {
                           : BRAND_COLORS.error,
                     }}
                   >
-                    {yearlyTrendInsight.currentDailyAvg.toLocaleString("es-ES")} {yearlyMetric}/día
+                    {formatNumber(yearlyTrendInsight.currentDailyAvg)} {yearlyMetric}/día
                   </div>
                   <div className="text-xs text-slate-400">
-                    vs {yearlyTrendInsight.previousDailyAvg.toLocaleString("es-ES")}/día en{" "}
+                    vs {formatNumber(yearlyTrendInsight.previousDailyAvg)}/día en{" "}
                     {yearlyTrendInsight.previousYear}
                   </div>
                 </div>
@@ -1048,8 +1031,8 @@ const ReservationsPage: React.FC = () => {
                             {label}
                           </p>
                           {payload
-                            .filter((entry: any) => entry.value !== null)
-                            .map((entry: any, index: number) => {
+                            .filter((entry: RechartsPayloadEntry) => entry.value !== null)
+                            .map((entry: RechartsPayloadEntry, index: number) => {
                               const year = entry.dataKey.replace("año_", "")
                               const ocupacion = entry.payload[`ocup_${year}`]
                               const diasOp = entry.payload[`dias_${year}`]
@@ -1060,7 +1043,7 @@ const ReservationsPage: React.FC = () => {
                                   <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
                                   <span className="text-slate-500 font-medium w-12">{entry.name}</span>
                                   <span className="font-bold text-slate-700">
-                                    {entry.value?.toLocaleString("es-ES")} {yearlyMetric}
+                                    {entry.value != null ? formatNumber(entry.value) : "-"} {yearlyMetric}
                                   </span>
                                   {diasOp && (
                                     <span className="text-slate-400 text-[10px]">
@@ -1071,8 +1054,8 @@ const ReservationsPage: React.FC = () => {
                               )
                             })}
                           {(() => {
-                            const currentYearEntry = payload.find((e: any) => e.dataKey === `año_${currentYear}`)
-                            const prevYearEntry = payload.find((e: any) => e.dataKey === `año_${currentYear - 1}`)
+                            const currentYearEntry = payload.find((e: RechartsPayloadEntry) => e.dataKey === `año_${currentYear}`)
+                            const prevYearEntry = payload.find((e: RechartsPayloadEntry) => e.dataKey === `año_${currentYear - 1}`)
                             if (currentYearEntry?.value && prevYearEntry?.value && !isCurrentOrFutureMonth) {
                               const diff = (
                                 ((currentYearEntry.value - prevYearEntry.value) / prevYearEntry.value) *
@@ -1093,9 +1076,9 @@ const ReservationsPage: React.FC = () => {
                             }
                             // Si estamos en el mes actual o futuro, mostrar aviso
                             if (isCurrentOrFutureMonth && monthIndex === currentMonth) {
-                              const currentYearDias = payload.find((e: any) => e.dataKey === `año_${currentYear}`)
+                              const currentYearDias = payload.find((e: RechartsPayloadEntry) => e.dataKey === `año_${currentYear}`)
                                 ?.payload?.[`dias_${currentYear}`]
-                              const prevYearDias = payload.find((e: any) => e.dataKey === `año_${currentYear - 1}`)
+                              const prevYearDias = payload.find((e: RechartsPayloadEntry) => e.dataKey === `año_${currentYear - 1}`)
                                 ?.payload?.[`dias_${currentYear - 1}`]
                               if (currentYearDias && prevYearDias && currentYearDias < prevYearDias) {
                                 return (
@@ -1359,7 +1342,7 @@ const ReservationsPage: React.FC = () => {
                 )}
                 <div className="text-xs font-medium text-slate-500 mb-1">{comparisonResult.labelA}</div>
                 <div className="text-2xl font-bold mb-2" style={{ color: BRAND_COLORS.primary }}>
-                  {comparisonResult.valueA.toLocaleString("es-ES")}
+                  {formatNumber(comparisonResult.valueA)}
                 </div>
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs">
@@ -1435,7 +1418,7 @@ const ReservationsPage: React.FC = () => {
                 )}
                 <div className="text-xs font-medium text-slate-500 mb-1">{comparisonResult.labelB}</div>
                 <div className="text-2xl font-bold text-slate-700 mb-2">
-                  {comparisonResult.valueB.toLocaleString("es-ES")}
+                  {formatNumber(comparisonResult.valueB)}
                 </div>
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs">

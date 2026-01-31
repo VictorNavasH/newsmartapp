@@ -24,6 +24,7 @@ import type {
   OperativaCliente,
   OperativaPorHora,
   ComparisonResult,
+  RechartsPayloadEntry,
 } from "@/types"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts"
 import { Clock, ChefHat, Users, AlertTriangle, Utensils } from "lucide-react"
@@ -490,7 +491,7 @@ const OperationsPage: React.FC = () => {
                               month: "short",
                             })}
                           </p>
-                          {payload.map((entry: any, index: number) => (
+                          {payload.map((entry: RechartsPayloadEntry, index: number) => (
                             <div key={index} className="flex items-center gap-2 text-xs mb-1">
                               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
                               <span className="text-slate-500 font-medium w-12">{entry.name}</span>

@@ -8,15 +8,7 @@ import { Slider } from "@/components/ui/slider"
 import { fetchWhatIfReferenceData } from "@/lib/whatIfService"
 import type { WhatIfReferenceData } from "@/types"
 import { BRAND_COLORS } from "@/constants"
-
-const formatCurrency = (value: number): string => {
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value)
-}
+import { formatCurrency } from "@/lib/utils"
 
 export default function WhatIfPage() {
   const [referenceData, setReferenceData] = useState<WhatIfReferenceData | null>(null)

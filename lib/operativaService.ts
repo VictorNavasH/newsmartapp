@@ -23,10 +23,6 @@ export const fetchOperativaKPIs = async (
     const startStr = formatDateStr(startDate)
     const endStr = formatDateStr(endDate)
 
-    console.log(
-      `[v0] fetchOperativaKPIs (RPC) - from ${startStr} to ${endStr}, tipo: ${filtroTipo}, categoria: ${filtroCategoria}`,
-    )
-
     const { data, error } = await supabase.rpc("get_operativa_kpis", {
       fecha_inicio: startStr,
       fecha_fin: endStr,
@@ -40,7 +36,6 @@ export const fetchOperativaKPIs = async (
       return []
     }
 
-    console.log(`[v0] fetchOperativaKPIs - Received ${data?.length || 0} days`)
     return data || []
   } catch (err) {
     console.error("[v0] Error in fetchOperativaKPIs:", err)
@@ -58,10 +53,6 @@ export const fetchOperativaProductos = async (
     const startStr = formatDateStr(startDate)
     const endStr = formatDateStr(endDate)
 
-    console.log(
-      `[v0] fetchOperativaProductos (RPC) - from ${startStr} to ${endStr}, tipo: ${filtroTipo}, categoria: ${filtroCategoria}`,
-    )
-
     const { data, error } = await supabase.rpc("get_operativa_productos", {
       fecha_inicio: startStr,
       fecha_fin: endStr,
@@ -75,7 +66,6 @@ export const fetchOperativaProductos = async (
       return []
     }
 
-    console.log(`[v0] fetchOperativaProductos - Received ${data?.length || 0} productos`)
     return data || []
   } catch (err) {
     console.error("[v0] Error in fetchOperativaProductos:", err)
@@ -88,8 +78,6 @@ export const fetchOperativaCliente = async (startDate: Date, endDate: Date): Pro
     const startStr = formatDateStr(startDate)
     const endStr = formatDateStr(endDate)
 
-    console.log(`[v0] fetchOperativaCliente (RPC) - from ${startStr} to ${endStr}`)
-
     const { data, error } = await supabase.rpc("get_operativa_cliente", {
       fecha_inicio: startStr,
       fecha_fin: endStr,
@@ -101,7 +89,6 @@ export const fetchOperativaCliente = async (startDate: Date, endDate: Date): Pro
       return []
     }
 
-    console.log(`[v0] fetchOperativaCliente - Received ${data?.length || 0} clientes`)
     return data || []
   } catch (err) {
     console.error("[v0] Error in fetchOperativaCliente:", err)
@@ -114,8 +101,6 @@ export const fetchOperativaPorHora = async (startDate: Date, endDate: Date): Pro
     const startStr = formatDateStr(startDate)
     const endStr = formatDateStr(endDate)
 
-    console.log(`[v0] fetchOperativaPorHora (RPC) - from ${startStr} to ${endStr}`)
-
     const { data, error } = await supabase.rpc("get_operativa_por_hora", {
       fecha_inicio: startStr,
       fecha_fin: endStr,
@@ -127,7 +112,6 @@ export const fetchOperativaPorHora = async (startDate: Date, endDate: Date): Pro
       return []
     }
 
-    console.log(`[v0] fetchOperativaPorHora - Received ${data?.length || 0} horas`)
     return data || []
   } catch (err) {
     console.error("[v0] Error in fetchOperativaPorHora:", err)
@@ -144,8 +128,6 @@ export const fetchOperativaItems = async (
   try {
     const startStr = formatDateStr(startDate)
     const endStr = formatDateStr(endDate)
-
-    console.log(`[v0] fetchOperativaItems - from ${startStr} to ${endStr}, tipo: ${tipo}, categoria: ${categoria}`)
 
     let query = supabase.from("vw_operativa_items").select("*").gte("fecha", startStr).lte("fecha", endStr)
 
@@ -164,7 +146,6 @@ export const fetchOperativaItems = async (
       return []
     }
 
-    console.log(`[v0] fetchOperativaItems - Received ${data?.length || 0} items`)
     return data || []
   } catch (err) {
     console.error("[v0] Error in fetchOperativaItems:", err)

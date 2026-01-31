@@ -30,8 +30,8 @@ import type {
   WeekRevenueDay,
   BenchmarkItem,
   BenchmarkResumen,
-  PeriodComparisonResult,
-  FoodCostProduct, // Added import
+  ComparisonResult,
+  FoodCostProduct,
   FoodCostSummary, // Added import
 } from "../types"
 import { MOCK_DATA_DELAY } from "../constants"
@@ -325,9 +325,9 @@ const generateMockHistory = (days: number): DailyCompleteMetrics[] => {
 
     // Aggregate Tables
     const tableMap = new Map<string, number>()
-    ;[...lunch.tables_breakdown, ...dinner.tables_breakdown].forEach((t) => {
-      tableMap.set(t.id, (tableMap.get(t.id) || 0) + t.revenue)
-    })
+      ;[...lunch.tables_breakdown, ...dinner.tables_breakdown].forEach((t) => {
+        tableMap.set(t.id, (tableMap.get(t.id) || 0) + t.revenue)
+      })
     const totalTablesBreakdown: TableSales[] = Array.from(tableMap.entries())
       .map(([id, rev]) => ({
         id,
@@ -527,14 +527,12 @@ export const fetchWeekReservations = async (offsetWeeks = 0): Promise<WeekReserv
       const year = d.getFullYear()
       const month = String(d.getMonth() + 1).padStart(2, "0")
       const day = String(d.getDate()).padStart(2, "0")
-      return `${year}-${pad(month)}-${pad(day)}`
+      return `${year}-${month}-${day}`
     }
     // --- END FIX ---
 
     const startDateStr = formatDateStr(startOfTargetWeek)
     const endDateStr = formatDateStr(endOfTargetWeek)
-
-    console.log(`[v0] Fetching reservations from ${startDateStr} to ${endDateStr}`)
 
     const { data, error } = await supabase
       .from("reservas_agregadas_diarias")
@@ -544,11 +542,16 @@ export const fetchWeekReservations = async (offsetWeeks = 0): Promise<WeekReserv
       .order("fecha", { ascending: true })
 
     if (error) {
-      console.error("[v0] Supabase error:", error)
+      console.error("[v0] Supabase error fetching week reservations (Full Log):", {
+        error,
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        stringified: JSON.stringify(error, Object.getOwnPropertyNames(error)),
+      })
       throw error
     }
-
-    console.log(`[v0] Reservations data received: ${data?.length || 0} rows`, JSON.stringify(data))
 
     const dbMap = new Map(data.map((row: any) => [row.fecha.substring(0, 10), row]))
     const days: WeekReservationDay[] = []
@@ -597,8 +600,13 @@ export const fetchWeekReservations = async (offsetWeeks = 0): Promise<WeekReserv
     }
 
     return days
-  } catch (err) {
-    console.error("[v0] Error fetching week reservations:", err)
+  } catch (err: any) {
+    console.error("[v0] Error fetching week reservations (Full Log):", {
+      err,
+      message: err.message,
+      stack: err.stack,
+      stringified: JSON.stringify(err, Object.getOwnPropertyNames(err)),
+    })
     return []
   }
 }
@@ -640,7 +648,11 @@ export const fetchRealTimeData = async (): Promise<{
     },
     tables_breakdown: [],
     verifactu_metrics: { success: 0, error: 0, pending: 0 },
-    // Added fields from the original code that were missing in the empty shift structure
+    // Missing fields for ShiftMetrics
+    revenue: 0,
+    tips: 0,
+    tips_count: 0,
+    transactions: 0,
     avg_ticket_transaction: 0,
     avg_ticket_res: 0,
     avg_ticket_pax: 0,
@@ -667,8 +679,6 @@ export const fetchRealTimeData = async (): Promise<{
   try {
     const todayStr = toLocalISOString(getBusinessDate())
 
-    console.log(`[v0] Fetching Live Data for business date: ${todayStr}`)
-
     // Use .maybeSingle() combined with a filter on today's date
     // This ensures we get EITHER today's row OR null (if no sales yet)
     // We NEVER get yesterday's data by mistake.
@@ -679,7 +689,14 @@ export const fetchRealTimeData = async (): Promise<{
       .maybeSingle()
 
     if (error) {
-      console.error("[v0] Error fetching live data:", error)
+      console.error("[v0] Error fetching live data (Full Log):", {
+        error,
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        stringified: JSON.stringify(error, Object.getOwnPropertyNames(error)),
+      })
       // In case of error, return empty (zeros), NEVER mocks
       const empty = createEmptyShift()
       return {
@@ -693,7 +710,6 @@ export const fetchRealTimeData = async (): Promise<{
     }
 
     if (!data) {
-      console.log("[v0] No live data found for TODAY. Returning zeros.")
       // Correct behavior: If no sales today, show 0. Do NOT generate random data.
       const empty = createEmptyShift()
       return {
@@ -705,10 +721,6 @@ export const fetchRealTimeData = async (): Promise<{
         prevision: createEmptyPrevision(),
       }
     }
-
-    console.log("[v0] Live Data Found for Today:", data)
-    // Log keys to help debug column names if needed
-    console.log("[v0] Keys available in live view:", Object.keys(data))
 
     // --- 1. PARSE SALES & VERIFACTU ---
     // Flexible mapping for column names based on logs
@@ -786,15 +798,11 @@ export const fetchRealTimeData = async (): Promise<{
 
     const payment_methods = { card, cash, digital }
 
-    console.log("[v0] Payment Methods Mapped:", payment_methods)
-
     const verifactu_metrics = {
       success: data.verifactu_ok ?? 0,
       error: data.verifactu_error ?? 0,
       pending: data.verifactu_pendientes ?? 0,
     }
-
-    console.log("[v0] VeriFactu Metrics Mapped:", verifactu_metrics)
 
     const prevision = {
       comensales_reservados: data.comensales_reservados ?? 0,
@@ -809,14 +817,11 @@ export const fetchRealTimeData = async (): Promise<{
       ticket_mesa_30d: data.ticket_mesa_30d ?? 0,
     }
 
-    console.log("[v0] Prevision Data Parsed:", prevision)
-
     // Construct the "Total" shift object with real data
     const totalShift: ShiftMetrics = {
       ...createEmptyShift(), // Start with zeros
       revenue: totalRevenue,
       transactions: totalTickets,
-      avg_ticket: avgTicketTotal,
       avg_ticket_transaction: avgTicketTotal,
       verifactu_metrics, // Use parsed verifactu_metrics instead of zeros
       // Injected New Data
@@ -829,7 +834,6 @@ export const fetchRealTimeData = async (): Promise<{
       ...createEmptyShift(),
       revenue: lunchRevenue,
       transactions: lunchTickets,
-      avg_ticket: avgTicketLunch,
       avg_ticket_transaction: avgTicketLunch,
     }
 
@@ -837,7 +841,6 @@ export const fetchRealTimeData = async (): Promise<{
       ...createEmptyShift(),
       revenue: dinnerRevenue,
       transactions: dinnerTickets,
-      avg_ticket: avgTicketDinner,
       avg_ticket_transaction: avgTicketDinner,
     }
 
@@ -1057,22 +1060,15 @@ export const fetchReservationsFromDB = async (startDate: Date, endDate: Date): P
   const firstRow = rows?.[0]
   const capacity = firstRow
     ? {
-        plazas_turno: firstRow.capacidad_plazas_turno || 66,
-        plazas_dia: firstRow.capacidad_plazas_dia || 132,
-        mesas_turno: firstRow.capacidad_mesas_turno || 19,
-        mesas_dia: firstRow.capacidad_mesas_dia || 38,
-      }
+      plazas_turno: firstRow.capacidad_plazas_turno || 66,
+      plazas_dia: firstRow.capacidad_plazas_dia || 132,
+      mesas_turno: firstRow.capacidad_mesas_turno || 19,
+      mesas_dia: firstRow.capacidad_mesas_dia || 38,
+    }
     : undefined
 
   // Transform DB data to DailyCompleteMetrics format
   const mapped = (rows || []).map((row: any) => {
-    if (row.fecha === "2025-12-13") {
-      console.log("[v0] DEBUG día 13 - rotacion_mesas_dia:", row.rotacion_mesas_dia)
-      console.log("[v0] DEBUG día 13 - rotacion_mesas_comida:", row.rotacion_mesas_comida)
-      console.log("[v0] DEBUG día 13 - rotacion_mesas_cena:", row.rotacion_mesas_cena)
-      console.log("[v0] DEBUG día 13 - reservas:", row.reservas_total_dia, "mesas:", row.mesas_ocupadas_dia)
-    }
-
     const paxDia = Number.parseFloat(row.comensales_total_dia) || 0
     const paxComida = Number.parseFloat(row.comensales_comida) || 0
     const paxCena = Number.parseFloat(row.comensales_cena) || 0
@@ -1103,6 +1099,7 @@ export const fetchReservationsFromDB = async (startDate: Date, endDate: Date): P
         avg_ticket_pax: Number.parseFloat(row.ticket_medio_por_comensal_dia) || 0,
         avg_ticket_table: Number.parseFloat(row.ticket_medio_por_mesa_dia) || 0,
         avg_pax_per_res: Number.parseFloat(row.pax_medio_reserva_dia) || 0,
+        avg_pax_per_table: row.pax_medio_mesa_dia || 0,
         avg_pax_per_table_used: Number.parseFloat(row.pax_medio_mesa_dia) || 0,
         table_rotation: Number.parseFloat(row.rotacion_mesas_dia) || 0,
         occupancy_rate: Number.parseFloat(row.ocupacion_porcentaje_dia) || Number.parseFloat(ocupacionDia.toFixed(2)),
@@ -1141,6 +1138,7 @@ export const fetchReservationsFromDB = async (startDate: Date, endDate: Date): P
         avg_ticket_pax: Number.parseFloat(row.ticket_medio_por_comensal_comida) || 0,
         avg_ticket_table: Number.parseFloat(row.ticket_medio_por_mesa_comida) || 0,
         avg_pax_per_res: Number.parseFloat(row.pax_medio_reserva_comida) || 0,
+        avg_pax_per_table: row.pax_medio_mesa_comida || 0,
         avg_pax_per_table_used: Number.parseFloat(row.pax_medio_mesa_comida) || 0,
         table_rotation: Number.parseFloat(row.rotacion_mesas_comida) || 0,
         occupancy_rate:
@@ -1180,6 +1178,7 @@ export const fetchReservationsFromDB = async (startDate: Date, endDate: Date): P
         avg_ticket_pax: Number.parseFloat(row.ticket_medio_por_comensal_cena) || 0,
         avg_ticket_table: Number.parseFloat(row.ticket_medio_por_mesa_cena) || 0,
         avg_pax_per_res: Number.parseFloat(row.pax_medio_reserva_cena) || 0,
+        avg_pax_per_table: row.pax_medio_mesa_cena || 0,
         avg_pax_per_table_used: Number.parseFloat(row.pax_medio_mesa_cena) || 0,
         table_rotation: Number.parseFloat(row.rotacion_mesas_cena) || 0,
         occupancy_rate: Number.parseFloat(row.ocupacion_porcentaje_cena) || Number.parseFloat(ocupacionCena.toFixed(2)),
@@ -1207,18 +1206,6 @@ export const fetchReservationsFromDB = async (startDate: Date, endDate: Date): P
     }
   })
 
-  console.log(
-    "[v0] fetchReservationsFromDB mapped first row:",
-    mapped.length > 0
-      ? {
-          fecha: mapped[0].date,
-          total_tables_used: mapped[0].total.tables_used,
-          lunch_tables_used: mapped[0].lunch.tables_used,
-          dinner_tables_used: mapped[0].dinner.tables_used,
-          raw_total_mesas: rows && rows.length > 0 ? (rows as any)[0].total_mesas : "N/A",
-        }
-      : "No data",
-  )
   return mapped
 }
 
@@ -1227,16 +1214,12 @@ export const fetchIncomeFromDB = async (startDate: Date, endDate: Date): Promise
   const start = startDate.toISOString().split("T")[0]
   const end = endDate.toISOString().split("T")[0]
 
-  console.log(`[v0] Fetching income data from ${start} to ${end}`)
-
   const { data, error } = await supabase
     .from("vw_metricas_diarias_base")
     .select("*")
     .gte("fecha", start)
     .lte("fecha", end)
     .order("fecha", { ascending: true })
-
-  console.log("[v0] RAW DATA FROM SUPABASE:", data?.[0])
 
   if (error) {
     console.error("[v0] Error fetching income from DB:", error)
@@ -1246,11 +1229,11 @@ export const fetchIncomeFromDB = async (startDate: Date, endDate: Date): Promise
   const firstRow = data?.[0]
   const capacity = firstRow
     ? {
-        plazas_turno: firstRow.capacidad_plazas_turno || 66,
-        plazas_dia: firstRow.capacidad_plazas_dia || 132,
-        mesas_turno: firstRow.capacidad_mesas_turno || 19,
-        mesas_dia: firstRow.capacidad_mesas_dia || 38,
-      }
+      plazas_turno: firstRow.capacidad_plazas_turno || 66,
+      plazas_dia: firstRow.capacidad_plazas_dia || 132,
+      mesas_turno: firstRow.capacidad_mesas_turno || 19,
+      mesas_dia: firstRow.capacidad_mesas_dia || 38,
+    }
     : undefined
 
   // Transform DB data to DailyCompleteMetrics format
@@ -1271,6 +1254,7 @@ export const fetchIncomeFromDB = async (startDate: Date, endDate: Date): Promise
       avg_ticket_pax: Number.parseFloat(row.ticket_medio_por_comensal_dia) || 0,
       avg_ticket_table: Number.parseFloat(row.ticket_medio_por_mesa_dia) || 0,
       avg_pax_per_res: Number.parseFloat(row.pax_medio_reserva_dia) || 0,
+      avg_pax_per_table: row.pax_medio_mesa_dia || 0,
       avg_pax_per_table_used: Number.parseFloat(row.pax_medio_mesa_dia) || 0,
       table_rotation: Number.parseFloat(row.rotacion_mesas_dia) || 0,
       occupancy_rate: Number.parseFloat(row.ocupacion_porcentaje_dia) || 0,
@@ -1305,6 +1289,7 @@ export const fetchIncomeFromDB = async (startDate: Date, endDate: Date): Promise
       avg_ticket_pax: Number.parseFloat(row.ticket_medio_por_comensal_comida) || 0,
       avg_ticket_table: Number.parseFloat(row.ticket_medio_por_mesa_comida) || 0,
       avg_pax_per_res: Number.parseFloat(row.pax_medio_reserva_comida) || 0,
+      avg_pax_per_table: row.pax_medio_mesa_comida || 0,
       avg_pax_per_table_used: Number.parseFloat(row.pax_medio_mesa_comida) || 0,
       table_rotation: Number.parseFloat(row.rotacion_mesas_comida) || 0,
       occupancy_rate: Number.parseFloat(row.ocupacion_porcentaje_comida) || 0,
@@ -1339,6 +1324,7 @@ export const fetchIncomeFromDB = async (startDate: Date, endDate: Date): Promise
       avg_ticket_pax: Number.parseFloat(row.ticket_medio_por_comensal_cena) || 0,
       avg_ticket_table: Number.parseFloat(row.ticket_medio_por_mesa_cena) || 0,
       avg_pax_per_res: Number.parseFloat(row.pax_medio_reserva_cena) || 0,
+      avg_pax_per_table: row.pax_medio_mesa_cena || 0,
       avg_pax_per_table_used: Number.parseFloat(row.pax_medio_mesa_cena) || 0,
       table_rotation: Number.parseFloat(row.rotacion_mesas_cena) || 0,
       occupancy_rate: Number.parseFloat(row.ocupacion_porcentaje_cena) || 0,
@@ -1378,7 +1364,6 @@ export const fetchTableBillingFromDB = async (startDate: Date, endDate: Date): P
   }
 
   if (!data || data.length === 0) {
-    console.log("[v0] No table billing data found for date range")
     return []
   }
 
@@ -1475,17 +1460,12 @@ export const fetchExpensesByTags = async (
       params.p_status = status
     }
 
-    console.log("[v0] fetchExpensesByTags - params:", JSON.stringify(params))
-
     const { data, error } = await supabase.rpc("get_gastos_by_tags", params)
 
     if (error) {
       console.error("[v0] Error fetching expenses by tags:", error)
       return []
     }
-
-    const totalAmount = (data || []).reduce((sum: number, exp: any) => sum + (exp.total_amount || 0), 0)
-    console.log(`[v0] fetchExpensesByTags - Received ${data?.length || 0} expenses, total: ${totalAmount.toFixed(2)}€`)
 
     return data || []
   } catch (err) {
@@ -1595,11 +1575,9 @@ export const fetchOperationsRealTime = async (): Promise<OperacionesData | null>
     }
 
     if (!data) {
-      console.log("[v0] No operations data found")
       return null
     }
 
-    console.log("[v0] Operations data loaded:", data)
     return data as OperacionesData
   } catch (err) {
     console.error("[v0] Exception fetching operations:", err)
@@ -1908,12 +1886,10 @@ export async function fetchForecastData(): Promise<{
     .order("fecha", { ascending: true })
 
   if (error) {
-    console.log("[v0] Error fetching forecast data:", error.message)
   }
 
   // If no data from DB, generate mock data
   if (!allData || allData.length === 0) {
-    console.log("[v0] No forecast data from DB, generating mock data")
     return generateMockForecastData(today, todayStr)
   }
 
@@ -1979,9 +1955,9 @@ export async function fetchForecastData(): Promise<{
   const ocupacionSemana =
     proximos7dias.length > 0
       ? Math.floor(
-          (proximos7dias.reduce((a, b) => a + b.comensales_prediccion, 0) / (proximos7dias.length * capacidadDiaria)) *
-            100,
-        )
+        (proximos7dias.reduce((a, b) => a + b.comensales_prediccion, 0) / (proximos7dias.length * capacidadDiaria)) *
+        100,
+      )
       : 0
 
   return {
@@ -2011,9 +1987,6 @@ export async function fetchForecastCalendar(year: number, month: number): Promis
     .gte("fecha", toLocalISOString(startDate))
     .lte("fecha", toLocalISOString(endDate))
     .order("fecha", { ascending: true })
-
-  console.log("[v0] fetchForecastCalendar - data:", data)
-  console.log("[v0] fetchForecastCalendar - error:", error)
 
   if (error || !data || data.length === 0) {
     // Generate mock data for the month
@@ -2118,7 +2091,14 @@ export async function fetchFinancialKPIs(): Promise<FinancialKPIs[]> {
       .order("periodo", { ascending: true })
 
     if (error) {
-      console.error("[v0] Error fetching financial KPIs:", error)
+      console.error("[v0] Error fetching financial KPIs (Full Log):", {
+        error,
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        stringified: JSON.stringify(error, Object.getOwnPropertyNames(error)),
+      })
       return []
     }
 
@@ -2193,7 +2173,14 @@ export async function fetchLaborCostAnalysis(startDate: string, endDate: string)
       .order("fecha", { ascending: true })
 
     if (error) {
-      console.error("[v0] Error fetching labor cost analysis:", error)
+      console.error("[v0] Error fetching labor cost analysis (Full Log):", {
+        error,
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        stringified: JSON.stringify(error, Object.getOwnPropertyNames(error)),
+      })
       return []
     }
 
@@ -2216,7 +2203,14 @@ export async function fetchWeekRevenue(weekOffset = 0): Promise<WeekRevenueDay[]
     const { data, error } = await supabase.rpc("rpc_facturacion_semana", { p_week_offset: weekOffset })
 
     if (error) {
-      console.error("[v0] Error fetching week revenue:", error)
+      console.error("[v0] Error fetching week revenue (Full Log):", {
+        error,
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        stringified: JSON.stringify(error, Object.getOwnPropertyNames(error)),
+      })
       return []
     }
 
@@ -2353,7 +2347,7 @@ export async function fetchPeriodComparisonData(
   endMonth: number,
   yearA: number,
   yearB: number,
-): Promise<{ yearA: PeriodComparisonResult; yearB: PeriodComparisonResult }> {
+): Promise<{ yearA: ComparisonResult; yearB: ComparisonResult }> {
   // Construir fechas para cada año
   const startA = `${yearA}-${String(startMonth + 1).padStart(2, "0")}-${String(startDay).padStart(2, "0")}`
   const endA = `${yearA}-${String(endMonth + 1).padStart(2, "0")}-${String(endDay).padStart(2, "0")}`
@@ -2440,8 +2434,6 @@ export async function fetchFoodCostProducts(): Promise<FoodCostSummary> {
         por_categoria: [],
       }
     }
-
-    console.log("[v0] Food Cost data received:", data?.length, "rows", data?.[0])
 
     const productos: FoodCostProduct[] = (data || []).map((row: any) => ({
       sku: row.sku || "",

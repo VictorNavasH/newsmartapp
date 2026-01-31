@@ -13,14 +13,15 @@ import {
   aggregateTableMetrics,
   getBusinessDate,
 } from "@/lib/dataService"
-import type { DailyCompleteMetrics, DateRange, TableBillingMetrics, TableAggregatedMetrics } from "@/types"
+import type { DailyCompleteMetrics, DateRange, TableBillingMetrics, TableAggregatedMetrics, RechartsPayloadEntry } from "@/types"
 import { ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { DollarSign, Receipt, Utensils, Users, TrendingUp, Award, Table2 } from "lucide-react"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { PageContent } from "@/components/layout/PageContent"
 import { CHART_CONFIG, CARD_TOOLTIPS, BRAND_COLORS } from "@/constants"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { formatDateLong, formatDateShort } from "@/lib/utils"
+import { formatDateLong, formatDateShort, formatCurrency, formatNumber } from "@/lib/utils"
+import { calculatePreviousPeriod } from "@/lib/dateUtils"
 
 type PeriodKey = "hoy" | "ayer" | "semana" | "mes" | "trimestre" | "custom"
 
@@ -47,13 +48,6 @@ const IncomePage: React.FC = () => {
   const [tableHistory, setTableHistory] = useState<TableBillingMetrics[]>([])
   const [selectedTable, setSelectedTable] = useState<string>("")
   const [loadingTables, setLoadingTables] = useState(true)
-
-  console.log("[v0] Rendering IncomePage with current data:", {
-    fecha: current?.total.revenue,
-    pax: current?.total.pax,
-    dateRange: dateRange,
-    hasCurrentData: !!current,
-  })
 
   const handlePeriodChange = (period: string) => {
     const businessToday = getBusinessDate()
@@ -101,11 +95,6 @@ const IncomePage: React.FC = () => {
       return normalized
     }
 
-    console.log("[v0] handleDateChange called with:", {
-      from: newRange.from.toISOString().split("T")[0],
-      to: newRange.to.toISOString().split("T")[0],
-    })
-
     setActiveTab("custom")
     setDateRange({
       from: normalizeDate(newRange.from),
@@ -121,61 +110,11 @@ const IncomePage: React.FC = () => {
       try {
         const currentData = await fetchIncomeFromDB(dateRange.from, dateRange.to)
 
-        console.log("[v0] currentData received:", {
-          count: currentData.length,
-          firstDate: currentData[0]?.fecha,
-          dateRange: { from: dateRange.from, to: dateRange.to },
-        })
-
-        const oneDayMs = 24 * 60 * 60 * 1000
-        const daysDiff = Math.round((dateRange.to.getTime() - dateRange.from.getTime()) / oneDayMs) + 1
-
-        let prevFrom: Date
-        let prevTo: Date
-
-        if (daysDiff === 1) {
-          prevFrom = new Date(dateRange.from)
-          prevFrom.setDate(prevFrom.getDate() - 7)
-          prevTo = new Date(dateRange.to)
-          prevTo.setDate(prevTo.getDate() - 7)
-        } else if (daysDiff <= 7) {
-          prevFrom = new Date(dateRange.from)
-          prevFrom.setDate(prevFrom.getDate() - 7)
-          prevTo = new Date(dateRange.to)
-          prevTo.setDate(prevTo.getDate() - 7)
-        } else if (daysDiff <= 31) {
-          prevFrom = new Date(dateRange.from)
-          prevFrom.setMonth(prevFrom.getMonth() - 1)
-          prevTo = new Date(dateRange.to)
-          prevTo.setMonth(prevTo.getMonth() - 1)
-          const maxDayPrevMonth = new Date(prevTo.getFullYear(), prevTo.getMonth() + 1, 0).getDate()
-          if (prevTo.getDate() > maxDayPrevMonth) {
-            prevTo.setDate(maxDayPrevMonth)
-          }
-        } else {
-          prevTo = new Date(dateRange.from)
-          prevTo.setDate(prevTo.getDate() - 1)
-          prevFrom = new Date(prevTo)
-          prevFrom.setDate(prevFrom.getDate() - (daysDiff - 1))
-        }
-
-        const previousData = await fetchIncomeFromDB(prevFrom, prevTo)
-
-        console.log("[v0] previousData received:", {
-          count: previousData.length,
-          firstDate: previousData[0]?.fecha,
-          prevRange: { from: prevFrom, to: prevTo },
-        })
+        const prev = calculatePreviousPeriod(dateRange.from, dateRange.to)
+        const previousData = await fetchIncomeFromDB(prev.from, prev.to)
 
         const currentAgg = aggregateMetrics(currentData)
         const previousAgg = aggregateMetrics(previousData)
-
-        console.log("[v0] Aggregated metrics:", {
-          currentRevenue: currentAgg?.total.revenue,
-          previousRevenue: previousAgg?.total.revenue,
-          currentPax: currentAgg?.total.pax,
-          previousPax: previousAgg?.total.pax,
-        })
 
         setCurrent(currentAgg)
         setPrevious(previousAgg)
@@ -482,11 +421,7 @@ const IncomePage: React.FC = () => {
                 <div className="text-right">
                   <p className="text-lg font-bold text-[#364f6b]">{cardPct}%</p>
                   <p className="text-xs text-slate-500">
-                    {current?.total.payment_methods.card.toLocaleString("es-ES", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}{" "}
-                    €
+                    {formatCurrency(current?.total.payment_methods.card)}
                   </p>
                 </div>
               </div>
@@ -499,11 +434,7 @@ const IncomePage: React.FC = () => {
                 <div className="text-right">
                   <p className="text-lg font-bold text-[#364f6b]">{cashPct}%</p>
                   <p className="text-xs text-slate-500">
-                    {current?.total.payment_methods.cash.toLocaleString("es-ES", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}{" "}
-                    €
+                    {formatCurrency(current?.total.payment_methods.cash)}
                   </p>
                 </div>
               </div>
@@ -516,11 +447,7 @@ const IncomePage: React.FC = () => {
                 <div className="text-right">
                   <p className="text-lg font-bold text-[#364f6b]">{digitalPct}%</p>
                   <p className="text-xs text-slate-500">
-                    {current?.total.payment_methods.digital.toLocaleString("es-ES", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}{" "}
-                    €
+                    {formatCurrency(current?.total.payment_methods.digital)}
                   </p>
                 </div>
               </div>
@@ -573,16 +500,12 @@ const IncomePage: React.FC = () => {
                                 month: "short",
                               })}
                             </p>
-                            {payload.map((entry: any, index: number) => (
+                            {payload.map((entry: RechartsPayloadEntry, index: number) => (
                               <div key={index} className="flex items-center gap-2 text-xs mb-1">
                                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
                                 <span className="text-slate-500 font-medium w-16">{entry.name}</span>
                                 <span className="font-bold text-slate-700">
-                                  {entry.value.toLocaleString("es-ES", {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                  })}{" "}
-                                  €
+                                  {formatCurrency(entry.value)}
                                 </span>
                               </div>
                             ))}
@@ -695,7 +618,7 @@ const IncomePage: React.FC = () => {
                                 month: "short",
                               })}
                             </p>
-                            {payload.map((entry: any, index: number) => (
+                            {payload.map((entry: RechartsPayloadEntry, index: number) => (
                               <div key={index} className="flex items-center gap-2 text-xs mb-1">
                                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
                                 <span className="text-slate-500 font-medium w-24">{entry.name}</span>
@@ -788,11 +711,7 @@ const IncomePage: React.FC = () => {
                             <span className="font-medium text-slate-700">{table.nombre_mesa}</span>
                           </div>
                           <span className="font-bold" style={{ color: BRAND_COLORS.primary }}>
-                            {table.total_facturado.toLocaleString("es-ES", {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}
-                            €
+                            {formatCurrency(table.total_facturado)}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -839,11 +758,7 @@ const IncomePage: React.FC = () => {
                   <div>
                     <p className="text-xs text-slate-500 mb-1">Total Facturado</p>
                     <p className="text-lg font-bold text-[#364f6b]">
-                      {selectedTableData.total_facturado.toLocaleString("es-ES", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                      €
+                      {formatCurrency(selectedTableData.total_facturado)}
                     </p>
                   </div>
                   <div>
@@ -853,11 +768,7 @@ const IncomePage: React.FC = () => {
                   <div>
                     <p className="text-xs text-slate-500 mb-1">Ticket Medio</p>
                     <p className="text-lg font-bold text-[#364f6b]">
-                      {selectedTableData.avg_factura.toLocaleString("es-ES", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                      €
+                      {formatCurrency(selectedTableData.avg_factura)}
                     </p>
                   </div>
                 </div>
@@ -892,11 +803,7 @@ const IncomePage: React.FC = () => {
                                 <p className="text-xs text-slate-600">
                                   Facturado:{" "}
                                   <span className="font-bold" style={{ color: BRAND_COLORS.primary }}>
-                                    {payload[0]?.value.toLocaleString("es-ES", {
-                                      minimumFractionDigits: 2,
-                                      maximumFractionDigits: 2,
-                                    })}
-                                    €
+                                    {formatCurrency(payload[0]?.value)}
                                   </span>
                                 </p>
                                 <p className="text-xs text-slate-600">
@@ -981,26 +888,14 @@ const IncomePage: React.FC = () => {
                           </td>
                           <td className="p-3 font-medium text-slate-700">{table.nombre_mesa}</td>
                           <td className="p-3 text-right font-bold" style={{ color: BRAND_COLORS.primary }}>
-                            {table.total_facturado.toLocaleString("es-ES", {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}
-                            €
+                            {formatCurrency(table.total_facturado)}
                           </td>
                           <td className="p-3 text-right text-slate-600">{table.num_facturas}</td>
                           <td className="p-3 text-right text-slate-600">
-                            {table.total_propinas.toLocaleString("es-ES", {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}
-                            €
+                            {formatCurrency(table.total_propinas)}
                           </td>
                           <td className="p-3 text-right font-medium text-slate-700">
-                            {table.avg_factura.toLocaleString("es-ES", {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}
-                            €
+                            {formatCurrency(table.avg_factura)}
                           </td>
                         </tr>
                       )

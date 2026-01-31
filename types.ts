@@ -1097,6 +1097,29 @@ export interface CompraPedido {
   albaran_incidencias: string | null
 }
 
+export interface CompraFacturaConciliacion {
+  id: string
+  factura_id: string
+  conciliacion_id: string | null
+  gstock_supplier_id: string | null
+  factura_numero: string
+  proveedor: string | null
+  proveedor_nif: string | null
+  factura_fecha: string
+  factura_vencimiento: string | null
+  factura_base: number
+  factura_iva: number
+  factura_total: number
+  factura_concepto: string | null
+  ia_confianza_pct: number | null
+  tipo_conciliacion: string | null
+  motivo_revision: string | null
+  requiere_revision: boolean
+  estado_conciliacion: string | null
+  estado_pago: "pagada" | "pendiente" | "parcial" | "abono"
+  albaranes_vinculados: string[] | null
+}
+
 export interface CompraKPIs {
   pedidos_pendientes: number
   importe_pedidos_pendientes: number
@@ -1125,7 +1148,7 @@ export interface CompraProveedor {
 
 // NEW: Añadir tipo ProductFormat para formatos de productos
 export interface ProductFormat {
-  gstock_format_id: number
+  id: number
   name: string
 }
 
@@ -1167,7 +1190,23 @@ export interface CompraTablaJerarquica {
   familia: string | null
   tipo: string | null
   subtipo: string | null
-  total: number
-  porcentaje: number
-  num_albaranes: number
+  total_con_iva: number
+  total_sin_iva: number
+  num_lineas: number
+}
+
+// --- Recharts Tooltip Types ---
+
+export interface RechartsPayloadEntry {
+  name: string
+  value: number
+  color?: string
+  dataKey?: string
+  payload?: Record<string, unknown>
+}
+
+export interface RechartsTooltipProps {
+  active?: boolean
+  payload?: RechartsPayloadEntry[]
+  label?: string
 }

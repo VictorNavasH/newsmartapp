@@ -154,6 +154,7 @@ import {
   fetchTreasuryMonthlySummary, // Añadir import
 } from "@/lib/treasuryService"
 import { BRAND_COLORS } from "@/constants"
+import { formatCurrency, formatCurrencyCompact } from "@/lib/utils"
 import type {
   TreasuryKPIs,
   TreasuryAccount,
@@ -168,6 +169,7 @@ import type {
   PoolBancarioPorBanco, // Added
   PoolBancarioCalendarioMes, // Added
   TreasuryMonthlySummary, // Añadir import del tipo
+  RechartsPayloadEntry,
 } from "@/types"
 import { format, parseISO, subMonths } from "date-fns"
 import { es } from "date-fns/locale"
@@ -234,20 +236,6 @@ const getBankColor = (banco: string, fallbackIndex = 0): string => {
   return fallbackColors[fallbackIndex % fallbackColors.length]
 }
 
-const formatCurrency = (value: number): string => {
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 2,
-  }).format(value)
-}
-
-const formatCurrencyCompact = (value: number): string => {
-  if (Math.abs(value) >= 1000) {
-    return `${(value / 1000).toFixed(0)}k`
-  }
-  return `${value.toFixed(0)}€`
-}
 
 const formatIBAN = (iban: string): string => {
   if (!iban) return ""
@@ -619,11 +607,6 @@ export default function TreasuryPage() {
         poolVencimientosData = poolResults[2]
         poolPorBancoData = poolResults[3]
         poolCalendarioData = poolResults[4]
-        console.log("[v0] Pool Bancario loaded:", {
-          resumen: !!poolResumenData,
-          prestamos: poolPrestamosData.length,
-          vencimientos: poolVencimientosData.length,
-        })
       } catch (poolErr) {
         console.warn("[v0] Pool Bancario views not available yet:", poolErr)
       }
@@ -667,20 +650,6 @@ export default function TreasuryPage() {
       const effectiveCategoryId = categoryFilter !== "all" && !isUncategorized ? categoryFilter : undefined
       const effectiveTipo = isUncategorized ? "sin_categorizar" : tipoFilter !== "all" ? tipoFilter : undefined
 
-      console.log("[v0] Loading transactions with params:", {
-        startDate,
-        endDate,
-        accountFilter,
-        categoryFilter,
-        tipoFilter,
-        isUncategorized,
-        effectiveCategoryId,
-        effectiveTipo,
-        searchTerm,
-        page,
-        offset,
-      })
-
       const [kpisData, transactionsData, summaryData] = await Promise.all([
         fetchTreasuryKPIs(startDate, endDate),
         fetchTreasuryTransactions(
@@ -702,11 +671,6 @@ export default function TreasuryPage() {
           searchTerm || undefined,
         ),
       ])
-
-      console.log("[v0] Transactions loaded:", {
-        transactionsCount: transactionsData?.length || 0,
-        summaryCount: summaryData?.num_transacciones || 0,
-      })
 
       setKpis(kpisData)
       setTransactions(transactionsData)
@@ -806,7 +770,6 @@ export default function TreasuryPage() {
   }
 
   const handleViewUncategorized = () => {
-    console.log("[v0] handleViewUncategorized - Setting filter to sin_categorizar")
     setTipoFilter("sin_categorizar")
     setAccountFilter("all")
     setCategoryFilter("uncategorized") // Changed from "all" to "uncategorized"
@@ -988,19 +951,19 @@ export default function TreasuryPage() {
                   </p>
                   <div className="flex items-center gap-1 mt-1">
                     {ingresosDelta >= 0 ? (
-                      <ArrowUpRight className="h-3 w-3" style={{ color: "#17c3b2" }} />
+                      <ArrowUpRight className="h-3 w-3" style={{ color: BRAND_COLORS.success }} />
                     ) : (
-                      <ArrowDownRight className="h-3 w-3" style={{ color: "#fe6d73" }} />
+                      <ArrowDownRight className="h-3 w-3" style={{ color: BRAND_COLORS.error }} />
                     )}
-                    <span className="text-xs" style={{ color: ingresosDelta >= 0 ? "#17c3b2" : "#fe6d73" }}>
+                    <span className="text-xs" style={{ color: ingresosDelta >= 0 ? BRAND_COLORS.success : BRAND_COLORS.error }}>
                       {ingresosDelta >= 0 ? "+" : ""}
                       {ingresosDelta.toFixed(1)}%
                     </span>
                     <span className="text-xs text-slate-400">vs periodo anterior</span>
                   </div>
                 </div>
-                <div className="p-2 rounded-lg" style={{ backgroundColor: "#17c3b215" }}>
-                  <TrendingUp className="h-5 w-5" style={{ color: "#17c3b2" }} />
+                <div className="p-2 rounded-lg" style={{ backgroundColor: `${BRAND_COLORS.success}15` }}>
+                  <TrendingUp className="h-5 w-5" style={{ color: BRAND_COLORS.success }} />
                 </div>
               </div>
             </TremorCard>
@@ -1015,11 +978,11 @@ export default function TreasuryPage() {
                   </p>
                   <div className="flex items-center gap-1 mt-1">
                     {gastosDelta <= 0 ? (
-                      <ArrowDownRight className="h-3 w-3" style={{ color: "#17c3b2" }} />
+                      <ArrowDownRight className="h-3 w-3" style={{ color: BRAND_COLORS.success }} />
                     ) : (
-                      <ArrowUpRight className="h-3 w-3" style={{ color: "#fe6d73" }} />
+                      <ArrowUpRight className="h-3 w-3" style={{ color: BRAND_COLORS.error }} />
                     )}
-                    <span className="text-xs" style={{ color: gastosDelta <= 0 ? "#17c3b2" : "#fe6d73" }}>
+                    <span className="text-xs" style={{ color: gastosDelta <= 0 ? BRAND_COLORS.success : BRAND_COLORS.error }}>
                       {gastosDelta >= 0 ? "+" : ""}
                       {gastosDelta.toFixed(1)}%
                     </span>
@@ -1096,7 +1059,7 @@ export default function TreasuryPage() {
 
           {/* Banner sin categorizar - Fixed button */}
           {(kpis?.transacciones_sin_categorizar || uncategorizedData.numTransacciones) > 0 && (
-            <TremorCard className="border-l-[6px] bg-white" style={{ borderLeftColor: "#ffcb77" }}>
+            <TremorCard className="border-l-[6px] bg-white" style={{ borderLeftColor: BRAND_COLORS.warning }}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   {/* Icono con fondo amarillo suave */}
@@ -1213,7 +1176,7 @@ export default function TreasuryPage() {
                           return (
                             <div className="bg-white p-3 border border-slate-100 shadow-xl rounded-xl">
                               <p className="text-sm font-bold text-slate-700 mb-2 capitalize">{label}</p>
-                              {payload.map((entry: any, index: number) => (
+                              {payload.map((entry: RechartsPayloadEntry, index: number) => (
                                 <p key={index} className="text-sm">
                                   <span
                                     className="inline-block w-3 h-3 rounded mr-2"
@@ -1379,13 +1342,13 @@ export default function TreasuryPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-slate-500">Ingresos:</span>
-                  <span className="font-medium" style={{ color: "#17c3b2" }}>
+                  <span className="font-medium" style={{ color: BRAND_COLORS.success }}>
                     {formatCurrency(transactionsSummary.total_ingresos)}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-slate-500">Gastos:</span>
-                  <span className="font-medium" style={{ color: "#fe6d73" }}>
+                  <span className="font-medium" style={{ color: BRAND_COLORS.error }}>
                     {formatCurrency(transactionsSummary.total_gastos)}
                   </span>
                 </div>
@@ -1396,8 +1359,8 @@ export default function TreasuryPage() {
                     style={{
                       color:
                         transactionsSummary.total_ingresos - transactionsSummary.total_gastos >= 0
-                          ? "#17c3b2"
-                          : "#fe6d73",
+                          ? BRAND_COLORS.success
+                          : BRAND_COLORS.error,
                     }}
                   >
                     {formatCurrency(transactionsSummary.total_ingresos - transactionsSummary.total_gastos)}
@@ -1481,9 +1444,9 @@ export default function TreasuryPage() {
                                   !tx.category_name
                                     ? { borderColor: BRAND_COLORS.warning, color: BRAND_COLORS.warning }
                                     : tx.categorization_method === "rule"
-                                      ? { borderColor: "#02b1c4" }
+                                      ? { borderColor: BRAND_COLORS.primary }
                                       : tx.categorization_method === "ai"
-                                        ? { borderColor: "#ffcb77" }
+                                        ? { borderColor: BRAND_COLORS.warning }
                                         : { borderColor: "#e2e8f0" }
                                 }
                               >
@@ -1530,7 +1493,7 @@ export default function TreasuryPage() {
                           </div>
                         </td>
                         <td className="py-3 px-2 text-right">
-                          <span style={{ color: tx.amount >= 0 ? "#17c3b2" : "#fe6d73" }}>
+                          <span style={{ color: tx.amount >= 0 ? BRAND_COLORS.success : BRAND_COLORS.error }}>
                             {tx.amount >= 0 ? "+" : ""}
                             {formatCurrency(tx.amount)}
                           </span>
@@ -2030,11 +1993,11 @@ export default function TreasuryPage() {
                     </div>
                     <div className="flex justify-center gap-6 mt-4">
                       <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded" style={{ backgroundColor: "#fe6d73" }} />
+                        <div className="w-3 h-3 rounded" style={{ backgroundColor: BRAND_COLORS.error }} />
                         <span className="text-sm text-slate-600">Capital</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded" style={{ backgroundColor: "#ffcb77" }} />
+                        <div className="w-3 h-3 rounded" style={{ backgroundColor: BRAND_COLORS.warning }} />
                         <span className="text-sm text-slate-600">Intereses</span>
                       </div>
                     </div>
