@@ -1125,7 +1125,7 @@ export interface CompraProveedor {
 
 // NEW: Añadir tipo ProductFormat para formatos de productos
 export interface ProductFormat {
-  gstock_format_id: number
+  id: number
   name: string
 }
 

@@ -181,7 +181,7 @@ export default function ComprasPage() {
 
   useEffect(() => {
     fetchProductFormats().then((data) => {
-      setFormatosMap(new Map(data.map((f) => [String(f.gstock_format_id), f.name])))
+      setFormatosMap(new Map(data.map((f) => [String(f.id), f.name])))
     })
   }, [])
 

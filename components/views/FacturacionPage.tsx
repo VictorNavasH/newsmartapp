@@ -14,15 +14,10 @@ import {
   Euro,
   FileText,
   Percent,
-  ChevronDown,
   ChevronRight,
-  Plus,
-  ArrowRightLeft,
-  Trash2,
-  Filter,
-  RefreshCw,
   ChevronLeft,
   Eye,
+  RefreshCw,
 } from "lucide-react"
 
 import { PageHeader } from "@/components/layout/PageHeader"
@@ -34,7 +29,6 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
 import { formatCurrency } from "@/lib/utils"
@@ -44,30 +38,12 @@ import {
   fetchTiposIngreso,
   fetchFacturacionAlertas,
   fetchFacturacionMensual,
-  fetchCuadreListado,
-  fetchFacturasZReport,
-  fetchZReportsDisponibles,
-  fetchFacturasHuerfanas,
-  fetchFacturasAdyacentes,
-  fetchAjustes,
-  moverFactura,
-  crearAjuste,
-  eliminarAjuste,
-  confirmarCuadre,
-  marcarPendiente,
 } from "@/lib/facturacionService"
 import type {
   FacturacionListadoItem,
   FacturacionTipoIngreso,
   FacturacionAlerta,
   FacturacionMensual,
-  CuadreListadoItem,
-  FacturaZReport,
-  ZReportDisponible,
-  FacturaHuerfana,
-  FacturaAdyacente,
-  AjusteCuadre,
-  CuadreEstadoFilter,
 } from "@/types"
 
 const BRAND_COLORS = {
@@ -87,13 +63,6 @@ const facturacionMenuItems = [
     iconColor: "text-[#02b1c4]",
   },
   {
-    icon: CheckCircle,
-    label: "Cuadre",
-    href: "#cuadre",
-    gradient: "radial-gradient(circle, rgba(23,195,178,0.15) 0%, rgba(23,195,178,0) 70%)",
-    iconColor: "text-[#17c3b2]",
-  },
-  {
     icon: Euro,
     label: "Ingresos",
     href: "#ingresos",
@@ -110,30 +79,6 @@ const facturacionMenuItems = [
 ]
 
 const CHART_COLORS = ["#02b1c4", "#17c3b2", "#ffcb77", "#fe6d73", "#364f6b"]
-
-const CUADRE_ESTADOS = {
-  cuadrado_auto: {
-    label: "Cuadrado Auto",
-    bg: "bg-[#17c3b2]/10",
-    text: "text-[#17c3b2]",
-    border: "border-[#17c3b2]/20",
-  },
-  cuadrado_manual: {
-    label: "Cuadrado Manual",
-    bg: "bg-[#02b1c4]/10",
-    text: "text-[#02b1c4]",
-    border: "border-[#02b1c4]/20",
-  },
-  propuesta: { label: "Propuesta", bg: "bg-[#ffcb77]/10", text: "text-[#ffcb77]", border: "border-[#ffcb77]/20" },
-  descuadre: { label: "Descuadre", bg: "bg-[#fe6d73]/10", text: "text-[#fe6d73]", border: "border-[#fe6d73]/20" },
-  pendiente: { label: "Pendiente", bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-200" },
-}
-
-const AJUSTE_TIPOS = [
-  { value: "ajuste_positivo", label: "Ajuste Positivo (+)" },
-  { value: "ajuste_negativo", label: "Ajuste Negativo (-)" },
-  { value: "comentario", label: "Comentario" },
-]
 
 export default function FacturacionPage() {
   const [activeTab, setActiveTab] = useState("Facturas")
@@ -169,46 +114,6 @@ export default function FacturacionPage() {
     verifactu_error: 0,
     verifactu_pendiente: 0,
   })
-
-  // Estados para Cuadre Manual
-  const [cuadreListado, setCuadreListado] = useState<CuadreListadoItem[]>([])
-  const [cuadreEstadoFilter, setCuadreEstadoFilter] = useState<CuadreEstadoFilter>("todos")
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
-  const [loadingCuadre, setLoadingCuadre] = useState(false)
-
-  // Estados para panel expandido
-  const [facturasZReport, setFacturasZReport] = useState<Record<string, FacturaZReport[]>>({})
-  const [ajustesZReport, setAjustesZReport] = useState<Record<string, AjusteCuadre[]>>({})
-
-  // Estados para modales
-  const [modalAjuste, setModalAjuste] = useState<{ open: boolean; item: CuadreListadoItem | null }>({
-    open: false,
-    item: null,
-  })
-  const [modalPendiente, setModalPendiente] = useState<{ open: boolean; item: CuadreListadoItem | null }>({
-    open: false,
-    item: null,
-  })
-  const [modalMoverFactura, setModalMoverFactura] = useState<{
-    open: boolean
-    item: CuadreListadoItem | null
-    factura: FacturaZReport | null
-  }>({ open: false, item: null, factura: null })
-  const [modalAnadirFactura, setModalAnadirFactura] = useState<{ open: boolean; item: CuadreListadoItem | null }>({
-    open: false,
-    item: null,
-  })
-
-  // Estados para formularios
-  const [nuevoAjuste, setNuevoAjuste] = useState({ tipo: "ajuste_positivo", importe: "", descripcion: "" })
-  const [motivoPendiente, setMotivoPendiente] = useState("")
-  const [facturasHuerfanas, setFacturasHuerfanas] = useState<FacturaHuerfana[]>([])
-  const [facturasAdyacentes, setFacturasAdyacentes] = useState<FacturaAdyacente[]>([])
-  const [zreportsDisponibles, setZreportsDisponibles] = useState<ZReportDisponible[]>([])
-  const [selectedFacturas, setSelectedFacturas] = useState<Set<string>>(new Set())
-  const [selectedZReport, setSelectedZReport] = useState<string>("")
-
-  const [actionLoading, setActionLoading] = useState(false)
 
   const setPeriod = (period: string) => {
     setSelectedPeriod(period)
@@ -287,199 +192,10 @@ export default function FacturacionPage() {
     loadOtherData()
   }, [])
 
-  // Carga de datos de Cuadre cuando se cambia a esa pestaña
-  useEffect(() => {
-    if (activeTab === "Cuadre") {
-      loadCuadreData()
-    }
-  }, [activeTab, dateRange])
-
-  const loadCuadreData = async () => {
-    setLoadingCuadre(true)
-    const startDateStr = format(dateRange.from, "yyyy-MM-dd")
-    const endDateStr = format(dateRange.to, "yyyy-MM-dd")
-
-    const data = await fetchCuadreListado(startDateStr, endDateStr)
-    setCuadreListado(data)
-
-    // Auto-expandir filas con descuadre o propuesta
-    const autoExpand = new Set<string>()
-    data.forEach((item) => {
-      if (item.estado === "descuadre" || item.estado === "propuesta") {
-        autoExpand.add(item.zreport_id)
-      }
-    })
-    setExpandedRows(autoExpand)
-
-    // Cargar facturas y ajustes para filas auto-expandidas
-    for (const id of autoExpand) {
-      const item = data.find((d) => d.zreport_id === id)
-      if (item) {
-        await loadRowDetails(item)
-      }
-    }
-
-    setLoadingCuadre(false)
-  }
-
-  const loadRowDetails = async (item: CuadreListadoItem) => {
-    const [facturas, ajustes] = await Promise.all([
-      fetchFacturasZReport(item.zreport_id),
-      fetchAjustes(item.fecha, item.zreport_id),
-    ])
-
-    setFacturasZReport((prev) => ({ ...prev, [item.zreport_id]: facturas }))
-    setAjustesZReport((prev) => ({ ...prev, [item.zreport_id]: ajustes }))
-  }
-
-  const toggleRow = async (item: CuadreListadoItem) => {
-    const newExpanded = new Set(expandedRows)
-    if (newExpanded.has(item.zreport_id)) {
-      newExpanded.delete(item.zreport_id)
-    } else {
-      newExpanded.add(item.zreport_id)
-      if (!facturasZReport[item.zreport_id]) {
-        await loadRowDetails(item)
-      }
-    }
-    setExpandedRows(newExpanded)
-  }
-
-  // Filtrar cuadre por estado
-  const cuadreListadoFiltrado =
-    cuadreEstadoFilter === "todos"
-      ? cuadreListado
-      : cuadreEstadoFilter === "pendientes"
-        ? cuadreListado.filter((item) => ["descuadre", "propuesta", "pendiente"].includes(item.estado))
-        : cuadreEstadoFilter === "cuadrados"
-          ? cuadreListado.filter((item) => ["cuadrado_auto", "cuadrado_manual"].includes(item.estado))
-          : cuadreEstadoFilter === "descuadres"
-            ? cuadreListado.filter((item) => item.estado === "descuadre")
-            : cuadreListado
-
   const alertas_error = alertas.filter((a) => a.severidad === "error").length
   const alertas_warning = alertas.filter((a) => a.severidad === "warning").length
 
   const totalPages = Math.ceil(totalCount / pageSize)
-
-  // Acciones de Cuadre
-  const handleConfirmarCuadre = async (item: CuadreListadoItem) => {
-    if (!confirm("¿Confirmar el cuadre de este Z-Report?")) return
-    setActionLoading(true)
-    const result = await confirmarCuadre(item.fecha, item.zreport_id)
-    if (result.success) {
-      await loadCuadreData()
-    } else {
-      alert("Error al confirmar: " + result.error)
-    }
-    setActionLoading(false)
-  }
-
-  const handleMarcarPendiente = async () => {
-    if (!modalPendiente.item || !motivoPendiente.trim()) return
-    setActionLoading(true)
-    const result = await marcarPendiente(modalPendiente.item.fecha, modalPendiente.item.zreport_id, motivoPendiente)
-    if (result.success) {
-      setModalPendiente({ open: false, item: null })
-      setMotivoPendiente("")
-      await loadCuadreData()
-    } else {
-      alert("Error: " + result.error)
-    }
-    setActionLoading(false)
-  }
-
-  const handleCrearAjuste = async () => {
-    if (!modalAjuste.item || !nuevoAjuste.importe) return
-    setActionLoading(true)
-    const result = await crearAjuste({
-      fecha: modalAjuste.item.fecha,
-      zreport_id: modalAjuste.item.zreport_id,
-      tipo: nuevoAjuste.tipo as "ajuste_positivo" | "ajuste_negativo" | "comentario",
-      importe: Number.parseFloat(nuevoAjuste.importe),
-      descripcion: nuevoAjuste.descripcion,
-    })
-    if (result.success) {
-      setModalAjuste({ open: false, item: null })
-      setNuevoAjuste({ tipo: "ajuste_positivo", importe: "", descripcion: "" })
-      await loadCuadreData()
-      if (modalAjuste.item) {
-        await loadRowDetails(modalAjuste.item)
-      }
-    } else {
-      alert("Error: " + result.error)
-    }
-    setActionLoading(false)
-  }
-
-  const handleEliminarAjuste = async (ajusteId: number, item: CuadreListadoItem) => {
-    if (!confirm("¿Eliminar este ajuste?")) return
-    setActionLoading(true)
-    const result = await eliminarAjuste(ajusteId)
-    if (result.success) {
-      await loadCuadreData()
-      await loadRowDetails(item)
-    } else {
-      alert("Error: " + result.error)
-    }
-    setActionLoading(false)
-  }
-
-  const openModalAnadirFactura = async (item: CuadreListadoItem) => {
-    setModalAnadirFactura({ open: true, item })
-    setSelectedFacturas(new Set())
-    const [huerfanas, adyacentes] = await Promise.all([
-      fetchFacturasHuerfanas(item.fecha),
-      fetchFacturasAdyacentes(item.fecha, item.zreport_id),
-    ])
-    setFacturasHuerfanas(huerfanas)
-    setFacturasAdyacentes(adyacentes)
-  }
-
-  const openModalMoverFactura = async (item: CuadreListadoItem, factura: FacturaZReport) => {
-    setModalMoverFactura({ open: true, item, factura })
-    setSelectedZReport("")
-    const zreports = await fetchZReportsDisponibles(item.fecha)
-    setZreportsDisponibles(zreports.filter((z) => z.zreport_id !== item.zreport_id))
-  }
-
-  const handleMoverFactura = async () => {
-    if (!modalMoverFactura.factura || !selectedZReport) return
-    setActionLoading(true)
-    const result = await moverFactura(modalMoverFactura.factura.factura_id, selectedZReport)
-    if (result.success) {
-      setModalMoverFactura({ open: false, item: null, factura: null })
-      setSelectedZReport("")
-      await loadCuadreData()
-    } else {
-      alert("Error: " + result.error)
-    }
-    setActionLoading(false)
-  }
-
-  const handleAnadirFacturas = async () => {
-    if (!modalAnadirFactura.item || selectedFacturas.size === 0) return
-    setActionLoading(true)
-
-    for (const facturaId of selectedFacturas) {
-      await moverFactura(Number.parseInt(facturaId), modalAnadirFactura.item.zreport_id)
-    }
-
-    setModalAnadirFactura({ open: false, item: null })
-    setSelectedFacturas(new Set())
-    await loadCuadreData()
-    setActionLoading(false)
-  }
-
-  const toggleFacturaSelection = (id: string) => {
-    const newSelection = new Set(selectedFacturas)
-    if (newSelection.has(id)) {
-      newSelection.delete(id)
-    } else {
-      newSelection.add(id)
-    }
-    setSelectedFacturas(newSelection)
-  }
 
   const formatDateES = (dateStr: string | Date | null | undefined) => {
     if (!dateStr) return "-"
@@ -558,7 +274,7 @@ export default function FacturacionPage() {
         {/* Total Facturado */}
         <MetricGroupCard
           title="Total Facturado"
-          icon={<Euro className="w-5 h-5 text-[#02b1c4]" />}
+          icon={<CreditCard className="w-5 h-5 text-[#02b1c4]" />}
           total={{ value: kpiData.total_facturado, previous: 0, delta: 0, trend: "neutral" }}
           decimals={2}
           suffix="€"
@@ -785,186 +501,6 @@ export default function FacturacionPage() {
                 </div>
               </div>
             </>
-          )}
-        </TremorCard>
-      )}
-
-      {/* Tab Cuadre */}
-      {activeTab === "Cuadre" && (
-        <TremorCard>
-          <div className="flex items-center justify-between mb-4">
-            <TremorTitle>Cuadre de Caja</TremorTitle>
-            <div className="flex items-center gap-3">
-              <Select value={cuadreEstadoFilter} onValueChange={(v) => setCuadreEstadoFilter(v as CuadreEstadoFilter)}>
-                <SelectTrigger className="w-[180px]">
-                  <Filter className="w-4 h-4 mr-2" />
-                  <SelectValue placeholder="Filtrar por estado" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos</SelectItem>
-                  <SelectItem value="pendientes">Pendientes de revisión</SelectItem>
-                  <SelectItem value="cuadrados">Cuadrados</SelectItem>
-                  <SelectItem value="descuadres">Solo descuadres</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button variant="outline" size="sm" onClick={loadCuadreData} disabled={loadingCuadre}>
-                <RefreshCw className={`w-4 h-4 mr-2 ${loadingCuadre ? "animate-spin" : ""}`} />
-                Actualizar
-              </Button>
-            </div>
-          </div>
-
-          {loadingCuadre ? (
-            <div className="flex items-center justify-center py-12">
-              <RefreshCw className="w-6 h-6 animate-spin text-[#02b1c4]" />
-              <span className="ml-2 text-slate-600">Cargando cuadre...</span>
-            </div>
-          ) : cuadreListadoFiltrado.length === 0 ? (
-            <div className="text-center py-12 text-slate-500">No hay datos de cuadre para el período seleccionado</div>
-          ) : (
-            <div className="space-y-2">
-              {cuadreListadoFiltrado.map((item) => {
-                const estado = CUADRE_ESTADOS[item.estado] || CUADRE_ESTADOS.pendiente
-                const isExpanded = expandedRows.has(item.zreport_id)
-                const diferencia = Number.parseFloat(item.diferencia) || 0
-
-                return (
-                  <Collapsible key={item.zreport_id} open={isExpanded} onOpenChange={() => toggleRow(item)}>
-                    <div
-                      className={`border rounded-lg ${estado.border} ${isExpanded ? "border-b-0 rounded-b-none" : ""}`}
-                    >
-                      <CollapsibleTrigger asChild>
-                        <div
-                          className={`flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 transition-colors ${estado.bg}`}
-                        >
-                          <div className="flex items-center gap-4">
-                            {isExpanded ? (
-                              <ChevronDown className="w-5 h-5 text-slate-400" />
-                            ) : (
-                              <ChevronRight className="w-5 h-5 text-slate-400" />
-                            )}
-                            <div>
-                              <p className="font-medium text-[#364f6b]">{formatDateES(item.fecha)}</p>
-                              <p className="text-xs text-slate-500">{item.zreport_nombre}</p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-6">
-                            <div className="text-right">
-                              <p className="text-xs text-slate-500">Z-Report</p>
-                              <p className="font-medium">{formatCurrencyES(item.total_zreport)}</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-xs text-slate-500">Facturas</p>
-                              <p className="font-medium">{formatCurrencyES(item.total_facturas)}</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-xs text-slate-500">Diferencia</p>
-                              <p
-                                className={`font-medium ${diferencia === 0 ? "text-[#17c3b2]" : diferencia > 0 ? "text-[#fe6d73]" : "text-[#ffcb77]"}`}
-                              >
-                                {formatCurrencyES(diferencia)}
-                              </p>
-                            </div>
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${estado.bg} ${estado.text}`}>
-                              {estado.label}
-                            </span>
-                          </div>
-                        </div>
-                      </CollapsibleTrigger>
-                    </div>
-
-                    <CollapsibleContent>
-                      <div className={`border border-t-0 rounded-b-lg p-4 ${estado.border} bg-white`}>
-                        {/* Facturas del Z-Report */}
-                        <div className="mb-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="text-sm font-medium text-slate-700">Facturas incluidas</h4>
-                            <Button variant="outline" size="sm" onClick={() => openModalAnadirFactura(item)}>
-                              <Plus className="w-4 h-4 mr-1" />
-                              Añadir factura
-                            </Button>
-                          </div>
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                              <thead>
-                                <tr className="border-b border-slate-200">
-                                  <th className="text-left py-2 px-3 font-medium text-slate-600">Nº Factura</th>
-                                  <th className="text-left py-2 px-3 font-medium text-slate-600">Hora</th>
-                                  <th className="text-right py-2 px-3 font-medium text-slate-600">Importe</th>
-                                  <th className="text-left py-2 px-3 font-medium text-slate-600">Método</th>
-                                  <th className="text-center py-2 px-3 font-medium text-slate-600">Acciones</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {(facturasZReport[item.zreport_id] || []).map((factura) => (
-                                  <tr key={factura.factura_id} className="border-b border-slate-100">
-                                    <td className="py-2 px-3">{factura.cuentica_identifier}</td>
-                                    <td className="py-2 px-3">{factura.hora}</td>
-                                    <td className="py-2 px-3 text-right font-medium">
-                                      {formatCurrencyES(factura.importe)}
-                                    </td>
-                                    <td className="py-2 px-3">{factura.metodo_pago}</td>
-                                    <td className="py-2 px-3 text-center">
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => openModalMoverFactura(item, factura)}
-                                      >
-                                        <ArrowRightLeft className="w-4 h-4" />
-                                      </Button>
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-
-                        {/* Ajustes */}
-                        {(ajustesZReport[item.zreport_id] || []).length > 0 && (
-                          <div className="mb-4">
-                            <h4 className="text-sm font-medium text-slate-700">Ajustes</h4>
-                            <div className="overflow-x-auto">
-                              <table className="w-full text-sm">
-                                <thead>
-                                  <tr className="border-b border-slate-200">
-                                    <th className="text-left py-2 px-3 font-medium text-slate-600">Tipo</th>
-                                    <th className="text-right py-2 px-3 font-medium text-slate-600">Importe</th>
-                                    <th className="text-left py-2 px-3 font-medium text-slate-600">Descripción</th>
-                                    <th className="text-center py-2 px-3 font-medium text-slate-600">Acciones</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {ajustesZReport[item.zreport_id]?.map((ajuste) => (
-                                    <tr key={ajuste.id} className="border-b border-slate-100">
-                                      <td className="py-2 px-3">{ajuste.tipo}</td>
-                                      <td className="py-2 px-3 text-right font-medium">
-                                        {formatCurrencyES(ajuste.importe)}
-                                      </td>
-                                      <td className="py-2 px-3">{ajuste.descripcion}</td>
-                                      <td className="py-2 px-3 text-center">
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => handleEliminarAjuste(ajuste.id, item)}
-                                        >
-                                          <Trash2 className="w-4 h-4" />
-                                        </Button>
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                )
-              })}
-            </div>
           )}
         </TremorCard>
       )}

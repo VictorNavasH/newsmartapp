@@ -193,7 +193,7 @@ export async function fetchKPIs(): Promise<CompraKPIs | null> {
 // ============================================
 
 export async function fetchProductFormats(): Promise<ProductFormat[]> {
-  const { data, error } = await supabase.from("gstock_product_formats").select("gstock_format_id, name").order("name")
+  const { data, error } = await supabase.from("gstock_product_formats").select("id, name").order("name")
 
   if (error) {
     console.error("[fetchProductFormats] Error:", error.message)
