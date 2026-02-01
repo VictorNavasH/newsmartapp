@@ -736,7 +736,7 @@ export function DashboardPage() {
             loading={loading}
             decimals={2}
             suffix=" €"
-            total={{ value: currentShift?.avg_ticket || 0, previous: 0, delta: 0, trend: "neutral" }}
+            total={{ value: currentShift?.avg_ticket_transaction || 0, previous: 0, delta: 0, trend: "neutral" }}
           >
             <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-200">
               <div className="p-3 rounded-lg bg-[#ffcb77]/20 border border-slate-100/50 flex flex-col justify-between h-full">
@@ -747,7 +747,7 @@ export function DashboardPage() {
                   </div>
                 </div>
                 <p className="text-lg font-bold text-[#364f6b] text-right">
-                  {formatCurrency(liveData?.lunch?.avg_ticket || 0)}
+                  {formatCurrency(liveData?.lunch?.avg_ticket_transaction || 0)}
                 </p>
               </div>
 
@@ -759,7 +759,7 @@ export function DashboardPage() {
                   </div>
                 </div>
                 <p className="text-lg font-bold text-[#364f6b] text-right">
-                  {formatCurrency(liveData?.dinner?.avg_ticket || 0)}
+                  {formatCurrency(liveData?.dinner?.avg_ticket_transaction || 0)}
                 </p>
               </div>
             </div>
