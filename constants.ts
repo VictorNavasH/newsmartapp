@@ -13,6 +13,7 @@ import {
   Calculator,
   Truck,
   Tablet,
+  Monitor,
 } from "lucide-react"
 
 export const APP_NAME = "NÜA Smart Dashboard"
@@ -30,6 +31,7 @@ export const NAVIGATION_ITEMS = [
   { name: "Facturación", icon: FileText, path: "/invoices" },
   { name: "Tesorería", icon: Landmark, path: "/treasury" },
   { name: "Forecasting", icon: TrendingUp, path: "/forecasting" },
+  { name: "Smart Performance", icon: Monitor, path: "/smart-performance" },
   { name: "Smart Assistant", icon: Sparkles, path: "/ai-assistant" },
   { name: "Configuración", icon: Settings, path: "/settings" },
 ]

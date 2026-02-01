@@ -17,6 +17,7 @@ import BankConnectionsPage from "@/components/views/BankConnectionsPage"
 import FacturacionPage from "@/components/views/FacturacionPage"
 import SmartAssistantPage from "@/components/views/SmartAssistantPage"
 import TabletUsagePage from "@/components/views/TabletUsagePage"
+import SmartPerformancePage from "@/components/views/SmartPerformancePage"
 import { SmartAssistant } from "@/components/features/SmartAssistant"
 
 export default function App() {
@@ -53,6 +54,8 @@ export default function App() {
         return <FacturacionPage />
       case "/tablet-usage":
         return <TabletUsagePage />
+      case "/smart-performance":
+        return <SmartPerformancePage />
       case "/ai-assistant":
         return <SmartAssistantPage />
       default:
