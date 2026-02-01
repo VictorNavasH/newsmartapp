@@ -42,6 +42,7 @@ import {
   Layers,
   Sun,
   Moon,
+  Search,
 } from "lucide-react"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { PageContent } from "@/components/layout/PageContent"
@@ -109,6 +110,15 @@ export default function ProductsPage() {
   const [selectedCategoria, setSelectedCategoria] = useState("todas")
   const [sortField, setSortField] = useState<SortField>("facturado")
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc")
+  const [searchQuery, setSearchQuery] = useState("")
+  const [searchDateRange, setSearchDateRange] = useState<DateRange>({
+    from: new Date(getBusinessDate().getFullYear(), getBusinessDate().getMonth(), getBusinessDate().getDate() - 1, 12, 0, 0),
+    to: new Date(getBusinessDate().getFullYear(), getBusinessDate().getMonth(), getBusinessDate().getDate() - 1, 12, 0, 0),
+  })
+  const [searchPeriod, setSearchPeriod] = useState<PeriodKey>("ayer")
+  const [searchTurno, setSearchTurno] = useState("todos")
+  const [searchData, setSearchData] = useState<ProductMixItem[]>([])
+  const [searchLoading, setSearchLoading] = useState(false)
 
   // Estado para los totales del período de comparación (media 4 semanas)
   const [comparisonTotals, setComparisonTotals] = useState({
@@ -421,6 +431,91 @@ export default function ProductsPage() {
     return sortDirection === "asc" ? <ChevronUp className="w-3 h-3 ml-1" /> : <ChevronDown className="w-3 h-3 ml-1" />
   }
 
+  // Buscador: period setter
+  const setSearchPeriodDates = (period: PeriodKey) => {
+    setSearchPeriod(period)
+    const now = getBusinessDate()
+    let from: Date
+    let to: Date
+
+    switch (period) {
+      case "ayer":
+        from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 12, 0, 0)
+        to = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 12, 0, 0)
+        break
+      case "semana":
+        from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7, 12, 0, 0)
+        to = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 12, 0, 0)
+        break
+      case "mes":
+        from = new Date(now.getFullYear(), now.getMonth(), 1, 12, 0, 0)
+        to = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 12, 0, 0)
+        break
+      case "trimestre":
+        from = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate(), 12, 0, 0)
+        to = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 12, 0, 0)
+        break
+      default:
+        return
+    }
+    setSearchDateRange({ from, to })
+  }
+
+  const handleSearchDateChange = (range: DateRange | undefined) => {
+    if (range?.from) {
+      const normalizedFrom = new Date(range.from)
+      normalizedFrom.setHours(12, 0, 0, 0)
+      const normalizedTo = range.to ? new Date(range.to) : normalizedFrom
+      normalizedTo.setHours(12, 0, 0, 0)
+      setSearchDateRange({ from: normalizedFrom, to: normalizedTo })
+      setSearchPeriod("custom")
+    }
+  }
+
+  // Buscador: data fetching independiente
+  useEffect(() => {
+    const loadSearchData = async () => {
+      if (!searchDateRange.from || !searchDateRange.to) return
+      if (mainView !== "Buscador") return
+      setSearchLoading(true)
+      try {
+        const startDate = searchDateRange.from.toISOString().split("T")[0]
+        const endDate = searchDateRange.to.toISOString().split("T")[0]
+        const data = await fetchProductMix(startDate, endDate, searchTurno)
+        setSearchData(data)
+      } catch (error) {
+        console.error("Error loading search data:", error)
+      } finally {
+        setSearchLoading(false)
+      }
+    }
+    loadSearchData()
+  }, [searchDateRange, searchTurno, mainView])
+
+  // Search results for Buscador tab
+  const searchResults = useMemo(() => {
+    if (searchQuery.length < 2) return []
+    const query = searchQuery.toLowerCase()
+    return searchData
+      .filter((p) => p.producto_nombre.toLowerCase().includes(query))
+      .sort((a, b) => {
+        // Sort by date desc, then turno
+        if (a.fecha !== b.fecha) return b.fecha.localeCompare(a.fecha)
+        return a.turno_nombre.localeCompare(b.turno_nombre)
+      })
+  }, [searchData, searchQuery])
+
+  const searchTotals = useMemo(() => {
+    if (searchResults.length === 0) return { unidades: 0, facturado: 0, precioMedio: 0 }
+    const unidades = searchResults.reduce((sum, p) => sum + p.unidades, 0)
+    const facturado = searchResults.reduce((sum, p) => sum + p.facturado, 0)
+    return {
+      unidades,
+      facturado,
+      precioMedio: unidades > 0 ? facturado / unidades : 0,
+    }
+  }, [searchResults])
+
   const pieChartData = useMemo(() => {
     return aggregatedCategories.map((cat, idx) => ({
       name: cat.categoria_nombre,
@@ -630,6 +725,14 @@ export default function ProductsPage() {
                 gradient:
                   "radial-gradient(circle, rgba(255,203,119,0.15) 0%, rgba(254,109,115,0.06) 50%, transparent 80%)",
                 iconColor: "text-[#ffcb77]",
+              },
+              {
+                icon: Search,
+                label: "Buscador",
+                href: "buscador",
+                gradient:
+                  "radial-gradient(circle, rgba(54,79,107,0.15) 0%, rgba(2,177,196,0.06) 50%, transparent 80%)",
+                iconColor: "text-[#364f6b]",
               },
             ]}
             activeItem={mainView}
@@ -1063,6 +1166,176 @@ export default function ProductsPage() {
                     </div>
                   ))}
               </div>
+            </TremorCard>
+          </div>
+        )}
+
+        {/* TAB: Buscador */}
+        {mainView === "Buscador" && (
+          <div className="space-y-6">
+            {/* Filtros propios del buscador */}
+            <div className="flex items-center gap-4 flex-wrap">
+              <Select value={searchTurno} onValueChange={setSearchTurno}>
+                <SelectTrigger className="w-[140px] bg-white">
+                  <SelectValue placeholder="Turno" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos los turnos</SelectItem>
+                  <SelectItem value="Comida">Comida</SelectItem>
+                  <SelectItem value="Cena">Cena</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Tabs value={searchPeriod} onValueChange={(v) => setSearchPeriodDates(v as PeriodKey)}>
+                <TabsList className="bg-white border border-slate-200 shadow-sm">
+                  <TabsTrigger
+                    value="ayer"
+                    className={
+                      searchPeriod === "ayer" ? "data-[state=active]:bg-[#02b1c4] data-[state=active]:text-white" : ""
+                    }
+                  >
+                    Ayer
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="semana"
+                    className={
+                      searchPeriod === "semana" ? "data-[state=active]:bg-[#02b1c4] data-[state=active]:text-white" : ""
+                    }
+                  >
+                    Semana
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="mes"
+                    className={
+                      searchPeriod === "mes" ? "data-[state=active]:bg-[#02b1c4] data-[state=active]:text-white" : ""
+                    }
+                  >
+                    Mes
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+
+              <DateRangePicker from={searchDateRange.from} to={searchDateRange.to} onChange={handleSearchDateChange} />
+            </div>
+
+            {/* Search Input */}
+            <TremorCard className="p-4">
+              <div className="flex items-center gap-3">
+                <Search className="h-5 w-5 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar producto por nombre (ej: Coca Cola, Tarta, Cerveza...)"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full text-lg border-none outline-none bg-transparent placeholder:text-slate-400 text-slate-900"
+                  autoFocus
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="p-1 hover:bg-slate-100 rounded-full transition-colors"
+                  >
+                    <X className="h-4 w-4 text-slate-400" />
+                  </button>
+                )}
+              </div>
+            </TremorCard>
+
+            {/* Loading indicator */}
+            {searchLoading && (
+              <div className="text-center py-4 text-slate-500 text-sm">Cargando datos...</div>
+            )}
+
+            {/* Search Totals Summary */}
+            {!searchLoading && searchQuery.length >= 2 && searchResults.length > 0 && (
+              <div className="grid grid-cols-3 gap-4">
+                <TremorCard className="p-4 text-center">
+                  <p className="text-sm text-slate-500 mb-1">Total Unidades</p>
+                  <p className="text-2xl font-bold" style={{ color: BRAND_COLORS.primary }}>
+                    {formatNumber(searchTotals.unidades)}
+                  </p>
+                </TremorCard>
+                <TremorCard className="p-4 text-center">
+                  <p className="text-sm text-slate-500 mb-1">Total Facturado</p>
+                  <p className="text-2xl font-bold" style={{ color: BRAND_COLORS.primary }}>
+                    {formatCurrency(searchTotals.facturado)}
+                  </p>
+                </TremorCard>
+                <TremorCard className="p-4 text-center">
+                  <p className="text-sm text-slate-500 mb-1">Precio Medio</p>
+                  <p className="text-2xl font-bold" style={{ color: BRAND_COLORS.primary }}>
+                    {formatCurrency(searchTotals.precioMedio)}
+                  </p>
+                </TremorCard>
+              </div>
+            )}
+
+            {/* Results Table */}
+            <TremorCard className="p-4">
+              {searchQuery.length < 2 ? (
+                <div className="text-center py-12">
+                  <Search className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+                  <p className="text-slate-500 text-lg">Escribe el nombre de un producto para buscar</p>
+                  <p className="text-slate-400 text-sm mt-1">Mínimo 2 caracteres</p>
+                </div>
+              ) : searchResults.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-slate-500 text-lg">No se encontraron productos que coincidan</p>
+                  <p className="text-slate-400 text-sm mt-1">Prueba con otro nombre o ajusta los filtros</p>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between mb-4">
+                    <TremorTitle>
+                      {searchResults.length} resultado{searchResults.length !== 1 ? "s" : ""} encontrado
+                      {searchResults.length !== 1 ? "s" : ""}
+                    </TremorTitle>
+                  </div>
+                  <div className="max-h-[500px] overflow-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Fecha</TableHead>
+                          <TableHead>Turno</TableHead>
+                          <TableHead>Producto</TableHead>
+                          <TableHead>Categoría</TableHead>
+                          <TableHead className="text-right">Uds</TableHead>
+                          <TableHead className="text-right">Facturado</TableHead>
+                          <TableHead className="text-right">P. Medio</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {searchResults.map((item, idx) => {
+                          const [year, month, day] = item.fecha.split("-")
+                          const fechaFormatted = `${day}/${month}/${year}`
+                          return (
+                            <TableRow key={`${item.product_sku}-${item.fecha}-${item.turno_nombre}-${idx}`}>
+                              <TableCell className="font-medium">{fechaFormatted}</TableCell>
+                              <TableCell>
+                                <span className="inline-flex items-center gap-1">
+                                  {item.turno_nombre === "Comida" ? (
+                                    <Sun className="h-3.5 w-3.5 text-[#ffcb77]" />
+                                  ) : (
+                                    <Moon className="h-3.5 w-3.5 text-[#364f6b]" />
+                                  )}
+                                  {item.turno_nombre}
+                                </span>
+                              </TableCell>
+                              <TableCell className="font-medium">{item.producto_nombre}</TableCell>
+                              <TableCell className="text-slate-500">{item.categoria_nombre}</TableCell>
+                              <TableCell className="text-right">{formatNumber(item.unidades)}</TableCell>
+                              <TableCell className="text-right font-bold" style={{ color: BRAND_COLORS.primary }}>
+                                {formatCurrency(item.facturado)}
+                              </TableCell>
+                              <TableCell className="text-right">{formatCurrency(item.precio_medio_real)}</TableCell>
+                            </TableRow>
+                          )
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
+              )}
             </TremorCard>
           </div>
         )}
