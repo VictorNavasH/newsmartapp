@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/layout/PageHeader"
 const POWERBI_URL =
   "https://app.powerbi.com/view?r=eyJrIjoiMTExODYwMTktMDE3NS00MzI5LWI2NTMtZjFhMmY1YjJkYjYzIiwidCI6ImIxNjFiM2I0LTU0MDYtNGE4Yy1iNDhmLTQ5ODdjNmI4YmQzOSIsImMiOjl9&pageName=ReportSection6ad7c2c3089c0894342c&language=es"
 
-const PERFORMANCE_URL = "https://performance.nuasmartrestaurant.com"
+const PERFORMANCE_URL = "https://performance.nuasmartrestaurant.com/?pin=9069"
 
 type TabKey = "uso" | "config"
 

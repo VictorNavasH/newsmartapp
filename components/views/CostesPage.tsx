@@ -4,11 +4,20 @@ import { useState, useMemo } from "react"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { MenuBar } from "@/components/ui/menu-bar"
-import { Calculator, UtensilsCrossed, FileSpreadsheet, TrendingDown, Target, Calendar } from "lucide-react"
+import { Calculator, UtensilsCrossed, FileSpreadsheet, TrendingDown, Target, Calendar, CookingPot } from "lucide-react"
 import { BenchmarksTab } from "@/components/features/BenchmarksTab"
 import { FoodCostTab } from "@/components/features/FoodCostTab"
 
+const SMARTFOOD_URL = "https://smartfood.nuasmartrestaurant.com/?pin=9069"
+
 const costesMenuItems = [
+  {
+    icon: CookingPot,
+    label: "Recetas",
+    href: "#recetas",
+    gradient: "radial-gradient(circle, rgba(254,109,115,0.15) 0%, transparent 70%)",
+    iconColor: "text-[#fe6d73]",
+  },
   {
     icon: TrendingDown,
     label: "Food Cost",
@@ -121,7 +130,7 @@ function getClosedPeriodOptions(type: PeriodType): { label: string; fechaInicio:
 }
 
 export default function CostesPage() {
-  const [activeTab, setActiveTab] = useState("Food Cost")
+  const [activeTab, setActiveTab] = useState("Recetas")
 
   const [periodType, setPeriodType] = useState<PeriodType>("mes")
   const [selectedPeriodIndex, setSelectedPeriodIndex] = useState(0)
@@ -139,13 +148,25 @@ export default function CostesPage() {
 
   return (
     <div className="relative min-h-screen bg-slate-50 pb-20">
-      <PageHeader icon={Calculator} title="Costes" subtitle="Food Cost, Escandallos y Benchmarks" />
+      <PageHeader icon={Calculator} title="Costes" subtitle="Recetas, Food Cost, Escandallos y Benchmarks" />
 
       <div className="max-w-[1400px] mx-auto px-6 py-6 space-y-6">
         {/* MenuBar centrado */}
         <div className="flex justify-center">
           <MenuBar items={costesMenuItems} activeItem={activeTab} onItemClick={setActiveTab} />
         </div>
+
+        {/* Tab Recetas */}
+        {activeTab === "Recetas" && (
+          <div className="w-full h-[calc(100vh-200px)] rounded-xl overflow-hidden border border-slate-200 shadow-sm bg-white">
+            <iframe
+              title="NÜA Smart Kitchen - Recetas"
+              src={SMARTFOOD_URL}
+              className="w-full h-full border-0"
+              allow="autoplay; fullscreen; microphone"
+            />
+          </div>
+        )}
 
         {/* Tab Food Cost */}
         {activeTab === "Food Cost" && <FoodCostTab />}
