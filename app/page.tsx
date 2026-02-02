@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import { useAuth } from "@/hooks/useAuth"
+import { LoginScreen } from "@/components/features/LoginScreen"
 import { Sidebar } from "@/components/layout/Sidebar"
 import DashboardPage from "@/components/views/DashboardPage"
 import ReservationsPage from "@/components/views/ReservationsPage"
@@ -20,6 +22,7 @@ import TabletUsagePage from "@/components/views/TabletUsagePage"
 import { SmartAssistant } from "@/components/features/SmartAssistant"
 
 export default function App() {
+  const { user, loading, error, signIn, signOut } = useAuth()
   const [collapsed, setCollapsed] = useState(false)
   const [currentPath, setCurrentPath] = useState("/")
 
@@ -63,6 +66,23 @@ export default function App() {
           </div>
         )
     }
+  }
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0f172a]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-3 border-[#02b1c4] border-t-transparent rounded-full animate-spin" />
+          <p className="text-slate-400 text-sm">Cargando...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Not authenticated - show login
+  if (!user) {
+    return <LoginScreen onLogin={signIn} error={error} />
   }
 
   return (
