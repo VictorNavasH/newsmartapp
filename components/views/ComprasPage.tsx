@@ -1434,7 +1434,7 @@ export default function ComprasPage() {
                 <h4 className="font-semibold text-slate-700 text-sm">Importes</h4>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-slate-500">Base</span>
-                  <span className="font-semibold text-slate-800">{formatCurrency(pedidoDetalle.pedido_base)}</span>
+                  <span className="font-semibold text-slate-800">{formatCurrency(pedidoDetalle.pedido_subtotal)}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-slate-500">IVA</span>

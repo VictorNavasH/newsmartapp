@@ -1079,7 +1079,7 @@ export interface CompraPedido {
   proveedor: string
   numero_pedido: string
   fecha_pedido: string
-  pedido_base: number
+  pedido_subtotal: number
   pedido_iva: number
   pedido_total: number
   pedido_observaciones: string | null
