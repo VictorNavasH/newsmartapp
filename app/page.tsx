@@ -71,10 +71,10 @@ export default function App() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0f172a]">
+      <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-3 border-[#02b1c4] border-t-transparent rounded-full animate-spin" />
-          <p className="text-slate-400 text-sm">Cargando...</p>
+          <p className="text-slate-500 text-sm">Cargando...</p>
         </div>
       </div>
     )
