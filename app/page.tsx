@@ -19,6 +19,7 @@ import BankConnectionsPage from "@/components/views/BankConnectionsPage"
 import FacturacionPage from "@/components/views/FacturacionPage"
 import SmartAssistantPage from "@/components/views/SmartAssistantPage"
 import TabletUsagePage from "@/components/views/TabletUsagePage"
+import SettingsPage from "@/components/views/SettingsPage"
 import { SmartAssistant } from "@/components/features/SmartAssistant"
 
 export default function App() {
@@ -58,6 +59,8 @@ export default function App() {
         return <TabletUsagePage />
       case "/ai-assistant":
         return <SmartAssistantPage />
+      case "/settings":
+        return <SettingsPage userName={user?.user_metadata?.full_name} userEmail={user?.email} />
       default:
         return (
           <div className="flex flex-col items-center justify-center h-full text-slate-400">
