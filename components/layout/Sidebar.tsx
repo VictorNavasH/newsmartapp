@@ -2,16 +2,26 @@
 
 import type React from "react"
 import { NAVIGATION_ITEMS } from "../../constants"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronLeft, ChevronRight, LogOut } from "lucide-react"
 
 interface SidebarProps {
   collapsed: boolean
   toggle: () => void
   currentPath: string
   onNavigate: (path: string) => void
+  userName?: string
+  userEmail?: string
+  onSignOut?: () => void
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggle, currentPath, onNavigate }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggle, currentPath, onNavigate, userName, userEmail, onSignOut }) => {
+  const displayName = userName || userEmail?.split("@")[0] || "Usuario"
+  const initials = displayName
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2)
   return (
     <div
       className={`h-screen bg-white shadow-xl transition-all duration-300 flex flex-col z-50 ${collapsed ? "w-20" : "w-64"}`}
@@ -76,16 +86,34 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggle, currentPath
       {/* FOOTER */}
       <div className="p-4 border-t border-slate-100">
         <div className={`flex items-center ${collapsed ? "justify-center" : "gap-3"}`}>
-          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#02b1c4] to-[#227c9d] flex items-center justify-center text-white font-bold shadow-md">
-            AM
+          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#02b1c4] to-[#227c9d] flex items-center justify-center text-white font-bold shadow-md flex-shrink-0">
+            {initials}
           </div>
           {!collapsed && (
-            <div className="overflow-hidden">
-              <p className="text-sm font-bold text-[#364f6b] truncate">Admin Manager</p>
-              <p className="text-xs text-slate-400 truncate">admin@nuasmart.com</p>
+            <div className="overflow-hidden flex-1">
+              <p className="text-sm font-bold text-[#364f6b] truncate">{displayName}</p>
+              <p className="text-xs text-slate-400 truncate">{userEmail}</p>
             </div>
           )}
+          {!collapsed && onSignOut && (
+            <button
+              onClick={onSignOut}
+              title="Cerrar sesión"
+              className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
+            >
+              <LogOut size={16} />
+            </button>
+          )}
         </div>
+        {collapsed && onSignOut && (
+          <button
+            onClick={onSignOut}
+            title="Cerrar sesión"
+            className="mt-2 w-full flex justify-center p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+          >
+            <LogOut size={16} />
+          </button>
+        )}
       </div>
     </div>
   )

@@ -92,6 +92,9 @@ export default function App() {
         toggle={() => setCollapsed(!collapsed)}
         currentPath={currentPath}
         onNavigate={setCurrentPath}
+        userName={user?.user_metadata?.full_name}
+        userEmail={user?.email}
+        onSignOut={signOut}
       />
       <main className="flex-1 overflow-auto h-full w-full">{renderContent()}</main>
 
