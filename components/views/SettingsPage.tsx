@@ -23,10 +23,12 @@ import {
   ChevronRight,
   Armchair,
   UtensilsCrossed,
+  FileText,
 } from "lucide-react"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { PageContent } from "@/components/layout/PageContent"
 import { MenuBar } from "@/components/ui/menu-bar"
+import { DocumentationTab } from "@/components/features/DocumentationTab"
 import {
   fetchIntegrationStatuses,
   fetchViewRefreshLogs,
@@ -139,6 +141,13 @@ const settingsMenuItems = [
     gradient: "radial-gradient(circle, rgba(23,195,178,0.15) 0%, transparent 70%)",
     iconColor: "text-[#17c3b2]",
   },
+  {
+    icon: FileText,
+    label: "Documentación",
+    href: "#docs",
+    gradient: "radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 70%)",
+    iconColor: "text-[#8b5cf6]",
+  },
 ]
 
 // Mapa label → tab id interno
@@ -148,6 +157,7 @@ const labelToTab: Record<string, string> = {
   "Perfil": "profile",
   "Apariencia": "appearance",
   "Acerca de": "about",
+  "Documentación": "docs",
 }
 
 const tabToLabel: Record<string, string> = Object.fromEntries(
@@ -660,6 +670,9 @@ export default function SettingsPage({ userName, userEmail }: SettingsPageProps)
                 </div>
               </div>
             )}
+
+            {/* ===================== TAB: DOCUMENTACIÓN ===================== */}
+            {activeTab === "docs" && <DocumentationTab />}
           </>
         )}
       </PageContent>

@@ -654,7 +654,7 @@ Esta vista embebe dashboards externos. No consume servicios propios. Los tabs us
 | `fetchRestaurantCapacity()` | Tablas `tables`, `turnos` | `RestaurantCapacity` |
 | `fetchRecentSyncLogs()` | Tablas `gstock_sync_logs`, `gocardless_sync_logs` | `SyncLogEntry[]` |
 
-### Secciones (5 tabs — MenuBar animado)
+### Secciones (6 tabs — MenuBar animado)
 
 Usa el componente `MenuBar` (mismo que el resto de la app: Smart Food, Compras, Smart Tables, etc.).
 
@@ -663,6 +663,7 @@ Usa el componente `MenuBar` (mismo que el resto de la app: Smart Food, Compras, 
 3. **Perfil** — Nombre, email, dominio y seguridad del usuario autenticado
 4. **Apariencia** — Selector de tema: Claro / Oscuro / Sistema
 5. **Acerca de** — Versión, stack tecnológico, info del proyecto
+6. **Documentación** — Renderiza los 6 archivos `.md` del repositorio (`docs/`) con sub-navegación, Markdown formateado y descarga directa. Componente: `DocumentationTab`. API: `GET /api/docs?file=...`
 
 ### Helpers internos
 

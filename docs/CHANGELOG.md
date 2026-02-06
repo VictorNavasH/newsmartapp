@@ -12,6 +12,16 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 
 ---
 
+## [1.3.5] - 2026-02-06
+
+### Añadido
+- **Tab Documentación en Configuración:** Nueva pestaña que renderiza los 6 archivos `.md` del proyecto con Markdown formateado
+- **API `/api/docs`:** Endpoint GET para servir archivos de documentación desde `docs/` (whitelist de seguridad)
+- **Componente `DocumentationTab`:** Sub-navegación por documento, renderizado con `react-markdown` + `remark-gfm`, descarga individual y masiva
+- **Plugin `@tailwindcss/typography`:** Clases `prose` para renderizado Markdown bonito (headings, tablas, código, blockquotes)
+
+---
+
 ## [1.3.4] - 2026-02-06
 
 ### Modificado
