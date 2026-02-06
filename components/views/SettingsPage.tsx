@@ -26,6 +26,7 @@ import {
 } from "lucide-react"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { PageContent } from "@/components/layout/PageContent"
+import { MenuBar } from "@/components/ui/menu-bar"
 import {
   fetchIntegrationStatuses,
   fetchViewRefreshLogs,
@@ -99,18 +100,59 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 // ============================================
-// TABS
+// TABS (MenuBar items)
 // ============================================
 
-const TABS = [
-  { id: "status", label: "Estado del Sistema", icon: Activity },
-  { id: "data", label: "Datos y Vistas", icon: Database },
-  { id: "profile", label: "Perfil", icon: User },
-  { id: "appearance", label: "Apariencia", icon: Palette },
-  { id: "about", label: "Acerca de", icon: Info },
-] as const
+const settingsMenuItems = [
+  {
+    icon: Activity,
+    label: "Estado del Sistema",
+    href: "#status",
+    gradient: "radial-gradient(circle, rgba(2,177,196,0.15) 0%, transparent 70%)",
+    iconColor: "text-[#02b1c4]",
+  },
+  {
+    icon: Database,
+    label: "Datos y Vistas",
+    href: "#data",
+    gradient: "radial-gradient(circle, rgba(34,124,157,0.15) 0%, transparent 70%)",
+    iconColor: "text-[#227c9d]",
+  },
+  {
+    icon: User,
+    label: "Perfil",
+    href: "#profile",
+    gradient: "radial-gradient(circle, rgba(254,109,115,0.15) 0%, transparent 70%)",
+    iconColor: "text-[#fe6d73]",
+  },
+  {
+    icon: Palette,
+    label: "Apariencia",
+    href: "#appearance",
+    gradient: "radial-gradient(circle, rgba(255,203,119,0.15) 0%, transparent 70%)",
+    iconColor: "text-[#ffcb77]",
+  },
+  {
+    icon: Info,
+    label: "Acerca de",
+    href: "#about",
+    gradient: "radial-gradient(circle, rgba(23,195,178,0.15) 0%, transparent 70%)",
+    iconColor: "text-[#17c3b2]",
+  },
+]
 
-type TabId = (typeof TABS)[number]["id"]
+// Mapa label → tab id interno
+const labelToTab: Record<string, string> = {
+  "Estado del Sistema": "status",
+  "Datos y Vistas": "data",
+  "Perfil": "profile",
+  "Apariencia": "appearance",
+  "Acerca de": "about",
+}
+
+const tabToLabel: Record<string, string> = Object.fromEntries(
+  Object.entries(labelToTab).map(([k, v]) => [v, k])
+)
 
 // ============================================
 // MAIN COMPONENT
@@ -122,7 +164,7 @@ interface SettingsPageProps {
 }
 
 export default function SettingsPage({ userName, userEmail }: SettingsPageProps) {
-  const [activeTab, setActiveTab] = useState<TabId>("status")
+  const [activeTab, setActiveTab] = useState("status")
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
 
@@ -213,26 +255,16 @@ export default function SettingsPage({ userName, userEmail }: SettingsPageProps)
       />
 
       <PageContent>
-        {/* Tab Navigation */}
-        <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1 w-fit">
-          {TABS.map((tab) => {
-            const Icon = tab.icon
-            const isActive = activeTab === tab.id
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  isActive
-                    ? "bg-[#02b1c4] text-white shadow-sm"
-                    : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                {tab.label}
-              </button>
-            )
-          })}
+        {/* MenuBar centrado — mismo componente que el resto de la app */}
+        <div className="flex justify-center">
+          <MenuBar
+            items={settingsMenuItems}
+            activeItem={tabToLabel[activeTab] || "Estado del Sistema"}
+            onItemClick={(label) => {
+              const tabId = labelToTab[label]
+              if (tabId) setActiveTab(tabId)
+            }}
+          />
         </div>
 
         {/* Tab Content */}

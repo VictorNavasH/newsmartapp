@@ -12,6 +12,13 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 
 ---
 
+## [1.3.4] - 2026-02-06
+
+### Modificado
+- **Configuración:** Reemplazado selector de tabs simple (botones) por `MenuBar` animado con 3D flip, igual que el resto de la app (Smart Food, Compras, Smart Tables)
+
+---
+
 ## [1.3.3] - 2026-02-06
 
 ### Modificado

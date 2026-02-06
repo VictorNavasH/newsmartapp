@@ -654,13 +654,15 @@ Esta vista embebe dashboards externos. No consume servicios propios. Los tabs us
 | `fetchRestaurantCapacity()` | Tablas `tables`, `turnos` | `RestaurantCapacity` |
 | `fetchRecentSyncLogs()` | Tablas `gstock_sync_logs`, `gocardless_sync_logs` | `SyncLogEntry[]` |
 
-### Secciones (5 tabs)
+### Secciones (5 tabs — MenuBar animado)
 
-1. **Integraciones** — Estado de cada integración (Supabase, GStock, GoCardless, Cuentica, Billin) con indicador semáforo
-2. **Base de datos** — Tamaño total, tabla de tamaño por tabla, logs de refresh de vistas materializadas
-3. **Restaurante** — Capacidad: mesas, plazas, turnos activos, plazas/día
-4. **Perfil** — Nombre y email del usuario autenticado
-5. **Apariencia** — Selector de tema: Claro / Oscuro / Sistema
+Usa el componente `MenuBar` (mismo que el resto de la app: Smart Food, Compras, Smart Tables, etc.).
+
+1. **Estado del Sistema** — Integraciones (semáforo), capacidad restaurante, logs de sincronización
+2. **Datos y Vistas** — Vistas materializadas, info BD, refresh diario
+3. **Perfil** — Nombre, email, dominio y seguridad del usuario autenticado
+4. **Apariencia** — Selector de tema: Claro / Oscuro / Sistema
+5. **Acerca de** — Versión, stack tecnológico, info del proyecto
 
 ### Helpers internos
 
