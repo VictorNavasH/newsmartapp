@@ -707,14 +707,22 @@ FacturaAdyacente: { factura_id, transaction_id, cuentica_identifier,
   tipo_conciliacion, motivo_revision: string|null;
   requiere_revision: boolean; estado_conciliacion: string|null;
   estado_pago: "pagada"|"pendiente"|"parcial"|"abono";
-  albaranes_vinculados: string[]|null }
+  albaranes_vinculados: string[]|null;
+  albaranes_candidatos?: number }
 ```
 
 ### CompraKPIs
 ```typescript
-{ pedidos_pendientes, importe_pedidos_pendientes: number;
+{
+  // Desde vw_compras_resumen (datos mensuales)
+  total_mes_albaranes, total_mes_pedidos: number;
+  num_albaranes_mes, num_pedidos_mes: number;
+  total_albaranes, total_pedidos: number;
+  // Computados desde otras vistas
+  pedidos_pendientes, importe_pedidos_pendientes: number;
   albaranes_sin_facturar, importe_sin_facturar: number;
-  facturas_pendientes_revision, facturas_conciliadas: number }
+  facturas_pendientes, importe_facturas_pendientes: number;
+}
 ```
 
 ### CompraAlbaranDisponible / CompraProveedor / ProductFormat

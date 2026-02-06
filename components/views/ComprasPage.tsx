@@ -270,12 +270,11 @@ export default function ComprasPage() {
     if (activeTab === "conciliacion") {
       loadFacturas()
     }
-  }, [activeTab, estadoConciliacionFilter, estadoPagoFilter, proveedorConciliacionFilter, soloRevision])
+  }, [activeTab, estadoConciliacionFilter, proveedorConciliacionFilter, soloRevision])
 
   async function loadFacturas() {
     const data = await fetchFacturasConciliacion({
       estadoConciliacion: estadoConciliacionFilter,
-      estadoPago: estadoPagoFilter,
       proveedor: proveedorConciliacionFilter,
       soloRevision,
     })
@@ -457,9 +456,9 @@ export default function ComprasPage() {
                   <h3 className="font-bold text-[#364f6b] text-sm">Pedidos Pendientes</h3>
                 </div>
               </div>
-              <p className="text-3xl font-bold text-[#364f6b]">{Number(kpis.pedidos_pendientes) || 0}</p>
+              <p className="text-3xl font-bold text-[#364f6b]">{kpis.pedidos_pendientes}</p>
               <p className="text-sm text-slate-500 mt-1">
-                {formatCurrency(Number(kpis.importe_pedidos_pendientes || 0))}
+                {formatCurrency(kpis.importe_pedidos_pendientes)}
               </p>
             </TremorCard>
 
@@ -471,34 +470,38 @@ export default function ComprasPage() {
                   <h3 className="font-bold text-[#364f6b] text-sm">Albaranes sin Facturar</h3>
                 </div>
               </div>
-              <p className="text-3xl font-bold text-[#364f6b]">{Number(kpis.albaranes_sin_facturar) || 0}</p>
+              <p className="text-3xl font-bold text-[#364f6b]">{kpis.albaranes_sin_facturar}</p>
               <p className="text-sm text-slate-500 mt-1">
-                {formatCurrency(Number(kpis.importe_sin_facturar || 0))}
+                {formatCurrency(kpis.importe_sin_facturar)}
               </p>
             </TremorCard>
 
-            {/* Revisar */}
+            {/* Facturas Pendientes */}
             <TremorCard>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="w-5 h-5 text-[#fe6d73]" />
-                  <h3 className="font-bold text-[#364f6b] text-sm">Revisar</h3>
+                  <h3 className="font-bold text-[#364f6b] text-sm">Facturas Pendientes</h3>
                 </div>
               </div>
-              <p className="text-3xl font-bold text-[#fe6d73]">{Number(kpis.facturas_pendientes_revision) || 0}</p>
-              <p className="text-sm text-slate-500 mt-1">facturas pendientes</p>
+              <p className="text-3xl font-bold text-[#fe6d73]">{kpis.facturas_pendientes}</p>
+              <p className="text-sm text-slate-500 mt-1">
+                {formatCurrency(kpis.importe_facturas_pendientes)}
+              </p>
             </TremorCard>
 
-            {/* Conciliadas */}
+            {/* Actividad del Mes */}
             <TremorCard>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <CheckCircle className="w-5 h-5 text-[#17c3b2]" />
-                  <h3 className="font-bold text-[#364f6b] text-sm">Conciliadas</h3>
+                  <h3 className="font-bold text-[#364f6b] text-sm">Actividad del Mes</h3>
                 </div>
               </div>
-              <p className="text-3xl font-bold text-[#17c3b2]">{Number(kpis.facturas_conciliadas) || 0}</p>
-              <p className="text-sm text-slate-500 mt-1">facturas este mes</p>
+              <p className="text-3xl font-bold text-[#17c3b2]">{kpis.num_pedidos_mes + kpis.num_albaranes_mes}</p>
+              <p className="text-sm text-slate-500 mt-1">
+                {kpis.num_pedidos_mes} pedidos · {kpis.num_albaranes_mes} albaranes
+              </p>
             </TremorCard>
           </div>
         )}
@@ -708,19 +711,6 @@ export default function ComprasPage() {
                     </SelectContent>
                   </Select>
 
-                  <Select value={estadoPagoFilter} onValueChange={setEstadoPagoFilter}>
-                    <SelectTrigger className="w-[160px]">
-                      <SelectValue placeholder="Estado Pago" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todos">Todos</SelectItem>
-                      <SelectItem value="pagada">Pagada</SelectItem>
-                      <SelectItem value="pendiente">Pendiente</SelectItem>
-                      <SelectItem value="parcial">Parcial</SelectItem>
-                      <SelectItem value="abono">Abono</SelectItem>
-                    </SelectContent>
-                  </Select>
-
                   <Select value={proveedorConciliacionFilter} onValueChange={setProveedorConciliacionFilter}>
                     <SelectTrigger className="w-[200px]">
                       <SelectValue placeholder="Proveedor" />
@@ -763,7 +753,6 @@ export default function ComprasPage() {
                           const estadoConc = factura.estado_conciliacion
                             ? ESTADO_CONCILIACION_CONFIG[factura.estado_conciliacion]
                             : null
-                          const estadoPago = ESTADO_PAGO_CONFIG[factura.estado_pago] || ESTADO_PAGO_CONFIG.pendiente
                           const isSelected = facturaSeleccionada?.id === factura.id
 
                           return (
@@ -794,9 +783,11 @@ export default function ComprasPage() {
                                   )}
                                   <span className="font-semibold text-slate-800">Factura {factura.factura_numero}</span>
                                 </div>
-                                <Badge style={{ backgroundColor: `${estadoPago.color}15`, color: estadoPago.color }}>
-                                  {estadoPago.label}
-                                </Badge>
+                                {factura.albaranes_candidatos != null && factura.albaranes_candidatos > 0 && (
+                                  <Badge style={{ backgroundColor: "#02b1c415", color: "#02b1c4" }}>
+                                    {factura.albaranes_candidatos} albarán{factura.albaranes_candidatos !== 1 ? "es" : ""}
+                                  </Badge>
+                                )}
                               </div>
 
                               {/* Info */}

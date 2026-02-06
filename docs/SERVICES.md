@@ -140,15 +140,21 @@ Servicio principal y más extenso. Contiene funciones para dashboard en tiempo r
 
 > **Nota:** `fetchPedidos()` mapea el campo `items` (nombre en la vista Supabase) a `pedido_items` (nombre en el tipo TypeScript `CompraPedido`). Este mapeo es necesario porque la vista `vw_compras_pedidos` usa `items` como nombre de columna JSONB.
 
+> **Nota:** `fetchFacturasConciliacion()` lee de `vw_compras_facturas_pendientes` (no de `vw_compras_conciliacion` que depende de tabla vacía). Mapea campos al tipo `CompraFacturaConciliacion`.
+
+> **Nota:** `fetchAlbaranesDisponibles()` mapea `fecha_albaran` → `fecha` y `total` → `importe_total` desde `vw_compras_albaranes_para_vincular`.
+
+> **Nota:** `fetchKPIs()` consulta 4 fuentes en paralelo: `vw_compras_resumen` + `vw_compras_pedidos` + `vw_compras_albaranes_para_vincular` + `vw_compras_facturas_pendientes`.
+
 ### Lectura
 
 | Función | Parámetros | Retorna | Fuente Supabase |
 |---------|-----------|---------|----------------|
 | `fetchPedidos(filters?)` | `{proveedor, estado, fechaDesde, fechaHasta}` | `Promise<CompraPedido[]>` | Vista `vw_compras_pedidos` → `.select("*").order("fecha_pedido", desc)` + filtros |
-| `fetchFacturasConciliacion(filters?)` | `{estadoConciliacion, estadoPago, proveedor, soloRevision}` | `Promise<CompraFacturaConciliacion[]>` | Vista `vw_compras_conciliacion` → `.select("*").order("factura_fecha", desc)` + filtros |
-| `fetchAlbaranesDisponibles(proveedorId?)` | `proveedorId?: string` | `Promise<CompraAlbaranDisponible[]>` | Vista `vw_compras_albaranes_para_vincular` |
+| `fetchFacturasConciliacion(filters?)` | `{estadoConciliacion, proveedor, soloRevision}` | `Promise<CompraFacturaConciliacion[]>` | Vista `vw_compras_facturas_pendientes` → mapeo a `CompraFacturaConciliacion` |
+| `fetchAlbaranesDisponibles(proveedorId?)` | `proveedorId?: string` | `Promise<CompraAlbaranDisponible[]>` | Vista `vw_compras_albaranes_para_vincular` → mapeo `fecha_albaran`→`fecha`, `total`→`importe_total` |
 | `fetchProveedores()` | — | `Promise<CompraProveedor[]>` | Vista `vw_compras_proveedores` → `.order("nombre")` |
-| `fetchKPIs()` | — | `Promise<CompraKPIs \| null>` | Vista `vw_compras_resumen` → `.select("*").single()` |
+| `fetchKPIs()` | — | `Promise<CompraKPIs \| null>` | 4 fuentes: `vw_compras_resumen` + `vw_compras_pedidos` + `vw_compras_albaranes_para_vincular` + `vw_compras_facturas_pendientes` |
 | `fetchProductFormats()` | — | `Promise<ProductFormat[]>` | Tabla `gstock_product_formats` → `.select("id, name").order("name")` |
 | `fetchComprasAnalisisKPIs({desde, hasta})` | fechas | `Promise<CompraAnalisisKPI \| null>` | RPC `compras_kpis` |
 | `fetchComprasEvolucionMensual(meses?)` | `meses: number = 12` | `Promise<CompraEvolucionMensual[]>` | RPC `compras_evolucion_mensual` |

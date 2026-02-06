@@ -12,6 +12,22 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 
 ---
 
+## [1.3.0] - 2026-02-06
+
+### Corregido
+- **ComprasPage — KPIs mostraban 0:** Desajuste total de nombres entre `vw_compras_resumen` (devuelve `total_mes_albaranes`, `num_pedidos_mes`, etc.) y el tipo `CompraKPIs` (esperaba `pedidos_pendientes`, `albaranes_sin_facturar`, etc.). Reescrito `fetchKPIs()` para consultar 4 fuentes en paralelo y computar KPIs reales.
+- **ComprasPage — Tab Conciliación vacía:** `fetchFacturasConciliacion()` leía de `vw_compras_conciliacion` que hace JOIN con tabla vacía `gstock_conciliacion_compras`. Cambiada fuente a `vw_compras_facturas_pendientes` (225 facturas reales) con mapeo de campos.
+- **ComprasPage — Albaranes sin fecha ni importe:** `fetchAlbaranesDisponibles()` usaba nombres de campo incorrectos (`fecha` en vez de `fecha_albaran`, `importe_total` en vez de `total`). Añadido mapeo correcto.
+
+### Modificado
+- Tipo `CompraKPIs` ampliado: 6 campos de resumen mensual + 6 KPIs computados
+- Tipo `CompraFacturaConciliacion` extendido con `albaranes_candidatos`
+- KPI cards: "Revisar" y "Conciliadas" reemplazados por "Facturas Pendientes" y "Actividad del Mes"
+- Filtro "Estado Pago" eliminado de Conciliación (no disponible en la vista actual)
+- Cards de factura muestran cantidad de albaranes candidatos en vez de estado de pago
+
+---
+
 ## [1.2.1] - 2026-02-06
 
 ### Corregido

@@ -1118,15 +1118,24 @@ export interface CompraFacturaConciliacion {
   estado_conciliacion: string | null
   estado_pago: "pagada" | "pendiente" | "parcial" | "abono"
   albaranes_vinculados: string[] | null
+  albaranes_candidatos?: number // Cantidad de albaranes candidatos para vincular
 }
 
 export interface CompraKPIs {
+  // Desde vw_compras_resumen (datos mensuales)
+  total_mes_albaranes: number
+  total_mes_pedidos: number
+  num_albaranes_mes: number
+  num_pedidos_mes: number
+  total_albaranes: number
+  total_pedidos: number
+  // Computados desde otras vistas
   pedidos_pendientes: number
   importe_pedidos_pendientes: number
   albaranes_sin_facturar: number
   importe_sin_facturar: number
-  facturas_pendientes_revision: number
-  facturas_conciliadas: number
+  facturas_pendientes: number
+  importe_facturas_pendientes: number
 }
 
 export interface CompraAlbaranDisponible {

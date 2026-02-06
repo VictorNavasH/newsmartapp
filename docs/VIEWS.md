@@ -239,10 +239,10 @@ Documentación detallada de las 15 vistas principales. Cada vista se renderiza d
 | Función | Fuente Supabase | Tipo retorno |
 |---------|----------------|--------------|
 | `fetchPedidos(filters)` | Vista `vw_compras_pedidos` | `CompraPedido[]` |
-| `fetchFacturasConciliacion(filters)` | Vista `vw_compras_conciliacion` | `CompraFacturaConciliacion[]` |
+| `fetchFacturasConciliacion(filters)` | Vista `vw_compras_facturas_pendientes` | `CompraFacturaConciliacion[]` |
 | `fetchAlbaranesDisponibles(proveedorId)` | Vista `vw_compras_albaranes_para_vincular` | `CompraAlbaranDisponible[]` |
 | `fetchProveedores()` | Vista `vw_compras_proveedores` | `CompraProveedor[]` |
-| `fetchKPIs()` | Vista `vw_compras_resumen` | `CompraKPIs` |
+| `fetchKPIs()` | 4 fuentes: `vw_compras_resumen` + `vw_compras_pedidos` + `vw_compras_albaranes_para_vincular` + `vw_compras_facturas_pendientes` | `CompraKPIs` |
 | `fetchComprasAnalisisKPIs(rango)` | RPC `compras_kpis` | `CompraAnalisisKPI` |
 | `fetchComprasDistribucion(rango)` | RPC `compras_distribucion` | `CompraDistribucionCategoria[]` |
 | `fetchComprasTopProductos(rango)` | RPC `compras_top_productos` | `CompraTopProducto[]` |
@@ -259,8 +259,8 @@ Documentación detallada de las 15 vistas principales. Cada vista se renderiza d
 
 ### Secciones (MenuBar con 3 tabs)
 
-1. **Pedidos** — Listado de pedidos de compra con estado, proveedor, líneas, totales
-2. **Conciliación** — Facturas vs albaranes, vinculación manual, confirmación/descarte
+1. **Pedidos** — Listado de pedidos de compra con estado, proveedor, líneas, totales. KPIs: Pedidos Pendientes, Albaranes sin Facturar, Facturas Pendientes, Actividad del Mes
+2. **Conciliación** — Facturas pendientes (fuente: `vw_compras_facturas_pendientes`, 225+ facturas) vs albaranes disponibles, vinculación manual, confirmación/descarte. Cada factura muestra cantidad de albaranes candidatos
 3. **Análisis** — KPIs de compras, distribución por categoría, top productos, evolución mensual, tabla jerárquica
 
 ### Filtros
@@ -269,7 +269,7 @@ Documentación detallada de las 15 vistas principales. Cada vista se renderiza d
 - Estado de pedido
 - Rango de fechas
 - Estado de conciliación
-- Estado de pago
+- Solo revisión (checkbox)
 
 ---
 
