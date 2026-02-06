@@ -18,6 +18,7 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 - **WeatherCard — Bug UTC en cálculo de "hoy":** `new Date().toISOString()` devolvía fecha UTC, causando desfase entre 00:00-01:00 hora España. Cambiado a `toLocaleDateString("en-CA", { timeZone: "Europe/Madrid" })` tanto en `fetchWeatherForecast()` como en el componente
 - **WeatherCard — Marcador "Hoy" incorrecto:** Se usaba `idx === 0` para marcar el día actual. Ahora compara la fecha real del dato con la fecha local de España
 - **WeatherCard — Desfase de fecha al parsear:** `new Date("YYYY-MM-DD")` parsea como UTC medianoche, lo que puede cambiar el día en timezones positivas. Añadido `T12:00:00` al parsear para evitar el salto de día
+- **WeatherCard — Siempre 7 días:** Si AEMET no ha actualizado y solo hay 6 días desde hoy, completa con días anteriores para llenar las 7 columnas. Fallback total si no hay datos desde hoy
 
 ---
 

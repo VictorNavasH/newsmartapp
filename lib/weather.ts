@@ -92,9 +92,9 @@ const aemetToWmoCode = (aemetCode: string | null): number => {
 export const fetchWeatherForecast = async (): Promise<WeatherDay[]> => {
   try {
     // Usar timezone de España para calcular "hoy" correctamente
-    // toISOString() devuelve UTC y entre 00:00-01:00 España muestra el día anterior
     const today = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Madrid" })
 
+    // Pedir desde hoy + 8 días de margen (AEMET da 7 desde su última ejecución)
     const { data, error } = await supabase
       .from("forecasting_weather_history")
       .select("fecha, temp_max, temp_min, codigo_tiempo_comida, codigo_tiempo_cena")
@@ -107,21 +107,47 @@ export const fetchWeatherForecast = async (): Promise<WeatherDay[]> => {
       return []
     }
 
-    if (!data || data.length === 0) {
-      console.warn("No weather data in Supabase for", today)
-      return []
-    }
-
-    // Mapear directamente sin deduplicacion (solo AEMET)
-    const forecast: WeatherDay[] = data.map((row: any) => ({
+    const mapRow = (row: any): WeatherDay => ({
       date: row.fecha,
       maxTemp: Math.round(row.temp_max || 0),
       minTemp: Math.round(row.temp_min || 0),
       lunchCode: aemetToWmoCode(row.codigo_tiempo_comida),
       dinnerCode: aemetToWmoCode(row.codigo_tiempo_cena),
-    }))
+    })
 
-    return forecast
+    // Si tenemos 7 días completos, perfecto
+    if (data && data.length >= 7) {
+      return data.map(mapRow)
+    }
+
+    // Si tenemos menos de 7 (AEMET no ha actualizado hoy todavía),
+    // completar con los días anteriores a hoy para llenar 7 columnas
+    if (data && data.length > 0 && data.length < 7) {
+      const needed = 7 - data.length
+      const { data: prevData } = await supabase
+        .from("forecasting_weather_history")
+        .select("fecha, temp_max, temp_min, codigo_tiempo_comida, codigo_tiempo_cena")
+        .lt("fecha", today)
+        .order("fecha", { ascending: false })
+        .limit(needed)
+
+      const prevDays = prevData ? prevData.reverse().map(mapRow) : []
+      return [...prevDays, ...data.map(mapRow)]
+    }
+
+    // Fallback total: si no hay datos desde hoy, mostrar los últimos 7 disponibles
+    const { data: fallbackData } = await supabase
+      .from("forecasting_weather_history")
+      .select("fecha, temp_max, temp_min, codigo_tiempo_comida, codigo_tiempo_cena")
+      .order("fecha", { ascending: false })
+      .limit(7)
+
+    if (!fallbackData || fallbackData.length === 0) {
+      console.warn("No weather data available in Supabase")
+      return []
+    }
+
+    return fallbackData.reverse().map(mapRow)
   } catch (error) {
     console.error("Failed to fetch weather from Supabase:", error)
     return []
