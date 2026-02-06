@@ -45,7 +45,11 @@ export async function fetchPedidos(filters?: {
     return []
   }
 
-  return data || []
+  // Mapear 'items' (nombre en la vista) a 'pedido_items' (nombre en el tipo TypeScript)
+  return (data || []).map((row: any) => ({
+    ...row,
+    pedido_items: row.items ?? null,
+  }))
 }
 
 // ============================================
