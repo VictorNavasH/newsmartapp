@@ -145,8 +145,8 @@ const settingsMenuItems = [
     icon: FileText,
     label: "Documentación",
     href: "#docs",
-    gradient: "radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 70%)",
-    iconColor: "text-[#8b5cf6]",
+    gradient: "radial-gradient(circle, rgba(34,124,157,0.15) 0%, transparent 70%)",
+    iconColor: "text-[#227c9d]",
   },
 ]
 

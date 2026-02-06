@@ -133,7 +133,7 @@ export function DocumentationTab() {
                 onClick={() => setActiveDoc(doc.key)}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
                   isActive
-                    ? "bg-[#8b5cf6] text-white shadow-md shadow-purple-200"
+                    ? "bg-[#227c9d] text-white shadow-md shadow-cyan-200"
                     : "text-slate-500 hover:text-slate-700 hover:bg-slate-50 border border-slate-100"
                 }`}
               >
@@ -150,8 +150,8 @@ export function DocumentationTab() {
         <div className="flex items-center gap-3">
           {activeDocInfo && (
             <>
-              <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
-                <activeDocInfo.icon className="w-5 h-5 text-[#8b5cf6]" />
+              <div className="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center">
+                <activeDocInfo.icon className="w-5 h-5 text-[#227c9d]" />
               </div>
               <div>
                 <h3 className="text-lg font-bold text-[#364f6b]">{activeDocInfo.label}</h3>
@@ -163,7 +163,7 @@ export function DocumentationTab() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => handleDownload(activeDoc)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#8b5cf6] text-white text-sm font-medium hover:bg-[#7c3aed] transition-all"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#227c9d] text-white text-sm font-medium hover:bg-[#1a6478] transition-all"
           >
             <Download className="w-4 h-4" />
             Descargar
@@ -187,7 +187,7 @@ export function DocumentationTab() {
             prose-h2:text-xl prose-h2:mt-8 prose-h2:mb-4
             prose-h3:text-lg prose-h3:mt-6
             prose-a:text-[#02b1c4] prose-a:no-underline hover:prose-a:underline
-            prose-code:text-[#8b5cf6] prose-code:bg-purple-50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-sm prose-code:font-normal prose-code:before:content-none prose-code:after:content-none
+            prose-code:text-[#227c9d] prose-code:bg-sky-50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-sm prose-code:font-normal prose-code:before:content-none prose-code:after:content-none
             prose-pre:bg-slate-900 prose-pre:text-slate-100 prose-pre:rounded-xl prose-pre:shadow-inner
             prose-table:border-collapse prose-table:overflow-hidden prose-table:rounded-lg
             prose-th:bg-slate-50 prose-th:text-[#364f6b] prose-th:font-semibold prose-th:text-left prose-th:px-4 prose-th:py-2 prose-th:border prose-th:border-slate-200
