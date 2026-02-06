@@ -91,7 +91,9 @@ const aemetToWmoCode = (aemetCode: string | null): number => {
 
 export const fetchWeatherForecast = async (): Promise<WeatherDay[]> => {
   try {
-    const today = new Date().toISOString().split("T")[0]
+    // Usar timezone de España para calcular "hoy" correctamente
+    // toISOString() devuelve UTC y entre 00:00-01:00 España muestra el día anterior
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Madrid" })
 
     const { data, error } = await supabase
       .from("forecasting_weather_history")
@@ -101,19 +103,12 @@ export const fetchWeatherForecast = async (): Promise<WeatherDay[]> => {
       .limit(7)
 
     if (error) {
-      console.error("[v0] Error fetching weather from Supabase (Full Log):", {
-        error,
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint,
-        stringified: JSON.stringify(error, Object.getOwnPropertyNames(error)),
-      })
+      console.error("Error fetching weather from Supabase:", error.message)
       return []
     }
 
     if (!data || data.length === 0) {
-      console.warn("[v0] No weather data in Supabase")
+      console.warn("No weather data in Supabase for", today)
       return []
     }
 
@@ -128,7 +123,7 @@ export const fetchWeatherForecast = async (): Promise<WeatherDay[]> => {
 
     return forecast
   } catch (error) {
-    console.error("[v0] Failed to fetch weather from Supabase:", error)
+    console.error("Failed to fetch weather from Supabase:", error)
     return []
   }
 }

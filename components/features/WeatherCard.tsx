@@ -92,8 +92,11 @@ export const WeatherCard: React.FC = () => {
       {/* Grid matched to WeekReservationsCard: gap-2 reduced to gap-1.5 for better fit */}
       <div className="flex-1 grid grid-cols-7 gap-1.5">
         {forecast.map((day, idx) => {
-          const isToday = idx === 0
-          const dateObj = new Date(day.date)
+          // Comparar fecha real en timezone España para marcar "Hoy"
+          const todayStr = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Madrid" })
+          const isToday = day.date === todayStr
+          // Crear date con hora 12:00 para evitar desfase UTC al parsear YYYY-MM-DD
+          const dateObj = new Date(day.date + "T12:00:00")
           // Consistent date formatting
           const dayName = dateObj.toLocaleDateString("es-ES", { weekday: "short" }).replace(".", "").toUpperCase()
           const dayNum = dateObj.getDate()
