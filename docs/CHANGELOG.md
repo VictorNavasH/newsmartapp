@@ -12,6 +12,14 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 
 ---
 
+## [1.3.3] - 2026-02-06
+
+### Modificado
+- **Smart Food (antes "Costes"):** Renombrada la sección en sidebar y PageHeader
+- **Eliminada tab "Escandallos":** Era un placeholder "Próximamente" redundante con Food Cost. Quedan 3 tabs: Recetas, Food Cost, Benchmarks
+
+---
+
 ## [1.3.2] - 2026-02-06
 
 ### Corregido

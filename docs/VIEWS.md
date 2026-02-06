@@ -186,7 +186,7 @@ Documentación detallada de las 15 vistas principales. Cada vista se renderiza d
 
 ---
 
-## 5. Costes
+## 5. Smart Food
 
 | Campo | Valor |
 |-------|-------|
@@ -196,15 +196,14 @@ Documentación detallada de las 15 vistas principales. Cada vista se renderiza d
 | **Servicio(s)** | `dataService.ts` |
 | **Export** | Default export |
 
-### Secciones (MenuBar con 4 tabs)
+### Secciones (MenuBar con 3 tabs)
 
 1. **Recetas** — iframe embebido de SmartFood (`smartfood.nuasmartrestaurant.com`)
 2. **Food Cost** — Componente `<FoodCostTab />`
    - Consume `fetchFoodCostProducts()` → Vista `vw_food_cost`
    - Lista de productos con SKU, coste, PVP, margen, food cost %
    - Edición de precio manual con `updateManualPrice()` / `clearManualPrice()`
-3. **Escandallos** — iframe embebido de SmartFood
-4. **Benchmarks** — Componente `<BenchmarksTab />`
+3. **Benchmarks** — Componente `<BenchmarksTab />`
    - Consume `fetchBenchmarks(fechaInicio, fechaFin)` → RPC `get_benchmarks_resumen`
    - Comparación vs sector: food cost, labor cost, prime cost, ratio gastos
 

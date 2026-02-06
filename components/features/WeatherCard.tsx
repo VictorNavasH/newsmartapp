@@ -89,7 +89,7 @@ export const WeatherCard: React.FC = () => {
         </span>
       </div>
 
-      {/* Grid matched to WeekReservationsCard: gap-2 reduced to gap-1.5 for better fit */}
+      {/* Grid: siempre 7 columnas, se adapta si hay menos datos */}
       <div className="flex-1 grid grid-cols-7 gap-1.5">
         {forecast.map((day, idx) => {
           // Comparar fecha real en timezone España para marcar "Hoy"

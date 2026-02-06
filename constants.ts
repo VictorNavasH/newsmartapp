@@ -23,7 +23,7 @@ export const NAVIGATION_ITEMS = [
   { name: "Ingresos", icon: DollarSign, path: "/revenue" },
   { name: "Gastos", icon: PieChart, path: "/expenses" },
   { name: "Compras", icon: Truck, path: "/purchases" },
-  { name: "Costes", icon: Calculator, path: "/costs" },
+  { name: "Smart Food", icon: Calculator, path: "/costs" },
   { name: "Productos", icon: ShoppingBag, path: "/products" },
   { name: "Operaciones", icon: Clock, path: "/operations" },
   { name: "Smart Tables", icon: Tablet, path: "/tablet-usage" },
