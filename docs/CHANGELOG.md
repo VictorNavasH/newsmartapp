@@ -12,6 +12,15 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 
 ---
 
+## [1.3.1] - 2026-02-06
+
+### Modificado
+- **Smart Tables (antes "Uso de Mesas"):** Renombrada la sección en sidebar y PageHeader
+- **Smart Tables — Tabs con MenuBar:** Reemplazado selector de tabs custom por componente `MenuBar` (mismo patrón que ComprasPage, CostesPage, etc.)
+- Tabs renombradas: "Uso de Mesas" y "Configuración" mantienen sus nombres internos pero ahora usan el componente estándar con animaciones 3D
+
+---
+
 ## [1.3.0] - 2026-02-06
 
 ### Corregido

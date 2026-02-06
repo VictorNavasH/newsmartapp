@@ -20,7 +20,7 @@ Documentación detallada de las 15 vistas principales. Cada vista se renderiza d
 12. [What-If (`/what-if`)](#12-what-if)
 13. [Asistente IA (`/ai-assistant`)](#13-asistente-ia)
 14. [Conexiones Bancarias (`/bank-connections`)](#14-conexiones-bancarias)
-15. [Uso de Mesas (`/tablet-usage`)](#15-uso-de-mesas)
+15. [Smart Tables (`/tablet-usage`)](#15-smart-tables)
 16. [Configuración (`/settings`)](#16-configuración)
 
 ---
@@ -611,7 +611,7 @@ Preparada para integración real con GoCardless Open Banking API.
 
 ---
 
-## 15. Uso de Mesas
+## 15. Smart Tables
 
 | Campo | Valor |
 |-------|-------|
@@ -621,7 +621,7 @@ Preparada para integración real con GoCardless Open Banking API.
 | **Servicio(s)** | — (iframes externos) |
 | **Export** | Default export |
 
-### Secciones (2 tabs)
+### Secciones (MenuBar con 2 tabs)
 
 1. **Uso de Mesas** — iframe de Power BI con dashboard de uso de tablets
    - URL: `https://app.powerbi.com/view?r=...`
@@ -630,7 +630,7 @@ Preparada para integración real con GoCardless Open Banking API.
 
 ### Sin datos de Supabase
 
-Esta vista embebe dashboards externos. No consume servicios propios.
+Esta vista embebe dashboards externos. No consume servicios propios. Los tabs usan el componente `MenuBar` (mismo patrón que Compras, Costes, etc.).
 
 ---
 
