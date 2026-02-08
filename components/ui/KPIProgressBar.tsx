@@ -21,9 +21,9 @@ export function KPIProgressBar({
   variant = "compact",
 }: KPIProgressBarProps) {
   const statusColors = {
-    'on-track': { bar: 'bg-emerald-500', text: 'text-emerald-600', bg: 'bg-emerald-50' },
-    'at-risk': { bar: 'bg-amber-500', text: 'text-amber-600', bg: 'bg-amber-50' },
-    'behind': { bar: 'bg-red-500', text: 'text-red-600', bg: 'bg-red-50' },
+    'on-track': { bar: 'bg-[#17c3b2]', text: 'text-[#17c3b2]', bg: 'bg-[#17c3b2]/10' },
+    'at-risk': { bar: 'bg-[#ffcb77]', text: 'text-[#ffcb77]', bg: 'bg-[#ffcb77]/10' },
+    'behind': { bar: 'bg-[#fe6d73]', text: 'text-[#fe6d73]', bg: 'bg-[#fe6d73]/10' },
   }
 
   const colors = statusColors[progress.status]
@@ -80,7 +80,7 @@ export function KPIProgressBar({
       <p className="text-xs text-slate-400 mt-1.5">
         {progress.percentage}% del objetivo
         {progress.delta !== 0 && (
-          <span className={isLowerBetter ? (progress.delta > 0 ? ' text-emerald-500' : ' text-red-500') : (progress.delta > 0 ? ' text-emerald-500' : ' text-red-500')}>
+          <span className={isLowerBetter ? (progress.delta > 0 ? ' text-[#17c3b2]' : ' text-[#fe6d73]') : (progress.delta > 0 ? ' text-[#17c3b2]' : ' text-[#fe6d73]')}>
             {' '}({progress.delta > 0 ? '+' : ''}{progress.delta.toLocaleString('es-ES')}{suffix})
           </span>
         )}
