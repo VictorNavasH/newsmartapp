@@ -117,7 +117,7 @@ export function DashboardPage() {
     return weekRevenueData.reduce((sum, d) => sum + (d.facturadoReal || 0), 0)
   }, [weekRevenueData])
 
-  // Target semanal calculado = costes fijos (break-even) / semanas del mes actual
+  // Target semanal calculado = costes fijos / semanas del mes actual
   const weeklyRevenueTarget = useMemo(() => {
     if (!kpiTargets) return 0
     const now = new Date()
@@ -1012,7 +1012,7 @@ export function DashboardPage() {
                   icon={<Users className="w-4 h-4" />}
                 />
                 <KPIProgressBar
-                  label="Break-even Mensual"
+                  label="Punto de Equilibrio"
                   progress={calculateProgress(currentKPIs?.ingresos || 0, kpiTargets.breakEvenTarget)}
                   suffix="€"
                   icon={<ShieldCheck className="w-4 h-4" />}

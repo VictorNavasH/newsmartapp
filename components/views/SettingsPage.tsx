@@ -823,7 +823,7 @@ export default function SettingsPage({ userName, userEmail }: SettingsPageProps)
                         </div>
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1">Costes fijos mensuales (break-even)</label>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Costes fijos mensuales</label>
                         <div className="relative">
                           <input
                             type="number"
