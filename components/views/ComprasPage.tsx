@@ -325,6 +325,23 @@ export default function ComprasPage() {
     setActionLoading(null)
   }
 
+  const handleConfirmarTodas = async () => {
+    const autoFacturas = facturas.filter(
+      (f) => f.estado_conciliacion === "auto_conciliado" && f.conciliacion_id
+    )
+    if (autoFacturas.length === 0) return
+
+    setActionLoading("confirmar_todas")
+    let ok = 0
+    for (const f of autoFacturas) {
+      const result = await confirmarConciliacion(f.conciliacion_id!)
+      if (result.success) ok++
+    }
+    toast.success(`${ok} de ${autoFacturas.length} conciliaciones confirmadas`)
+    loadFacturas()
+    setActionLoading(null)
+  }
+
   const toggleAlbaranSeleccion = (albaranId: string) => {
     setAlbaranesSeleccionados((prev) =>
       prev.includes(albaranId) ? prev.filter((id) => id !== albaranId) : [...prev, albaranId],
@@ -476,6 +493,7 @@ export default function ComprasPage() {
                 onVincular={handleVincular}
                 onConfirmar={handleConfirmar}
                 onDescartar={handleDescartar}
+                onConfirmarTodas={handleConfirmarTodas}
               />
             )}
 

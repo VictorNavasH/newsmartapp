@@ -131,6 +131,7 @@ Servicio principal. Contiene funciones para dashboard en tiempo real, reservas, 
 | `fetchFoodCostProducts()` | — | `Promise<FoodCostSummary>` | Vista `vw_food_cost` → `.select("*").order("food_cost_pct", desc)` |
 | `updateManualPrice(sku, variantId, price)` | `sku: string, variantId?: string, newPrice: number` | `Promise<{success, error?}>` | RPC `update_manual_price` o `update_variant_manual_price` |
 | `clearManualPrice(sku, variantId)` | `sku: string, variantId?: string` | `Promise<{success, error?}>` | RPC `clear_manual_price` o update con null |
+| `fetchConciliacionResumen()` | — | `Promise<{totalPendientes, autoSinConfirmar, requierenRevision}>` | Vista `vw_compras_facturas_pendientes` → agrega conteos por estado. Usado por alertas Dashboard. |
 
 ### Mock (re-exportados desde `lib/mockData.ts`)
 
@@ -195,7 +196,7 @@ Módulo que contiene todos los datos mock, constantes de demo y generadores de d
 
 > **Nota:** `fetchPedidos()` mapea el campo `items` (nombre en la vista Supabase) a `pedido_items` (nombre en el tipo TypeScript `CompraPedido`). Este mapeo es necesario porque la vista `vw_compras_pedidos` usa `items` como nombre de columna JSONB.
 
-> **Nota:** `fetchFacturasConciliacion()` lee de `vw_compras_facturas_pendientes` (no de `vw_compras_conciliacion` que depende de tabla vacía). Mapea campos al tipo `CompraFacturaConciliacion`.
+> **Nota:** `fetchFacturasConciliacion()` lee de `vw_compras_facturas_pendientes` (no de `vw_compras_conciliacion` que depende de tabla vacía). Mapea campos al tipo `CompraFacturaConciliacion`. Desde feb-2026, la vista incluye columnas IA (`ia_confianza`, `motivo_revision`, `tipo_referencia`) generadas por el workflow n8n de conciliación con Gemini. `ia_confianza` se convierte de 0.0-1.0 a 0-100 para la UI.
 
 > **Nota:** `fetchAlbaranesDisponibles()` mapea `fecha_albaran` → `fecha` y `total` → `importe_total` desde `vw_compras_albaranes_para_vincular`.
 

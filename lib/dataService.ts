@@ -2023,3 +2023,27 @@ export async function clearManualPrice(
     return { success: false, error: err.message || "Error desconocido" }
   }
 }
+
+// ─── CONCILIACIÓN RESUMEN (para alertas Dashboard) ───────────────
+
+export async function fetchConciliacionResumen(): Promise<{
+  totalPendientes: number
+  autoSinConfirmar: number
+  requierenRevision: number
+}> {
+  const { data, error } = await supabase
+    .from("vw_compras_facturas_pendientes")
+    .select("estado_conciliacion, requiere_revision")
+
+  if (error) {
+    console.error("[fetchConciliacionResumen] Error:", error.message)
+    return { totalPendientes: 0, autoSinConfirmar: 0, requierenRevision: 0 }
+  }
+
+  const rows = data || []
+  return {
+    totalPendientes: rows.filter((r: any) => !r.estado_conciliacion || r.estado_conciliacion === "pendiente").length,
+    autoSinConfirmar: rows.filter((r: any) => r.estado_conciliacion === "auto_conciliado").length,
+    requierenRevision: rows.filter((r: any) => r.requiere_revision === true).length,
+  }
+}

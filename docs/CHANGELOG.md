@@ -43,6 +43,16 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
   - Nuevo `useMemo` `laborCostMonthlyAvg` en DashboardPage — filtra solo mes actual y días con datos reales
   - Alertas también usan la media mensual en vez del último día
 
+- **Sistema de conciliación de facturas mejorado:**
+  - Vista SQL `vw_compras_facturas_pendientes` ampliada con 3 columnas IA: `ia_confianza`, `motivo_revision`, `tipo_referencia`
+  - `comprasService.ts` mapea datos IA reales (antes hardcodeados a null)
+  - `ComprasConciliacionTab.tsx` reescrito: resumen visual de estados, barra de confianza IA, motivos de revisión, acción en lote "Confirmar auto-conciliadas"
+  - `ComprasPage.tsx` nueva función `handleConfirmarTodas` para confirmar todas las auto-conciliadas
+  - `constants.tsx` añadido estado "pendiente" a `ESTADO_CONCILIACION_CONFIG`
+  - `dataService.ts` nueva función `fetchConciliacionResumen()` para alertas
+  - `alertEngine.ts` nuevas reglas: "facturas-requieren-revision" (warning) y "facturas-auto-confirmar" (info)
+  - `DashboardPage.tsx` conectado con datos de conciliación para alertas proactivas
+
 ### Mejorado
 - **Rediseño sección "Progreso vs Objetivos" del Dashboard:**
   - `KPIProgressBar.tsx` reescrito: eliminado sistema dual (compact/full), diseño premium unificado

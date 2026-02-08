@@ -1,11 +1,14 @@
 "use client"
 
+import { useMemo } from "react"
 import {
   Check,
   X,
   AlertTriangle,
   RefreshCw,
   Plus,
+  Bot,
+  CheckCheck,
 } from "lucide-react"
 import { TremorTitle } from "@/components/ui/TremorCard"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -41,6 +44,14 @@ interface ComprasConciliacionTabProps {
   onVincular: () => void
   onConfirmar: (factura: CompraFacturaConciliacion) => void
   onDescartar: (factura: CompraFacturaConciliacion) => void
+  onConfirmarTodas?: () => void
+}
+
+// Color de la barra de confianza IA
+function confianzaColor(pct: number): string {
+  if (pct >= 90) return "#17c3b2"
+  if (pct >= 60) return "#ffcb77"
+  return "#fe6d73"
 }
 
 export function ComprasConciliacionTab({
@@ -62,12 +73,42 @@ export function ComprasConciliacionTab({
   onVincular,
   onConfirmar,
   onDescartar,
+  onConfirmarTodas,
 }: ComprasConciliacionTabProps) {
   const formatDate = (dateStr: string) => formatDateFromString(dateStr)
 
+  // Resumen de estados
+  const resumen = useMemo(() => ({
+    total: facturas.length,
+    auto: facturas.filter(f => f.estado_conciliacion === "auto_conciliado").length,
+    conciliado: facturas.filter(f => f.estado_conciliacion === "conciliado").length,
+    revision: facturas.filter(f => f.estado_conciliacion === "revision").length,
+    pendiente: facturas.filter(f => !f.estado_conciliacion || f.estado_conciliacion === "pendiente").length,
+  }), [facturas])
+
   return (
     <>
-      {/* Filtros Conciliación */}
+      {/* Resumen visual */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-1">
+        <div className="bg-white rounded-xl border border-slate-200 p-3 text-center">
+          <p className="text-2xl font-bold text-[#364f6b]">{resumen.total}</p>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total facturas</p>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-3 text-center">
+          <p className="text-2xl font-bold text-[#17c3b2]">{resumen.auto + resumen.conciliado}</p>
+          <p className="text-[10px] font-bold text-[#17c3b2] uppercase tracking-wider">Conciliadas</p>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-3 text-center">
+          <p className="text-2xl font-bold text-[#fe6d73]">{resumen.revision}</p>
+          <p className="text-[10px] font-bold text-[#fe6d73] uppercase tracking-wider">Revisión</p>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-3 text-center">
+          <p className="text-2xl font-bold text-slate-400">{resumen.pendiente}</p>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pendientes</p>
+        </div>
+      </div>
+
+      {/* Filtros + Acción en lote */}
       <div className="flex flex-wrap items-center gap-4">
         <Select value={estadoConciliacionFilter} onValueChange={setEstadoConciliacionFilter}>
           <SelectTrigger className="w-[180px]">
@@ -75,6 +116,7 @@ export function ComprasConciliacionTab({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">Todos</SelectItem>
+            <SelectItem value="pendiente">Pendiente</SelectItem>
             <SelectItem value="auto_conciliado">Auto-conciliado</SelectItem>
             <SelectItem value="conciliado">Conciliado manual</SelectItem>
             <SelectItem value="probable">Probable</SelectItem>
@@ -108,6 +150,23 @@ export function ComprasConciliacionTab({
         <Button variant="outline" size="icon" onClick={onRefreshFacturas}>
           <RefreshCw className="h-4 w-4" />
         </Button>
+
+        {/* Botón confirmar todas */}
+        {resumen.auto > 0 && onConfirmarTodas && (
+          <Button
+            size="sm"
+            className="ml-auto bg-[#17c3b2] hover:bg-[#17c3b2]/90 text-white"
+            onClick={onConfirmarTodas}
+            disabled={actionLoading === "confirmar_todas"}
+          >
+            {actionLoading === "confirmar_todas" ? (
+              <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
+            ) : (
+              <CheckCheck className="h-4 w-4 mr-1" />
+            )}
+            Confirmar {resumen.auto} auto-conciliada{resumen.auto !== 1 ? "s" : ""}
+          </Button>
+        )}
       </div>
 
       {/* Split Panel 70/30 */}
@@ -125,7 +184,7 @@ export function ComprasConciliacionTab({
               {facturas.map((factura, i) => {
                 const estadoConc = factura.estado_conciliacion
                   ? ESTADO_CONCILIACION_CONFIG[factura.estado_conciliacion]
-                  : null
+                  : ESTADO_CONCILIACION_CONFIG.pendiente
                 const isSelected = facturaSeleccionada?.id === factura.id
 
                 return (
@@ -149,12 +208,7 @@ export function ComprasConciliacionTab({
                             {estadoConc.label}
                           </Badge>
                         )}
-                        {!estadoConc && (
-                          <Badge variant="outline" className="text-slate-500">
-                            Pendiente
-                          </Badge>
-                        )}
-                        <span className="font-semibold text-slate-800">Factura {factura.factura_numero}</span>
+                        <span className="font-semibold text-[#364f6b]">Factura {factura.factura_numero}</span>
                       </div>
                       {factura.albaranes_candidatos != null && factura.albaranes_candidatos > 0 && (
                         <Badge style={{ backgroundColor: "#02b1c415", color: "#02b1c4" }}>
@@ -167,19 +221,19 @@ export function ComprasConciliacionTab({
                     <div className="grid grid-cols-2 gap-2 text-sm mb-3">
                       <div>
                         <span className="text-slate-500">Proveedor:</span>{" "}
-                        <span className="text-slate-800">{factura.proveedor || "Sin proveedor"}</span>
+                        <span className="text-[#364f6b] font-medium">{factura.proveedor || "Sin proveedor"}</span>
                       </div>
                       <div>
                         <span className="text-slate-500">NIF:</span>{" "}
-                        <span className="text-slate-800">{factura.proveedor_nif || "-"}</span>
+                        <span className="text-[#364f6b]">{factura.proveedor_nif || "-"}</span>
                       </div>
                       <div>
                         <span className="text-slate-500">Fecha:</span>{" "}
-                        <span className="text-slate-800">{formatDate(factura.factura_fecha)}</span>
+                        <span className="text-[#364f6b]">{formatDate(factura.factura_fecha)}</span>
                       </div>
                       <div>
                         <span className="text-slate-500">Vencimiento:</span>{" "}
-                        <span className="text-slate-800">
+                        <span className="text-[#364f6b]">
                           {factura.factura_vencimiento ? formatDate(factura.factura_vencimiento) : "-"}
                         </span>
                       </div>
@@ -188,13 +242,13 @@ export function ComprasConciliacionTab({
                     {/* Importes */}
                     <div className="flex items-center gap-4 text-sm mb-3">
                       <span>
-                        Base: <strong>{formatCurrency(factura.factura_base)}</strong>
+                        Base: <strong className="text-[#364f6b]">{formatCurrency(factura.factura_base)}</strong>
                       </span>
                       <span>
-                        IVA: <strong>{formatCurrency(factura.factura_iva)}</strong>
+                        IVA: <strong className="text-[#364f6b]">{formatCurrency(factura.factura_iva)}</strong>
                       </span>
                       <span>
-                        Total: <strong className="text-lg">{formatCurrency(factura.factura_total)}</strong>
+                        Total: <strong className="text-lg text-[#364f6b]">{formatCurrency(factura.factura_total)}</strong>
                       </span>
                     </div>
 
@@ -203,21 +257,44 @@ export function ComprasConciliacionTab({
                       <p className="text-sm text-slate-600 mb-3 line-clamp-2">{factura.factura_concepto}</p>
                     )}
 
-                    {/* IA Info */}
+                    {/* IA Info — mejorado */}
                     {factura.ia_confianza_pct !== null && (
-                      <div className="flex items-center gap-2 text-sm mb-3">
-                        <span className="text-slate-500">IA: {factura.ia_confianza_pct}% confianza</span>
-                        {factura.tipo_conciliacion && (
-                          <span className="text-slate-400">| Tipo: {factura.tipo_conciliacion}</span>
-                        )}
+                      <div className="bg-slate-50 rounded-lg p-3 mb-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Bot className="h-4 w-4 text-[#02b1c4]" />
+                          <span className="text-xs font-bold text-[#364f6b] uppercase tracking-wider">Análisis IA</span>
+                          {factura.tipo_conciliacion && (
+                            <Badge variant="outline" className="text-[10px] uppercase">
+                              {factura.tipo_conciliacion}
+                            </Badge>
+                          )}
+                        </div>
+                        {/* Barra de confianza */}
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all duration-500"
+                              style={{
+                                width: `${factura.ia_confianza_pct}%`,
+                                backgroundColor: confianzaColor(factura.ia_confianza_pct),
+                              }}
+                            />
+                          </div>
+                          <span
+                            className="text-sm font-bold min-w-[3rem] text-right"
+                            style={{ color: confianzaColor(factura.ia_confianza_pct) }}
+                          >
+                            {factura.ia_confianza_pct}%
+                          </span>
+                        </div>
                       </div>
                     )}
 
-                    {/* Motivo revisión */}
+                    {/* Motivo revisión — mejorado */}
                     {factura.motivo_revision && (
-                      <div className="flex items-center gap-2 text-sm text-amber-600 mb-3">
-                        <AlertTriangle className="h-4 w-4" />
-                        {factura.motivo_revision}
+                      <div className="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 rounded-lg p-2.5 mb-3">
+                        <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                        <span className="line-clamp-3">{factura.motivo_revision}</span>
                       </div>
                     )}
 
@@ -252,6 +329,7 @@ export function ComprasConciliacionTab({
                       )}
 
                       {(!factura.estado_conciliacion ||
+                        factura.estado_conciliacion === "pendiente" ||
                         factura.estado_conciliacion === "revision" ||
                         factura.estado_conciliacion === "probable") ? (
                         <Button
@@ -329,9 +407,9 @@ export function ComprasConciliacionTab({
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Checkbox checked={isAlbSelected} />
-                          <span className="font-medium text-slate-800">{albaran.numero_albaran}</span>
+                          <span className="font-medium text-[#364f6b]">{albaran.numero_albaran}</span>
                         </div>
-                        <span className="font-semibold text-slate-800">
+                        <span className="font-semibold text-[#364f6b]">
                           {formatCurrency(albaran.importe_total)}
                         </span>
                       </div>

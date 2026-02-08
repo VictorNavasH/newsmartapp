@@ -4,7 +4,7 @@ import { WeatherCard } from "@/components/features/WeatherCard"
 import { WeekReservationsCard } from "@/components/features/WeekReservationsCard"
 import { MetricGroupCard } from "@/components/ui/MetricGroupCard"
 import { TremorCard, TremorTitle } from "@/components/ui/TremorCard"
-import { fetchRealTimeData, fetchFinancialKPIs, fetchLaborCostAnalysis, fetchWeekRevenue, fetchFoodCostAverage } from "@/lib/dataService"
+import { fetchRealTimeData, fetchFinancialKPIs, fetchLaborCostAnalysis, fetchWeekRevenue, fetchFoodCostAverage, fetchConciliacionResumen } from "@/lib/dataService"
 import { useAlerts } from "@/hooks/useAlerts"
 import type { AlertContext } from "@/lib/alertEngine"
 import type { RealTimeData, FinancialKPIs, LaborCostDay, WeekRevenueDay, RechartsTooltipProps } from "@/types"
@@ -66,6 +66,7 @@ export function DashboardPage() {
   const [weekOffset, setWeekOffset] = useState<number>(0)
   const [kpiTargets, setKpiTargets] = useState<KPITargets | null>(null)
   const [foodCostAvg, setFoodCostAvg] = useState<number>(0)
+  const [conciliacionResumen, setConciliacionResumen] = useState<{ totalPendientes: number; autoSinConfirmar: number; requierenRevision: number } | null>(null)
 
   const loadData = useCallback(
     async (isRefresh = false) => {
@@ -74,18 +75,20 @@ export function DashboardPage() {
         const endDate = new Date()
         const startDate = new Date()
         startDate.setDate(startDate.getDate() - laborCostDays)
-        const [data, kpis, laborCost, weekRevenue, foodCost] = await Promise.all([
+        const [data, kpis, laborCost, weekRevenue, foodCost, concResumen] = await Promise.all([
           fetchRealTimeData(),
           fetchFinancialKPIs(),
           fetchLaborCostAnalysis(startDate.toISOString().split("T")[0], endDate.toISOString().split("T")[0]),
           fetchWeekRevenue(weekOffset),
           fetchFoodCostAverage(),
+          fetchConciliacionResumen(),
         ])
         setLiveData(data)
         setFinancialKPIs(kpis)
         setLaborCostData(laborCost)
         setWeekRevenueData(weekRevenue)
         setFoodCostAvg(foodCost)
+        setConciliacionResumen(concResumen)
         setDbConnected(true)
         setLastUpdate(new Date())
       } catch (error) {
@@ -213,8 +216,11 @@ export function DashboardPage() {
       laborCostTarget: 35,
       // Ocupación (previsión alcanzada como proxy)
       occupancyRate: liveData?.prevision?.porcentaje_prevision_alcanzado,
+      // Conciliación
+      invoicesNeedingReview: conciliacionResumen?.requierenRevision,
+      invoicesAutoReconciled: conciliacionResumen?.autoSinConfirmar,
     }
-  }, [liveData, currentKPIs, laborCostMonthlyAvg])
+  }, [liveData, currentKPIs, laborCostMonthlyAvg, conciliacionResumen])
 
   useAlerts(alertContext, !loading)
 

@@ -40,6 +40,9 @@ export interface AlertContext {
   dailyRevenueTarget?: number
   monthlyRevenue?: number
   monthlyRevenueTarget?: number
+  // Conciliación
+  invoicesNeedingReview?: number
+  invoicesAutoReconciled?: number
 }
 
 // ─── Reglas predefinidas ────────────────────────────────────────
@@ -107,6 +110,24 @@ export const DEFAULT_ALERT_RULES: AlertRule[] = [
     condition: (d) => (d.cancellationsToday ?? 0) > 5,
     message: (d) => `${d.cancellationsToday} cancelaciones hoy. Podría indicar un problema.`,
     cooldownMinutes: 180,
+  },
+  {
+    id: "facturas-requieren-revision",
+    name: "Facturas pendientes de revisión",
+    category: "financial",
+    severity: "warning",
+    condition: (d) => (d.invoicesNeedingReview ?? 0) > 0,
+    message: (d) => `${d.invoicesNeedingReview} factura(s) de proveedor requieren revisión manual.`,
+    cooldownMinutes: 240,
+  },
+  {
+    id: "facturas-auto-confirmar",
+    name: "Facturas auto-conciliadas sin confirmar",
+    category: "financial",
+    severity: "info",
+    condition: (d) => (d.invoicesAutoReconciled ?? 0) >= 3,
+    message: (d) => `${d.invoicesAutoReconciled} factura(s) auto-conciliadas listas para confirmar en Compras → Conciliación.`,
+    cooldownMinutes: 480,
   },
 ]
 
