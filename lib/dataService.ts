@@ -1847,6 +1847,27 @@ export async function fetchPeriodComparisonData(
 
 export const fetchPeriodComparison = fetchPeriodComparisonData
 
+// Consulta ligera para obtener solo el % promedio de food cost (para Dashboard KPI)
+export async function fetchFoodCostAverage(): Promise<number> {
+  try {
+    const { data, error } = await supabase.from("vw_food_cost").select("food_cost_pct")
+
+    if (error) {
+      console.error("[fetchFoodCostAverage] Error:", error.message)
+      return 0
+    }
+
+    const rows = data || []
+    if (rows.length === 0) return 0
+
+    const sum = rows.reduce((acc: number, row: any) => acc + (Number.parseFloat(row.food_cost_pct) || 0), 0)
+    return Math.round((sum / rows.length) * 10) / 10
+  } catch (err) {
+    console.error("[fetchFoodCostAverage] Exception:", err)
+    return 0
+  }
+}
+
 export async function fetchFoodCostProducts(): Promise<FoodCostSummary> {
   try {
     const { data, error } = await supabase.from("vw_food_cost").select("*").order("food_cost_pct", { ascending: false })

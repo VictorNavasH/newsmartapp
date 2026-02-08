@@ -127,6 +127,7 @@ Servicio principal. Contiene funciones para dashboard en tiempo real, reservas, 
 |---------|-----------|---------|----------------|
 | `fetchBenchmarks(inicio, fin)` | `fechaInicio, fechaFin: string` | `Promise<BenchmarkResumen>` | RPC `get_benchmarks_resumen` → `{p_fecha_inicio, p_fecha_fin}` |
 | `fetchLaborCostAnalysis(start, end)` | `startDate, endDate: string` | `Promise<LaborCostDay[]>` | Vista `vw_labor_cost_analysis` |
+| `fetchFoodCostAverage()` | — | `Promise<number>` | Vista `vw_food_cost` → `.select("food_cost_pct")` → promedio redondeado a 1 decimal. Usado por Dashboard KPI. |
 | `fetchFoodCostProducts()` | — | `Promise<FoodCostSummary>` | Vista `vw_food_cost` → `.select("*").order("food_cost_pct", desc)` |
 | `updateManualPrice(sku, variantId, price)` | `sku: string, variantId?: string, newPrice: number` | `Promise<{success, error?}>` | RPC `update_manual_price` o `update_variant_manual_price` |
 | `clearManualPrice(sku, variantId)` | `sku: string, variantId?: string` | `Promise<{success, error?}>` | RPC `clear_manual_price` o update con null |

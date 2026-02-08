@@ -8,7 +8,12 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 
 ## [Unreleased]
 
-*Cambios en desarrollo pendientes de deploy.*
+### Añadido
+- **Food Cost real en Dashboard KPI:**
+  - Nueva función `fetchFoodCostAverage()` en `lib/dataService.ts` — consulta ligera a `vw_food_cost` que devuelve el % promedio global
+  - `DashboardPage.tsx` ahora llama a `fetchFoodCostAverage()` en el `Promise.all` de carga de datos
+  - KPI "Food Cost" muestra el valor real (~20.4%) en vez del `0` hardcodeado
+  - Se carga en paralelo con los demás datos del dashboard (sin impacto en rendimiento)
 
 ---
 
