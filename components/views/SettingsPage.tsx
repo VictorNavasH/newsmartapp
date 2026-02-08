@@ -753,16 +753,16 @@ export default function SettingsPage({ userName, userEmail }: SettingsPageProps)
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1">Facturación semanal</label>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Facturación semanal <span className="text-slate-300">(auto)</span></label>
                         <div className="relative">
                           <input
-                            type="number"
-                            value={kpiTargets.weeklyRevenueTarget}
-                            onChange={(e) => handleKpiChange("weeklyRevenueTarget", e.target.value)}
-                            className="w-full px-3 py-2 pr-8 rounded-lg border border-slate-200 text-sm text-[#364f6b] focus:outline-none focus:border-[#02b1c4] focus:ring-1 focus:ring-[#02b1c4]"
+                            type="text"
+                            readOnly
+                            value={`${Math.round(kpiTargets.breakEvenTarget / 4.33).toLocaleString("es-ES")} €`}
+                            className="w-full px-3 py-2 rounded-lg border border-slate-100 bg-slate-50 text-sm text-slate-400 cursor-not-allowed"
                           />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">€</span>
                         </div>
+                        <p className="text-[10px] text-slate-400 mt-1">= Costes fijos ÷ semanas/mes</p>
                       </div>
                       <div>
                         <label className="block text-xs font-medium text-slate-500 mb-1">Ticket medio comensal</label>

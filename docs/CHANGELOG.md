@@ -28,6 +28,13 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
   - Migración SQL necesaria: `ALTER TABLE kpi_targets ADD COLUMN ...` (fallback a defaults si no ejecutada)
   - `types/kpiTargets.ts` y `lib/kpiTargets.ts` actualizados con nuevos campos y mapeo Supabase
 
+- **Target Facturación Semanal dinámico:**
+  - Ya no es un campo configurable manual (25.000€ hardcodeado no tenía sentido)
+  - Ahora se calcula automáticamente: `breakEvenTarget ÷ semanas del mes actual`
+  - Ej: 33.500€ / 4 semanas (feb) = ~8.375€/semana — refleja la realidad operativa
+  - En Ajustes el campo aparece como solo lectura con indicador "(auto)"
+  - Cambiar los costes fijos actualiza automáticamente el target semanal
+
 ### Corregido
 - **Coste Laboral KPI — media ponderada del mes:**
   - Antes: cogía el último día con datos (muy volátil, ej: 27% un viernes vs 90% un martes)

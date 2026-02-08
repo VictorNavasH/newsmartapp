@@ -117,6 +117,17 @@ export function DashboardPage() {
     return weekRevenueData.reduce((sum, d) => sum + (d.facturadoReal || 0), 0)
   }, [weekRevenueData])
 
+  // Target semanal calculado = costes fijos (break-even) / semanas del mes actual
+  const weeklyRevenueTarget = useMemo(() => {
+    if (!kpiTargets) return 0
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = now.getMonth()
+    const daysInMonth = new Date(year, month + 1, 0).getDate()
+    const weeksInMonth = daysInMonth / 7
+    return Math.round(kpiTargets.breakEvenTarget / weeksInMonth)
+  }, [kpiTargets])
+
   // Ticket medio comensal (últimos 30 días, ya viene de la vista)
   const ticketComensal30d = liveData?.prevision?.ticket_comensal_30d || 0
 
@@ -960,7 +971,7 @@ export function DashboardPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 <KPIProgressBar
                   label="Facturación Semanal"
-                  progress={calculateProgress(weeklyRevenue, kpiTargets.weeklyRevenueTarget)}
+                  progress={calculateProgress(weeklyRevenue, weeklyRevenueTarget)}
                   suffix="€"
                   icon={<CalendarDays className="w-4 h-4" />}
                 />
