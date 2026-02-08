@@ -22,6 +22,8 @@ import {
   TrendingUp,
   ChevronLeft,
   ChevronRight,
+  Target,
+  UtensilsCrossed,
 } from "lucide-react"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { PageContent } from "@/components/layout/PageContent"
@@ -912,42 +914,58 @@ export function DashboardPage() {
         {/* FILA 5: Progreso KPI vs Objetivos */}
         {kpiTargets && (
           <TremorCard>
-            <div className="flex items-center justify-between mb-4">
-              <TremorTitle className="flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-[#17c3b2]" />
-                Progreso vs Objetivos
-              </TremorTitle>
+            {/* Header con subtítulo (patrón WeatherCard) */}
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-[#02b1c4]" />
+                <div>
+                  <TremorTitle>Progreso vs Objetivos</TremorTitle>
+                  <p className="text-xs text-slate-400">Rendimiento actual vs metas configuradas</p>
+                </div>
+              </div>
               <span className="text-xs text-slate-400">
                 Configurar en Ajustes &rarr; Objetivos KPI
               </span>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <KPIProgressBar
-                label="Facturación Hoy"
-                progress={calculateProgress(currentShift?.revenue || 0, kpiTargets.dailyRevenueTarget)}
-                suffix="€"
-                variant="full"
-              />
-              <KPIProgressBar
-                label="Ticket Medio"
-                progress={calculateProgress(currentShift?.avg_ticket_transaction || 0, kpiTargets.ticketMedioTarget)}
-                suffix="€"
-                variant="full"
-              />
-              <KPIProgressBar
-                label="Ingresos Mensuales"
-                progress={calculateProgress(currentKPIs?.ingresos || 0, kpiTargets.monthlyRevenueTarget)}
-                suffix="€"
-                variant="full"
-              />
+
+            {/* Sección 1: Ingresos (3 columnas) */}
+            <div className="mb-4">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Ingresos</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <KPIProgressBar
+                  label="Facturación Hoy"
+                  progress={calculateProgress(currentShift?.revenue || 0, kpiTargets.dailyRevenueTarget)}
+                  suffix="€"
+                  icon={<Banknote className="w-4 h-4" />}
+                />
+                <KPIProgressBar
+                  label="Ticket Medio"
+                  progress={calculateProgress(currentShift?.avg_ticket_transaction || 0, kpiTargets.ticketMedioTarget)}
+                  suffix="€"
+                  icon={<Receipt className="w-4 h-4" />}
+                />
+                <KPIProgressBar
+                  label="Ingresos Mensuales"
+                  progress={calculateProgress(currentKPIs?.ingresos || 0, kpiTargets.monthlyRevenueTarget)}
+                  suffix="€"
+                  icon={<Target className="w-4 h-4" />}
+                />
+              </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-              <div className="space-y-3">
+
+            {/* Separador */}
+            <div className="border-t border-slate-100 my-4" />
+
+            {/* Sección 2: Costes y Ocupación (4 columnas) */}
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Costes y Ocupación</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                 <KPIProgressBar
                   label="Food Cost"
                   progress={calculateProgress(foodCostAvg, kpiTargets.foodCostTarget, true)}
                   suffix="%"
                   isLowerBetter
+                  icon={<UtensilsCrossed className="w-4 h-4" />}
                 />
                 <KPIProgressBar
                   label="Coste Laboral"
@@ -958,18 +976,19 @@ export function DashboardPage() {
                   )}
                   suffix="%"
                   isLowerBetter
+                  icon={<Users className="w-4 h-4" />}
                 />
-              </div>
-              <div className="space-y-3">
                 <KPIProgressBar
                   label="Ocupación Comida"
                   progress={calculateProgress(liveData?.lunch_percentage || 0, kpiTargets.lunchOccupancyTarget)}
                   suffix="%"
+                  icon={<SunIcon className="w-4 h-4" />}
                 />
                 <KPIProgressBar
                   label="Ocupación Cena"
                   progress={calculateProgress(liveData?.dinner_percentage || 0, kpiTargets.dinnerOccupancyTarget)}
                   suffix="%"
+                  icon={<MoonIcon className="w-4 h-4" />}
                 />
               </div>
             </div>

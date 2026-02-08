@@ -15,6 +15,19 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
   - KPI "Food Cost" muestra el valor real (~20.4%) en vez del `0` hardcodeado
   - Se carga en paralelo con los demás datos del dashboard (sin impacto en rendimiento)
 
+### Mejorado
+- **Rediseño sección "Progreso vs Objetivos" del Dashboard:**
+  - `KPIProgressBar.tsx` reescrito: eliminado sistema dual (compact/full), diseño premium unificado
+  - Nuevo prop `icon` — cada KPI tiene su icono lucide en contenedor coloreado por estado
+  - Números en brand color `#364f6b` (antes `text-slate-800` genérico)
+  - Barra de progreso más gruesa (`h-2.5`, antes `h-1.5`/`h-2`) sobre `bg-slate-100`
+  - Tarjetas individuales con `bg-white border-slate-200 rounded-xl` (antes fondo pastel lavado)
+  - Badge de estado: `uppercase tracking-wider` (patrón consistente con el resto de la app)
+  - Layout reorganizado: sección "Ingresos" (3 cols) + separador + sección "Costes y Ocupación" (4 cols)
+  - Los 7 KPIs tienen idéntico tratamiento visual (antes los 4 inferiores eran segunda clase)
+  - Header mejorado con subtítulo descriptivo (patrón WeatherCard)
+  - Animación suavizada a `duration-700 ease-out`
+
 ---
 
 ## [2.3.0] - 2026-02-08
