@@ -23,14 +23,7 @@ import {
 import { fetchFoodCostProducts, updateManualPrice, clearManualPrice } from "@/lib/dataService"
 import type { FoodCostSummary, FoodCostProduct } from "@/types"
 import { formatCurrency } from "@/lib/utils"
-
-const BRAND_COLORS = {
-  primary: "#02b1c4",
-  success: "#17c3b2",
-  warning: "#ffcb77",
-  danger: "#fe6d73",
-  dark: "#364f6b",
-}
+import { BRAND_COLORS } from "@/constants"
 
 const CATEGORY_COLORS: Record<string, string> = {
   // Comida
@@ -50,7 +43,7 @@ const COMIDA_CATEGORIES = ["Smart Poke", "Smart Food", "Compartir", "Kids", "Dul
 const BEBIDA_CATEGORIES = ["Coffee, Tea & Licores", "Drinks Con Alcohol", "Drinks Sin Alcohol", "Mojitos & Cocktails"]
 
 function getFoodCostColor(pct: number): string {
-  if (pct > 30) return BRAND_COLORS.danger
+  if (pct > 30) return BRAND_COLORS.error
   if (pct >= 20) return BRAND_COLORS.warning
   return BRAND_COLORS.success
 }

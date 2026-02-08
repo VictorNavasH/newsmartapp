@@ -92,6 +92,26 @@ export const UI_COLORS = {
   infoBadge: "#227c9d",
 } as const
 
+/**
+ * Colores extendidos para gráficos multi-categoría.
+ * Se usan cuando las 7 BRAND_COLORS no son suficientes (ej: donut charts, categorías de producto).
+ * El orden garantiza contraste visual entre colores adyacentes.
+ */
+export const EXTENDED_CHART_COLORS = [
+  "#02b1c4", // primary
+  "#227c9d", // accent
+  "#17c3b2", // success
+  "#ffcb77", // warning/lunch
+  "#fe6d73", // error
+  "#364f6b", // dark
+  "#8b5cf6", // violet — categorías extra
+  "#f59e0b", // amber — categorías extra
+  "#3b82f6", // blue — categorías extra
+  "#ec4899", // pink — categorías extra
+  "#10b981", // emerald — categorías extra
+  "#6366f1", // indigo — categorías extra
+] as const
+
 export const CARD_TOOLTIPS = {
   reservations: "Número total de reservas registradas. Pax/Res indica el promedio de comensales por reserva.",
   pax: "Número total de comensales (personas) que han acudido al restaurante.",

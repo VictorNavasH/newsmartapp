@@ -204,7 +204,7 @@ export function DashboardPage() {
           </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded" style={{ backgroundColor: "#ffce85" }} />
+              <div className="w-3 h-3 rounded" style={{ backgroundColor: "#ffcb77" }} />
               <span className="text-xs text-slate-500">% sobre ventas</span>
             </div>
             <span className="text-xs font-bold text-[#364f6b]">{data.porcentaje_laboral.toFixed(1)}%</span>
@@ -259,7 +259,7 @@ export function DashboardPage() {
           {data.tipoDia !== "futuro" && data.porcentajeAlcanzado > 0 && (
             <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-[#ffce85]" />
+                <div className="w-2 h-2 rounded-full bg-[#ffcb77]" />
                 <span className="text-slate-500">% Alcanzado</span>
               </div>
               <span className="font-bold text-slate-700">{data.porcentajeAlcanzado.toFixed(1)}%</span>
@@ -615,10 +615,10 @@ export function DashboardPage() {
                     yAxisId="right"
                     type="monotone"
                     dataKey="porcentaje_laboral"
-                    stroke="#ffce85"
+                    stroke="#ffcb77"
                     strokeWidth={2}
-                    dot={{ fill: "#ffce85", strokeWidth: 0, r: 3 }}
-                    activeDot={{ r: 5, fill: "#ffce85" }}
+                    dot={{ fill: "#ffcb77", strokeWidth: 0, r: 3 }}
+                    activeDot={{ r: 5, fill: "#ffcb77" }}
                   />
                 </ComposedChart>
               </ResponsiveContainer>
@@ -732,10 +732,10 @@ export function DashboardPage() {
                     yAxisId="right"
                     type="monotone"
                     dataKey="porcentajeAlcanzado"
-                    stroke="#ffce85"
+                    stroke="#ffcb77"
                     strokeWidth={2}
-                    dot={{ fill: "#ffce85", strokeWidth: 0, r: 3 }}
-                    activeDot={{ r: 5, fill: "#ffce85" }}
+                    dot={{ fill: "#ffcb77", strokeWidth: 0, r: 3 }}
+                    activeDot={{ r: 5, fill: "#ffcb77" }}
                     connectNulls={false}
                   />
                 </ComposedChart>

@@ -673,7 +673,7 @@ const OperationsPage: React.FC = () => {
                               item.minutos_operativo > 60
                                 ? BRAND_COLORS.error
                                 : item.minutos_operativo > 45
-                                  ? "#f97316"
+                                  ? "#f59e0b"
                                   : BRAND_COLORS.warning,
                             color: "white",
                           }}

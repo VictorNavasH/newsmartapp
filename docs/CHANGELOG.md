@@ -20,6 +20,15 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
   - Eliminado el wrapper `fixed` en `app/page.tsx`
   - El Toaster de Sonner movido de `top-right` a `bottom-right` para evitar conflictos con el header
 
+### Mejorado
+- **Consistencia de colores de marca:**
+  - Eliminadas definiciones locales duplicadas de `BRAND_COLORS` en `BenchmarksTab.tsx` y `FoodCostTab.tsx` → ahora importan desde `@/constants`
+  - Renombrado `.danger` → `.error` para consistencia con la constante central
+  - Normalización de variantes de color: `#ffce85` → `#ffcb77`, `#fec94f` → `#ffcb77`, `#fec869` → `#ffcb77`, `#f97316` → `#f59e0b`
+  - Reemplazado `#49eada` en expenses por `BRAND_COLORS.success` (#17c3b2)
+  - Nueva constante `EXTENDED_CHART_COLORS` en `constants.ts` con 12 colores para gráficos multi-categoría
+  - `BenchmarksTab` usa `EXTENDED_CHART_COLORS` centralizada en vez de array local
+
 ---
 
 ## [2.2.0] - 2026-02-08

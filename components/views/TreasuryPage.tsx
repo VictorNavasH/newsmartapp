@@ -391,8 +391,8 @@ export default function TreasuryPage() {
       icon: Landmark,
       label: "Pool Bancario",
       href: "#",
-      gradient: "radial-gradient(circle, rgba(254,200,105,0.15) 0%, rgba(254,200,105,0) 70%)",
-      iconColor: "text-[#fec869]",
+      gradient: "radial-gradient(circle, rgba(255,203,119,0.15) 0%, rgba(255,203,119,0) 70%)",
+      iconColor: "text-[#ffcb77]",
     },
   ]
 

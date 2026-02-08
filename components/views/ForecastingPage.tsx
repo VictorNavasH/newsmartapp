@@ -64,7 +64,7 @@ const getWeatherIcon = (nivelLluvia: string | null) => {
 const getOccupancyColorFromLevel = (nivel: string) => {
   switch (nivel) {
     case "tranquilo":
-      return BRAND_COLORS.success // #49eada
+      return BRAND_COLORS.success // #17c3b2
     case "normal":
       return BRAND_COLORS.warning // #ffcb77
     case "fuerte":
@@ -125,8 +125,8 @@ export default function ForecastingPage() {
       icon: Crosshair,
       label: "Precisión",
       href: "#",
-      gradient: "radial-gradient(circle, rgba(254,201,79,0.15) 0%, transparent 70%)",
-      iconColor: "text-[#fec94f]",
+      gradient: "radial-gradient(circle, rgba(255,203,119,0.15) 0%, transparent 70%)",
+      iconColor: "text-[#ffcb77]",
     },
     {
       icon: Calculator,

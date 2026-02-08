@@ -12,18 +12,18 @@ export const STATUS_LABELS: Record<string, string> = {
 }
 
 export const STATUS_COLORS: Record<string, string> = {
-  partial: "#17c3b2",
+  partial: BRAND_COLORS.success,
   pending: BRAND_COLORS.warning,
   overdue: BRAND_COLORS.error,
 }
 
 export const CATEGORY_COLORS = [
-  BRAND_COLORS.primary,
-  BRAND_COLORS.accent,
-  "#49eada",
-  BRAND_COLORS.lunch,
-  BRAND_COLORS.error,
-  "#8b5cf6",
-  "#ec4899",
-  "#f97316",
+  BRAND_COLORS.primary,   // #02b1c4 cyan
+  BRAND_COLORS.accent,    // #227c9d teal
+  BRAND_COLORS.success,   // #17c3b2 verde
+  BRAND_COLORS.lunch,     // #ffcb77 amarillo
+  BRAND_COLORS.error,     // #fe6d73 rojo
+  "#8b5cf6",              // violet (extended)
+  "#ec4899",              // pink (extended)
+  "#f59e0b",              // amber (extended)
 ]

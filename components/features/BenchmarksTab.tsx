@@ -19,29 +19,10 @@ import { fetchBenchmarks } from "@/lib/dataService"
 import type { BenchmarkResumen } from "@/types"
 import { formatCurrency } from "@/lib/utils"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts"
+import { BRAND_COLORS, EXTENDED_CHART_COLORS } from "@/constants"
 
-const BRAND_COLORS = {
-  primary: "#02b1c4",
-  secondary: "#227c9d",
-  success: "#17c3b2",
-  warning: "#ffcb77",
-  danger: "#fe6d73",
-  dark: "#364f6b",
-}
-
-// Colores para el donut chart
-const DONUT_COLORS = [
-  "#02b1c4", // primary
-  "#227c9d", // secondary
-  "#17c3b2", // success
-  "#ffcb77", // warning
-  "#fe6d73", // danger
-  "#364f6b", // dark
-  "#8b5cf6", // violet
-  "#f59e0b", // amber
-  "#10b981", // emerald
-  "#6366f1", // indigo
-]
+// Alias para el donut chart (usa la paleta extendida centralizada)
+const DONUT_COLORS = EXTENDED_CHART_COLORS
 
 interface BenchmarksTabProps {
   fechaInicio: string
@@ -53,7 +34,7 @@ const getStatusColor = (porcentaje: number, min: number | null, max: number | nu
   if (min === null || max === null) return BRAND_COLORS.dark
   if (porcentaje <= max) return BRAND_COLORS.success
   if (porcentaje > max && porcentaje <= max + 5) return BRAND_COLORS.warning
-  return BRAND_COLORS.danger
+  return BRAND_COLORS.error
 }
 
 const getStatusBg = (porcentaje: number, min: number | null, max: number | null) => {
@@ -82,7 +63,7 @@ const getInsightPriority = (porcentaje: number, max: number | null): "alta" | "m
 const getMargenNetoColor = (margen: number) => {
   if (margen >= 15) return BRAND_COLORS.success
   if (margen >= 5) return BRAND_COLORS.warning
-  return BRAND_COLORS.danger
+  return BRAND_COLORS.error
 }
 
 // Custom tooltip para el donut
@@ -293,15 +274,15 @@ export function BenchmarksTab({ fechaInicio, fechaFin }: BenchmarksTabProps) {
           <div className="flex items-center gap-2 mb-2">
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ backgroundColor: `${BRAND_COLORS.danger}20` }}
+              style={{ backgroundColor: `${BRAND_COLORS.error}20` }}
             >
-              <Receipt className="w-4 h-4" style={{ color: BRAND_COLORS.danger }} />
+              <Receipt className="w-4 h-4" style={{ color: BRAND_COLORS.error }} />
             </div>
             <span className="text-sm font-medium text-slate-600">Gastos</span>
           </div>
           <p className="text-2xl font-bold text-slate-800">{formatCurrency(totales.total_gastos)}</p>
           <p className="text-xs text-slate-500 mt-1">
-            <span className="font-semibold" style={{ color: BRAND_COLORS.danger }}>
+            <span className="font-semibold" style={{ color: BRAND_COLORS.error }}>
               {porcentajeGastos.toFixed(1)}%
             </span>{" "}
             de las ventas
@@ -512,7 +493,7 @@ export function BenchmarksTab({ fechaInicio, fechaFin }: BenchmarksTabProps) {
             {insights.map((insight, idx) => {
               const color =
                 insight.prioridad === "alta"
-                  ? BRAND_COLORS.danger
+                  ? BRAND_COLORS.error
                   : insight.prioridad === "media"
                     ? BRAND_COLORS.warning
                     : BRAND_COLORS.success
