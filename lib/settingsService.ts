@@ -184,7 +184,7 @@ export async function fetchDatabaseInfo(): Promise<{
   tables: TableSize[]
 }> {
   // Usamos las queries a pg_stat
-  const { data: sizeData } = await supabase.rpc("get_database_size").single()
+  const { data: sizeData } = await supabase.rpc("get_database_size").single() as { data: { total_size: string } | null }
   const { data: tablesData } = await supabase.rpc("get_tables_size")
 
   return {

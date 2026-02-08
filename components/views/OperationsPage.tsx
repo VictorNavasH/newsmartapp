@@ -129,7 +129,7 @@ const OperationsPage: React.FC = () => {
         const tipo = tipoFilter === "todos" ? undefined : tipoFilter
         const categoria = categoriaFilter === "todas" ? undefined : categoriaFilter
 
-        const kpiTipo = tipo === "postre" ? undefined : (tipo as "comida" | "bebida" | undefined)
+        const kpiTipo = (tipo as string) === "postre" ? undefined : (tipo as "comida" | "bebida" | undefined)
 
         const [itemsData, kpisData, productosData, clientesData, categoriasData, porHoraData] = await Promise.all([
           fetchOperativaItems(dateRange.from, dateRange.to, tipo, categoria),
@@ -230,11 +230,12 @@ const OperationsPage: React.FC = () => {
 
   const createComparisonResult = (current: number, previous: number | null): ComparisonResult => {
     if (!previous || previous === 0) {
-      return { value: current, delta: 0, trend: "neutral" }
+      return { value: current, previous: 0, delta: 0, trend: "neutral" }
     }
     const delta = Math.round(((current - previous) / previous) * 100)
     return {
       value: current,
+      previous,
       delta: Math.abs(delta),
       trend: delta > 0 ? "up" : delta < 0 ? "down" : "neutral",
     }
@@ -242,12 +243,13 @@ const OperationsPage: React.FC = () => {
 
   const createTimeComparisonResult = (current: number, previous: number | null): ComparisonResult => {
     if (!previous || previous === 0) {
-      return { value: current, delta: 0, trend: "neutral" }
+      return { value: current, previous: 0, delta: 0, trend: "neutral" }
     }
     const delta = Math.round(((current - previous) / previous) * 100)
     // For time, down is good (green), up is bad (red)
     return {
       value: current,
+      previous,
       delta: Math.abs(delta),
       trend: delta < 0 ? "up" : delta > 0 ? "down" : "neutral", // Inverted for display
     }
@@ -438,6 +440,7 @@ const OperationsPage: React.FC = () => {
             loading={loading}
             total={{
               value: aggregatedKPIs.alertas_30min,
+              previous: 0,
               delta: 0,
               trend: "neutral",
             }}
@@ -491,7 +494,7 @@ const OperationsPage: React.FC = () => {
                               month: "short",
                             })}
                           </p>
-                          {payload.map((entry: RechartsPayloadEntry, index: number) => (
+                          {payload.map((entry: any, index: number) => (
                             <div key={index} className="flex items-center gap-2 text-xs mb-1">
                               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
                               <span className="text-slate-500 font-medium w-12">{entry.name}</span>

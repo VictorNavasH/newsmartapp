@@ -2,7 +2,7 @@
 
 ## Visión General
 
-NÜA Smart App es un dashboard de gestión integral para restaurantes. Aunque usa Next.js App Router, la navegación entre vistas es **interna (SPA)** mediante un estado `currentPath` en `app/page.tsx`, no mediante el router de archivos de Next.js. Esto permite transiciones instantáneas sin recarga de página.
+NÜA Smart App es un dashboard de gestión integral para restaurantes. Aunque usa Next.js App Router, la navegación entre vistas es **interna (SPA)** mediante hash-based routing gestionado por el hook `useAppRouter`, no mediante el router de archivos de Next.js. Esto permite transiciones instantáneas sin recarga de página, soporte de historial del navegador (back/forward), y URLs compartibles.
 
 ---
 
@@ -12,18 +12,21 @@ NÜA Smart App es un dashboard de gestión integral para restaurantes. Aunque us
 app/layout.tsx                    # Layout raíz: fonts, <Analytics />, dark mode script
   └── app/page.tsx                # Componente principal "use client"
         ├── useAuth()             # Autenticación (Supabase Google OAuth)
+        ├── useAppRouter()        # Navegación SPA con hash routing
         │   ├── loading → Spinner
         │   └── !user → <LoginScreen />
         │
         └── Autenticado:
-            ├── <Sidebar />       # Navegación lateral (controla currentPath)
-            ├── <main>            # Vista activa según currentPath
-            │   └── renderContent() → switch(currentPath)
-            │       ├── "/" → <DashboardPage />
-            │       ├── "/reservations" → <ReservationsPage />
-            │       ├── "/revenue" → <IncomePage />
-            │       ├── ... (15 vistas)
-            │       └── "/settings" → <SettingsPage />
+            ├── <Sidebar />       # Navegación lateral (usa navigate())
+            ├── <ErrorBoundary>   # Captura errores de render en vistas
+            │   └── <Suspense>    # Loading fallback para lazy imports
+            │       └── <main>    # Vista activa según currentPath
+            │           └── renderContent() → switch(currentPath)
+            │               ├── "/" → <DashboardPage />          (lazy)
+            │               ├── "/reservations" → <ReservationsPage /> (lazy)
+            │               ├── "/revenue" → <IncomePage />      (lazy)
+            │               ├── ... (16 vistas, todas lazy)
+            │               └── "/settings" → <SettingsPage />   (lazy)
             └── <SmartAssistant /> # Widget flotante de chat IA
 ```
 
@@ -33,10 +36,17 @@ app/layout.tsx                    # Layout raíz: fonts, <Analytics />, dark mod
 
 La app **no usa** el file-based routing de Next.js para las vistas principales. En su lugar:
 
-1. `app/page.tsx` mantiene un estado `const [currentPath, setCurrentPath] = useState("/")`
-2. El `<Sidebar>` recibe `onNavigate={setCurrentPath}` y actualiza el path al hacer clic
-3. `renderContent()` usa un `switch(currentPath)` para renderizar la vista correspondiente
-4. Las 15 vistas se importan estáticamente en `page.tsx`
+1. `hooks/useAppRouter.ts` gestiona la navegación con hash-based routing (`#/ruta`)
+2. El hook valida rutas contra un `Set` de 16 paths válidos y sincroniza con `window.history`
+3. El `<Sidebar>` recibe `onNavigate={navigate}` y actualiza el path al hacer clic
+4. `renderContent()` usa un `switch(currentPath)` para renderizar la vista correspondiente
+5. Las 16 vistas se importan con `React.lazy()` (code splitting) y se envuelven en `<Suspense>`
+6. Un `<ErrorBoundary>` envuelve el contenido principal para capturar errores de render
+
+**Ventajas del hash routing:**
+- Soporte de botones back/forward del navegador
+- URLs compartibles (e.g., `https://app.com/#/reservations`)
+- Persistencia del path al recargar la pagina
 
 **Excepción:** La ruta `/api/chat` sí usa el router de Next.js (es una API route).
 
@@ -102,23 +112,47 @@ El componente actualiza `localStorage` y la clase del `<html>` simultáneamente.
 
 ```
 components/
-├── views/          # 15 páginas principales (una por ruta SPA)
+├── views/          # 16 paginas principales (una por ruta SPA, cargadas con React.lazy)
 │   ├── DashboardPage.tsx
 │   ├── ReservationsPage.tsx
+│   ├── reservations/                # Sub-componentes de Reservas
+│   │   ├── constants.ts             # PeriodKey, YearlyMetric, YearlyTurno, YEAR_COLORS, MONTH_NAMES
+│   │   ├── ReservationsKPISection.tsx      # Capacidad + 6 MetricGroupCards + grafico 30 dias
+│   │   ├── ReservationsYearlyChart.tsx     # Comparativa anual LineChart + trend insight
+│   │   └── ReservationsComparatorSection.tsx # Comparador de periodos
 │   ├── IncomePage.tsx
 │   ├── ExpensesPage.tsx
+│   ├── expenses/                    # Sub-componentes de Gastos
+│   │   ├── constants.ts             # StatusFilter, ProviderStatusFilter, STATUS_LABELS, CATEGORY_COLORS
+│   │   ├── ExpensesCategoriaTab.tsx  # Tab Por Categoria
+│   │   ├── ExpensesProveedorTab.tsx  # Tab Por Proveedor
+│   │   └── ExpensesCalendarioTab.tsx # Tab Calendario
 │   ├── CostesPage.tsx
 │   ├── ComprasPage.tsx
+│   ├── compras/                     # Sub-componentes de Compras
+│   │   ├── constants.tsx            # ESTADO_PEDIDO_CONFIG, ESTADO_CONCILIACION_CONFIG (JSX), colores
+│   │   ├── ComprasPedidosTab.tsx    # Tab Pedidos
+│   │   ├── ComprasConciliacionTab.tsx # Tab Conciliacion
+│   │   └── ComprasAnalisisTab.tsx   # Tab Analisis
 │   ├── OperationsPage.tsx
 │   ├── ProductsPage.tsx
 │   ├── FacturacionPage.tsx
 │   ├── TreasuryPage.tsx
+│   ├── treasury/                    # Sub-componentes de Tesoreria
+│   │   ├── constants.ts             # PAGE_SIZE, TipoFilter, TIPO_LABELS, BANK_INFO, CATEGORY_ICON_MAP
+│   │   ├── TreasuryDashboardTab.tsx # Tab Resumen
+│   │   ├── TreasuryMovimientosTab.tsx # Tab Movimientos
+│   │   ├── TreasuryCategoriaTab.tsx # Tab Categorias
+│   │   ├── TreasuryPoolBancarioTab.tsx # Tab Pool Bancario
+│   │   └── TreasuryCuentaTab.tsx    # Tab Cuentas
 │   ├── ForecastingPage.tsx
 │   ├── WhatIfPage.tsx
 │   ├── SmartAssistantPage.tsx
 │   ├── BankConnectionsPage.tsx
 │   ├── TabletUsagePage.tsx
 │   └── SettingsPage.tsx
+│
+├── ErrorBoundary.tsx # Captura errores en el arbol de componentes (class component)
 │
 ├── features/       # Componentes de negocio reutilizables
 │   ├── SmartAssistant.tsx      # Widget flotante de chat IA
@@ -146,6 +180,35 @@ components/
 
 ---
 
+## Tipos TypeScript (`types/`)
+
+Los tipos del proyecto están organizados en módulos por dominio funcional:
+
+```
+types.ts                    # Re-export: export * from './types/index'
+types/
+├── index.ts               # Barrel re-export de todos los módulos
+├── sales.ts               # ShiftType, PaymentMethods, ShiftMetrics, DailyCompleteMetrics
+├── common.ts              # ComparisonResult, MetricComparison, DateRange, InsightResponse
+├── weather.ts             # WeatherDay
+├── dashboard.ts           # WeekReservationDay, FinancialKPIs, RealTimeData, LaborCostDay
+├── expenses.ts            # ExpenseStats, Invoice, Expense, ExpenseTag
+├── operations.ts          # OperacionesResumen, OperativaItem, OperativaKPI
+├── products.ts            # ProductMixItem, CategoryMixItem, agregados
+├── forecasting.ts         # ForecastDay, YearlyComparisonData, PeriodComparisonAggregate
+├── treasury.ts            # TreasuryKPIs, TreasuryAccount, TreasuryTransaction
+├── whatif.ts              # WhatIfReferenceData
+├── pool-bancario.ts       # PoolBancarioResumen, PoolBancarioPrestamo
+├── billing.ts             # FacturacionResumenGlobal, CuadreListadoItem, BenchmarkResumen
+├── food-cost.ts           # FoodCostProduct, FoodCostSummary
+├── purchases.ts           # CompraPedido, CompraKPIs, CompraFacturaConciliacion
+└── recharts.ts            # RechartsPayloadEntry, RechartsTooltipProps
+```
+
+El archivo raíz `types.ts` re-exporta todo desde `types/index.ts`, por lo que los imports existentes (`import { X } from '@/types'`) siguen funcionando sin cambios.
+
+---
+
 ## Gestión de Estado
 
 La app usa **estado local** por página, sin store global:
@@ -158,7 +221,29 @@ La app usa **estado local** por página, sin store global:
 | `useCallback` | Funciones de fetch memoizadas para evitar re-renders |
 | `useAsyncData<T>` | Hook genérico para fetching con loading/error/refresh automático |
 
-### Patrón típico de una vista:
+### Patron de sub-componentes por tab/seccion
+
+Las vistas grandes (>1000 lineas) se dividen en sub-componentes organizados en carpetas por dominio:
+
+```
+views/
+├── ExamplePage.tsx              # Parent: estado, effects, memos, tab switching
+└── example/
+    ├── constants.ts             # Tipos, colores, labels, configuracion compartida
+    ├── ExampleTabA.tsx          # Sub-componente con Props interface tipado
+    └── ExampleTabB.tsx          # Sub-componente con Props interface tipado
+```
+
+**Reglas:**
+- **Parent mantiene:** useState, useEffect, data fetching, useMemo, navegacion de tabs
+- **Sub-componentes reciben:** datos y callbacks via props tipados (interfaces explicitas)
+- **Constants extraen:** tipos repetidos, configuraciones de colores, labels, mapas de iconos
+- **Archivos .tsx** se usan cuando los constants contienen JSX (ej: iconos de estado)
+- **Compatibilidad:** El default export del parent no cambia
+
+Vistas refactorizadas: TreasuryPage, ComprasPage, ExpensesPage, ReservationsPage.
+
+### Patron tipico de una vista:
 ```typescript
 export default function ExamplePage() {
   // 1. Estado de filtros
@@ -199,10 +284,13 @@ export default function ExamplePage() {
 
 | Nivel | Estrategia |
 |-------|-----------|
-| Servicios (`lib/`) | `try/catch` en todas las funciones, `console.error` con prefijo `[nombreFunción]` |
+| Variables de entorno | `lib/env.ts` valida variables requeridas al iniciar. Si falta alguna, lanza error con nombre de la variable y referencia a `.env.local` |
+| Servicios (`lib/`) | `try/catch` en todas las funciones, `console.error` con prefijo `[nombreFunción]`. Se puede usar `logError()` de `lib/errorLogger.ts` para logging estructurado |
 | Componentes | Fallback a arrays vacíos `[]` o valores por defecto |
+| ErrorBoundary | `components/ErrorBoundary.tsx` — React class component que captura errores en el árbol de componentes. Muestra UI de fallback con botón de reset. Loguea errores críticos via `logError()` |
 | UI | Skeleton loading states en todas las vistas, mensajes de error cuando aplica |
 | Red | Sin retry automático (excepto API chat: 1 reintento, timeout 30s) |
+| Logging | `lib/errorLogger.ts` — Sistema estructurado con severidades (`info`, `warning`, `error`, `critical`). Preparado para envío a servicio externo (Supabase, Sentry) |
 
 ---
 

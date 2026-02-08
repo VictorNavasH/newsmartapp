@@ -831,7 +831,7 @@ export default function FacturacionPage() {
                             )}
                             <div>
                               <p className="font-medium text-[#364f6b]">{formatDateES(item.fecha)}</p>
-                              <p className="text-xs text-slate-500">{item.zreport_nombre}</p>
+                              <p className="text-xs text-slate-500">{item.zreport_documento}</p>
                             </div>
                           </div>
 
@@ -888,9 +888,9 @@ export default function FacturacionPage() {
                                     <td className="py-2 px-3">{factura.cuentica_identifier}</td>
                                     <td className="py-2 px-3">{factura.hora}</td>
                                     <td className="py-2 px-3 text-right font-medium">
-                                      {formatCurrencyES(factura.importe)}
+                                      {formatCurrencyES(factura.total_amount)}
                                     </td>
-                                    <td className="py-2 px-3">{factura.metodo_pago}</td>
+                                    <td className="py-2 px-3">{factura.payment_method}</td>
                                     <td className="py-2 px-3 text-center">
                                       <Button
                                         variant="ghost"

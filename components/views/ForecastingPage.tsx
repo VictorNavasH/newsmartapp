@@ -542,10 +542,10 @@ export default function ForecastingPage() {
                       <YAxis tick={{ fontSize: 12 }} domain={[0, CAPACIDAD_DIA]} />
                       <Tooltip
                         contentStyle={{ borderRadius: 8 }}
-                        formatter={(value: number, name: string, props: { color: string }) => {
+                        formatter={(value: number, name: string, props: any) => {
                           if (name === "confirmados") return [`${value} pax`, "Confirmados"]
                           if (name === "estimado")
-                            return [`${value} pax (+${props.payload.walkInRate}% walk-ins)`, "Estimado"]
+                            return [`${value} pax (+${props.payload?.walkInRate}% walk-ins)`, "Estimado"]
                           return [value, name]
                         }}
                       />
@@ -576,11 +576,11 @@ export default function ForecastingPage() {
                       <YAxis tick={{ fontSize: 12 }} />
                       <Tooltip
                         contentStyle={{ borderRadius: 8 }}
-                        formatter={(value: number, name: string, props: { color: string }) => {
+                        formatter={(value: number, name: string, props: any) => {
                           if (name === "comida")
-                            return [`${value} pax (${props.payload.ocupacion_comida?.toFixed(0) || 0}%)`, "Comida"]
+                            return [`${value} pax (${props.payload?.ocupacion_comida?.toFixed(0) || 0}%)`, "Comida"]
                           if (name === "cena")
-                            return [`${value} pax (${props.payload.ocupacion_cena?.toFixed(0) || 0}%)`, "Cena"]
+                            return [`${value} pax (${props.payload?.ocupacion_cena?.toFixed(0) || 0}%)`, "Cena"]
                           return [value, name]
                         }}
                       />

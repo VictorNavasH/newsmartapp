@@ -1,31 +1,45 @@
 "use client"
 
-import { useState } from "react"
+import { lazy, Suspense, useState } from "react"
 import { useAuth } from "@/hooks/useAuth"
+import { useAppRouter } from "@/hooks/useAppRouter"
 import { LoginScreen } from "@/components/features/LoginScreen"
 import { Sidebar } from "@/components/layout/Sidebar"
-import DashboardPage from "@/components/views/DashboardPage"
-import ReservationsPage from "@/components/views/ReservationsPage"
-import IncomePage from "@/components/views/IncomePage"
-import ExpensesPage from "@/components/views/ExpensesPage"
-import CostesPage from "@/components/views/CostesPage"
-import ComprasPage from "@/components/views/ComprasPage"
-import OperationsPage from "@/components/views/OperationsPage"
-import ProductsPage from "@/components/views/ProductsPage"
-import ForecastingPage from "@/components/views/ForecastingPage"
-import TreasuryPage from "@/components/views/TreasuryPage"
-import WhatIfPage from "@/components/views/WhatIfPage"
-import BankConnectionsPage from "@/components/views/BankConnectionsPage"
-import FacturacionPage from "@/components/views/FacturacionPage"
-import SmartAssistantPage from "@/components/views/SmartAssistantPage"
-import TabletUsagePage from "@/components/views/TabletUsagePage"
-import SettingsPage from "@/components/views/SettingsPage"
 import { SmartAssistant } from "@/components/features/SmartAssistant"
+import { ErrorBoundary } from "@/components/ErrorBoundary"
+
+const DashboardPage = lazy(() => import("@/components/views/DashboardPage"))
+const ReservationsPage = lazy(() => import("@/components/views/ReservationsPage"))
+const IncomePage = lazy(() => import("@/components/views/IncomePage"))
+const ExpensesPage = lazy(() => import("@/components/views/ExpensesPage"))
+const CostesPage = lazy(() => import("@/components/views/CostesPage"))
+const ComprasPage = lazy(() => import("@/components/views/ComprasPage"))
+const OperationsPage = lazy(() => import("@/components/views/OperationsPage"))
+const ProductsPage = lazy(() => import("@/components/views/ProductsPage"))
+const ForecastingPage = lazy(() => import("@/components/views/ForecastingPage"))
+const TreasuryPage = lazy(() => import("@/components/views/TreasuryPage"))
+const WhatIfPage = lazy(() => import("@/components/views/WhatIfPage"))
+const BankConnectionsPage = lazy(() => import("@/components/views/BankConnectionsPage"))
+const FacturacionPage = lazy(() => import("@/components/views/FacturacionPage"))
+const TabletUsagePage = lazy(() => import("@/components/views/TabletUsagePage"))
+const SmartAssistantPage = lazy(() => import("@/components/views/SmartAssistantPage"))
+const SettingsPage = lazy(() => import("@/components/views/SettingsPage"))
+
+function ViewLoadingFallback() {
+  return (
+    <div className="flex items-center justify-center h-full">
+      <div className="flex flex-col items-center gap-3">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#02b1c4]" />
+        <p className="text-sm text-slate-500">Cargando...</p>
+      </div>
+    </div>
+  )
+}
 
 export default function App() {
   const { user, loading, error, signIn, signOut } = useAuth()
   const [collapsed, setCollapsed] = useState(false)
-  const [currentPath, setCurrentPath] = useState("/")
+  const { currentPath, navigate } = useAppRouter()
 
   const renderContent = () => {
     switch (currentPath) {
@@ -94,12 +108,18 @@ export default function App() {
         collapsed={collapsed}
         toggle={() => setCollapsed(!collapsed)}
         currentPath={currentPath}
-        onNavigate={setCurrentPath}
+        onNavigate={navigate}
         userName={user?.user_metadata?.full_name}
         userEmail={user?.email}
         onSignOut={signOut}
       />
-      <main className="flex-1 overflow-auto h-full w-full">{renderContent()}</main>
+      <ErrorBoundary onReset={() => navigate("/")}>
+        <Suspense fallback={<ViewLoadingFallback />}>
+          <main className="flex-1 overflow-auto h-full w-full">
+            {renderContent()}
+          </main>
+        </Suspense>
+      </ErrorBoundary>
 
       <SmartAssistant currentPath={currentPath} />
     </div>

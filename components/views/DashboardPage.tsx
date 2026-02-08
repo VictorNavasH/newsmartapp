@@ -144,7 +144,7 @@ export function DashboardPage() {
   const LaborCostTooltip = ({ active, payload, label }: RechartsTooltipProps) => {
     if (!active || !payload || payload.length === 0) return null
 
-    const data = payload[0]?.payload
+    const data = payload[0]?.payload as Record<string, any> | undefined
     if (!data) return null
 
     return (
@@ -191,7 +191,7 @@ export function DashboardPage() {
 
   const WeekRevenueTooltip = ({ active, payload, label }: RechartsTooltipProps) => {
     if (!active || !payload || !payload.length) return null
-    const data = payload[0]?.payload
+    const data = payload[0]?.payload as Record<string, any> | undefined
     if (!data) return null
 
     return (
@@ -646,7 +646,7 @@ export function DashboardPage() {
             suffix=" €"
             total={{ value: currentShift?.revenue || 0, previous: 0, delta: 0, trend: "neutral" }}
           >
-            {liveData?.prevision?.prevision_facturacion > 0 && (
+            {liveData && liveData.prevision && liveData.prevision.prevision_facturacion > 0 && (
               <div className="mb-4 pb-4 border-b border-slate-200">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-slate-500">Previsión del día</span>

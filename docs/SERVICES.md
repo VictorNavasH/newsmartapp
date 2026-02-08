@@ -1,6 +1,6 @@
 # Servicios de Datos — NÜA Smart App
 
-Documentación de los 9 servicios en `lib/`. Cada servicio encapsula las queries a Supabase y la lógica de acceso a datos.
+Documentación de los 12 servicios/módulos en `lib/`. Cada servicio encapsula las queries a Supabase y la lógica de acceso a datos.
 
 ---
 
@@ -15,6 +15,9 @@ Documentación de los 9 servicios en `lib/`. Cada servicio encapsula las queries
 7. [settingsService.ts — Configuración](#7-settingsservicets)
 8. [weather.ts — Meteorología](#8-weatherts)
 9. [gemini.ts — IA (Gemini)](#9-geminits)
+10. [env.ts — Variables de Entorno](#10-envts)
+11. [errorLogger.ts — Logging de Errores](#11-errorloggerts)
+12. [supabase.ts — Cliente Supabase](#12-supabasets)
 
 ---
 
@@ -39,10 +42,10 @@ Documentación de los 9 servicios en `lib/`. Cada servicio encapsula las queries
 
 ## 1. dataService.ts
 
-**Archivo:** `lib/dataService.ts` (~2574 líneas)
+**Archivo:** `lib/dataService.ts` (~1500 líneas)
 **Consumido por:** DashboardPage, ReservationsPage, IncomePage, ExpensesPage, CostesPage, ProductsPage, ForecastingPage, OperationsPage
 
-Servicio principal y más extenso. Contiene funciones para dashboard en tiempo real, reservas, ingresos, gastos, operaciones, productos, forecasting, costes y benchmarks.
+Servicio principal. Contiene funciones para dashboard en tiempo real, reservas, ingresos, gastos, operaciones, productos, forecasting, costes y benchmarks. Los datos mock y generadores se han extraído a `lib/mockData.ts`; las funciones mock se re-exportan desde este módulo para compatibilidad.
 
 ### Utilidades
 
@@ -123,13 +126,59 @@ Servicio principal y más extenso. Contiene funciones para dashboard en tiempo r
 | `updateManualPrice(sku, variantId, price)` | `sku: string, variantId?: string, newPrice: number` | `Promise<{success, error?}>` | RPC `update_manual_price` o `update_variant_manual_price` |
 | `clearManualPrice(sku, variantId)` | `sku: string, variantId?: string` | `Promise<{success, error?}>` | RPC `clear_manual_price` o update con null |
 
-### Mock (datos generados localmente)
+### Mock (re-exportados desde `lib/mockData.ts`)
 
 | Función | Descripción |
 |---------|-------------|
 | `fetchHistoryRange(start, end)` | Genera `DailyCompleteMetrics[]` desde array `mockHistory` (400 días) |
 | `fetchFinancialHistory(period)` | Genera datos financieros mock agrupados por mes |
 | `fetchUpcomingInvoices(days)` | Genera facturas de proveedor aleatorias |
+
+> **Nota:** Estas funciones viven en `lib/mockData.ts` y se re-exportan desde `dataService.ts` para compatibilidad.
+
+---
+
+## 1b. mockData.ts
+
+**Archivo:** `lib/mockData.ts` (~470 líneas)
+**Consumido por:** dataService.ts (re-exports y fallbacks de forecasting)
+
+Módulo que contiene todos los datos mock, constantes de demo y generadores de datos simulados. Extraído de `dataService.ts` para separar las responsabilidades de datos reales (Supabase) y datos ficticios.
+
+### Constantes
+
+| Constante | Descripción |
+|-----------|-------------|
+| `SMART_TABLES` | Lista de 19 nombres de Smart Tables |
+| `CATEGORIES` | 6 categorías de productos (Entrantes, Principales, Postres, Bebidas, Vinos, Cócteles) |
+| `PRODUCTS_DB` | 22 productos mock con nombre, categoría y precio |
+| `PROVIDERS_DB` | 9 proveedores mock con nombre y categoría de gasto |
+
+### Generadores
+
+| Función | Parámetros | Retorna | Descripción |
+|---------|-----------|---------|-------------|
+| `generateSalesData(revenueTarget)` | `revenueTarget: number` | `SalesBreakdown` | Genera ventas aleatorias hasta alcanzar ~90% del objetivo |
+| `generateExpenses(revenue)` | `revenue: number` | `ExpenseStats` | Genera gastos con ratios típicos de restaurante (COGS ~30%, Personal ~32%) |
+| `generateTableSales(revenue)` | `revenue: number` | `TableSales[]` | Distribuye ingresos entre mesas con pesos aleatorios |
+| `generateShift(basePax, type)` | `basePax: number, type: "LUNCH"\|"DINNER"` | `ShiftMetrics` | Genera métricas completas de un turno |
+| `generateMockHistory(days)` | `days: number` | `DailyCompleteMetrics[]` | Genera historial diario completo (comida + cena) |
+| `generateMockForecastData(today, todayStr)` | `today: Date, todayStr: string` | `{kpis, proximos7dias, precision}` | Mock de 7 días de forecast + 28 días históricos de precisión |
+| `generateMockForecastCalendar(year, month, today)` | `year, month: number, today: Date` | `ForecastDay[]` | Mock de calendario mensual de forecast |
+
+### Datos pre-generados
+
+| Variable | Descripción |
+|----------|-------------|
+| `mockHistory` | Array de 400 días de `DailyCompleteMetrics` generados al importar el módulo |
+
+### Funciones exportadas
+
+| Función | Parámetros | Retorna | Descripción |
+|---------|-----------|---------|-------------|
+| `fetchHistoryRange(start, end)` | `startDate, endDate: Date` | `Promise<DailyCompleteMetrics[]>` | Filtra `mockHistory` por rango de fechas |
+| `fetchFinancialHistory(period)` | `period: "week"\|"month"\|"quarter"\|"year"` | `Promise<{date, income, expenses}[]>` | Datos financieros mock, agregados por mes para quarter/year |
+| `fetchUpcomingInvoices(days)` | `days: number` | `Promise<Invoice[]>` | Genera facturas futuras aleatorias |
 
 ---
 
@@ -348,18 +397,60 @@ Los códigos AEMET se convierten internamente a formato WMO para usar un conjunt
 
 ---
 
-## Archivo auxiliar: supabase.ts
+## 10. env.ts
 
-**Archivo:** `lib/supabase.ts`
+**Archivo:** `lib/env.ts` (~17 líneas)
+**Consumido por:** `supabase.ts`, `gemini.ts`
+
+Módulo centralizado de variables de entorno con validación en tiempo de ejecución.
+
+### Función interna
+
+| Función | Parámetros | Retorna | Descripción |
+|---------|-----------|---------|-------------|
+| `getRequiredEnv(name)` | `name: string` | `string` | Lee `process.env[name]`. Lanza `Error` descriptivo si no está definida |
+
+### Exports
+
+| Export | Tipo | Variable de entorno | Requerida |
+|--------|------|-------------------|-----------|
+| `SUPABASE_URL` | `string` | `NEXT_PUBLIC_SUPABASE_URL` | Sí |
+| `SUPABASE_ANON_KEY` | `string` | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Sí |
+| `AI_API_KEY` | `string \| null` | `IA_ASSISTANT_SMART_APP` | No |
+
+---
+
+## 11. errorLogger.ts
+
+**Archivo:** `lib/errorLogger.ts` (~38 líneas)
+**Consumido por:** `ErrorBoundary` (componente)
+
+Sistema de logging estructurado con severidades.
+
+### Tipos
+
+- `ErrorSeverity` — `'info' | 'warning' | 'error' | 'critical'`
+- `ErrorLogEntry` — `{timestamp, severity, source, message, stack?, context?}`
+
+### Funciones
+
+| Función | Parámetros | Retorna | Descripción |
+|---------|-----------|---------|-------------|
+| `logError(source, error, context?, severity?)` | `source: string, error: unknown, context?: Record<string, unknown>, severity?: ErrorSeverity` | `void` | Loguea error con `console.error` (error/critical) o `console.warn` (warning). Preparado para envío a servicio externo |
+| `logWarning(source, message, context?)` | `source: string, message: string, context?: Record<string, unknown>` | `void` | Shortcut para `logError` con severity `'warning'` |
+
+---
+
+## 12. supabase.ts
+
+**Archivo:** `lib/supabase.ts` (~4 líneas)
 **Consumido por:** Todos los servicios
 
 ```typescript
-import { createClient } from "@supabase/supabase-js"
+import { createClient } from '@supabase/supabase-js'
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './env'
 
-export const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 ```
 
-Cliente singleton compartido por todos los servicios.
+Cliente singleton compartido por todos los servicios. Usa `env.ts` para validación de variables de entorno.

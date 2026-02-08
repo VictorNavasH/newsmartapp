@@ -36,8 +36,8 @@ const glowVariants = {
     opacity: 1,
     scale: 2,
     transition: {
-      opacity: { duration: 0.5, ease: [0.4, 0, 0.2, 1] },
-      scale: { duration: 0.5, type: "spring", stiffness: 300, damping: 25 },
+      opacity: { duration: 0.5, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] },
+      scale: { duration: 0.5, type: "spring" as const, stiffness: 300, damping: 25 },
     },
   },
 }
@@ -48,13 +48,13 @@ const navGlowVariants = {
     opacity: 1,
     transition: {
       duration: 0.5,
-      ease: [0.4, 0, 0.2, 1],
+      ease: [0.4, 0, 0.2, 1] as [number, number, number, number],
     },
   },
 }
 
 const sharedTransition = {
-  type: "spring",
+  type: "spring" as const,
   stiffness: 100,
   damping: 20,
   duration: 0.5,
@@ -81,7 +81,7 @@ export const MenuBar = React.forwardRef<HTMLDivElement, MenuBarProps>(
         )}
         initial="initial"
         whileHover="hover"
-        {...props}
+        {...(props as any)}
       >
         <motion.div
           className={`absolute -inset-2 bg-gradient-radial from-transparent ${

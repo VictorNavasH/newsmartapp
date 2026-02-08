@@ -500,7 +500,7 @@ const IncomePage: React.FC = () => {
                                 month: "short",
                               })}
                             </p>
-                            {payload.map((entry: RechartsPayloadEntry, index: number) => (
+                            {payload.map((entry: any, index: number) => (
                               <div key={index} className="flex items-center gap-2 text-xs mb-1">
                                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
                                 <span className="text-slate-500 font-medium w-16">{entry.name}</span>
@@ -618,7 +618,7 @@ const IncomePage: React.FC = () => {
                                 month: "short",
                               })}
                             </p>
-                            {payload.map((entry: RechartsPayloadEntry, index: number) => (
+                            {payload.map((entry: any, index: number) => (
                               <div key={index} className="flex items-center gap-2 text-xs mb-1">
                                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
                                 <span className="text-slate-500 font-medium w-24">{entry.name}</span>
@@ -803,7 +803,7 @@ const IncomePage: React.FC = () => {
                                 <p className="text-xs text-slate-600">
                                   Facturado:{" "}
                                   <span className="font-bold" style={{ color: BRAND_COLORS.primary }}>
-                                    {formatCurrency(payload[0]?.value)}
+                                    {formatCurrency(payload[0]?.value as number)}
                                   </span>
                                 </p>
                                 <p className="text-xs text-slate-600">

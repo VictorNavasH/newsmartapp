@@ -5,6 +5,10 @@ interface TremorCardProps {
   className?: string
   decoration?: boolean
   decorationColor?: string
+  title?: string
+  icon?: React.ReactNode
+  style?: React.CSSProperties
+  onClick?: () => void
 }
 
 export const TremorCard: React.FC<TremorCardProps> = ({
@@ -12,10 +16,24 @@ export const TremorCard: React.FC<TremorCardProps> = ({
   className = "",
   decoration = false,
   decorationColor = "blue-500",
+  title,
+  icon,
+  style,
+  onClick,
 }) => {
   return (
-    <div className={`bg-white rounded-xl border border-slate-200 shadow-sm p-5 relative overflow-hidden ${className}`}>
+    <div
+      className={`bg-white rounded-xl border border-slate-200 shadow-sm p-5 relative overflow-hidden ${className}`}
+      style={style}
+      onClick={onClick}
+    >
       {decoration && <div className={`absolute top-0 left-0 w-full h-1 bg-${decorationColor}`}></div>}
+      {(title || icon) && (
+        <div className="flex items-center gap-2 mb-3">
+          {icon}
+          {title && <h3 className="text-[#364f6b] text-base font-bold">{title}</h3>}
+        </div>
+      )}
       {children}
     </div>
   )

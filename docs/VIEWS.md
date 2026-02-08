@@ -1,6 +1,6 @@
 # Vistas — NÜA Smart App
 
-Documentación detallada de las 15 vistas principales. Cada vista se renderiza desde `app/page.tsx` mediante un `switch(currentPath)`.
+Documentación detallada de las 16 vistas principales. Cada vista se carga con `React.lazy()` y se renderiza desde `app/page.tsx` mediante un `switch(currentPath)`. La navegación usa hash-based routing via el hook `useAppRouter`.
 
 ---
 
@@ -74,6 +74,7 @@ Documentación detallada de las 15 vistas principales. Cada vista se renderiza d
 | **Ruta** | `/reservations` |
 | **Componente** | `ReservationsPage` |
 | **Archivo** | `components/views/ReservationsPage.tsx` |
+| **Sub-componentes** | `reservations/ReservationsKPISection.tsx`, `reservations/ReservationsYearlyChart.tsx`, `reservations/ReservationsComparatorSection.tsx`, `reservations/constants.ts` |
 | **Servicio(s)** | `dataService.ts` |
 | **Export** | Default export |
 
@@ -85,12 +86,11 @@ Documentación detallada de las 15 vistas principales. Cada vista se renderiza d
 | `fetchYearlyComparison()` | Tabla `reservas_agregadas_diarias` | `YearlyComparisonData[]` |
 | `fetchPeriodComparison(...)` | Tabla `reservas_agregadas_diarias` | `{yearA, yearB}` |
 
-### Secciones
+### Secciones (3 sub-componentes)
 
-1. **Tarjetas KPI** — Reservas totales, comensales, ocupación (%), ratio comensales/reserva
-2. **Gráfico diario** — ComposedChart con barras de comensales + línea de reservas
-3. **Comparación interanual** — Gráfico de líneas superpuestas por año (2021-2027), filtrable por métrica y turno
-4. **Comparación de períodos** — Selección de dos años para comparar el mismo rango de fechas
+1. **ReservationsKPISection** — Barra de capacidad (plazas/mesas por turno y dia), 6 MetricGroupCards (reservas, comensales, ocupacion, mesas, rotacion, pax/mesa), grafico ComposedChart de 30 dias
+2. **ReservationsYearlyChart** — Comparativa anual con LineChart superpuesto por ano (2021-2027), selectores de metrica (comensales/reservas) y turno (total/comida/cena), insight de tendencia
+3. **ReservationsComparatorSection** — Comparador de periodos con selectores de rango (dia/mes), selectores de ano A vs B, resultados con variacion y media diaria
 
 ### Filtros
 
@@ -152,6 +152,7 @@ Documentación detallada de las 15 vistas principales. Cada vista se renderiza d
 | **Ruta** | `/expenses` |
 | **Componente** | `ExpensesPage` |
 | **Archivo** | `components/views/ExpensesPage.tsx` |
+| **Sub-componentes** | `expenses/ExpensesCategoriaTab.tsx`, `expenses/ExpensesProveedorTab.tsx`, `expenses/ExpensesCalendarioTab.tsx`, `expenses/constants.ts` |
 | **Servicio(s)** | `dataService.ts` |
 | **Export** | Default export |
 
@@ -164,19 +165,20 @@ Documentación detallada de las 15 vistas principales. Cada vista se renderiza d
 | `fetchExpenseSummaryByTags(tags, start, end)` | RPC `get_gastos_resumen_by_tags` | `ExpenseTagSummary[]` |
 | `fetchExpensesByDueDate(start, end, status)` | RPC `get_gastos_by_due_date` | `Expense[]` |
 
-### Secciones
+### Secciones (MenuBar con 3 tabs)
 
-1. **KPIs de gastos** — Total gastado, facturas pendientes, facturas vencidas, promedio por factura
-2. **Gráfico de categorías** — PieChart con distribución por etiqueta/categoría
-3. **Listado de facturas** — Tabla paginada con estado, proveedor, importe, fecha de vencimiento
-4. **Detalle lateral** — Sheet/drawer con detalle completo de cada factura
+1. **ExpensesCategoriaTab** — Selector de etiquetas, filtro de estado, PieChart de distribucion, resumen por categoria con barras de progreso, tabla de detalle de gastos con ordenacion (4 columnas) y 3 filtros (estado, categoria, etiqueta)
+2. **ExpensesProveedorTab** — Filtros de proveedor y estado, PieChart de distribucion por proveedor, resumen con barras de progreso, tabla de detalle con ranking (medallas top 3)
+3. **ExpensesCalendarioTab** — 4 KPIs del mes, calendario visual con indicadores de estado por dia (color-coded), Sheet de detalle del dia seleccionado
 
 ### Filtros
 
 - Estado: `todos | pagado | pendiente | vencido`
 - Etiquetas de gasto (multi-select)
 - DateRangePicker con calendario visual integrado
-- Fecha de emisión o fecha de vencimiento
+- Fecha de emision o fecha de vencimiento
+- Proveedor (tab Proveedor)
+- Mes de calendario (tab Calendario)
 
 ### Cálculos frontend
 
@@ -230,6 +232,7 @@ Documentación detallada de las 15 vistas principales. Cada vista se renderiza d
 | **Ruta** | `/purchases` |
 | **Componente** | `ComprasPage` |
 | **Archivo** | `components/views/ComprasPage.tsx` |
+| **Sub-componentes** | `compras/ComprasPedidosTab.tsx`, `compras/ComprasConciliacionTab.tsx`, `compras/ComprasAnalisisTab.tsx`, `compras/constants.tsx` |
 | **Servicio(s)** | `comprasService.ts` |
 | **Export** | Default export |
 
@@ -412,13 +415,14 @@ Sala:   bueno ≤ 8min, advertencia ≤ 15min, alerta > 15min
 
 ---
 
-## 10. Tesorería
+## 10. Tesoreria
 
 | Campo | Valor |
 |-------|-------|
 | **Ruta** | `/treasury` |
 | **Componente** | `TreasuryPage` |
 | **Archivo** | `components/views/TreasuryPage.tsx` |
+| **Sub-componentes** | `treasury/TreasuryDashboardTab.tsx`, `treasury/TreasuryMovimientosTab.tsx`, `treasury/TreasuryCategoriaTab.tsx`, `treasury/TreasuryPoolBancarioTab.tsx`, `treasury/TreasuryCuentaTab.tsx`, `treasury/constants.ts` |
 | **Servicio(s)** | `treasuryService.ts` |
 | **Export** | Default export |
 

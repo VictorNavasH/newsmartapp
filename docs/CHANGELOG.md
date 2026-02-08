@@ -12,6 +12,80 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 
 ---
 
+## [1.6.0] - 2026-02-08
+
+### Añadido
+- **Suite de tests con Vitest:** Configurado Vitest 4 + Testing Library + jsdom. 26 tests en 4 archivos:
+  - `lib/__tests__/env.test.ts` — Validación de variables de entorno requeridas y opcionales (4 tests)
+  - `lib/__tests__/errorLogger.test.ts` — Logging por severidad, contexto, delegación de logWarning (7 tests)
+  - `lib/__tests__/dataService.test.ts` — getBusinessDate, aggregateMetrics, aggregateTableMetrics (6 tests)
+  - `hooks/__tests__/useAppRouter.test.ts` — Navegación, validación de paths, popstate, deep linking (9 tests)
+- **Scripts de test:** `pnpm test` (watch mode) y `pnpm test:run` (single run)
+- **`vitest.config.ts`** — Configuración con alias `@/`, jsdom environment, setup file
+- **`vitest.setup.ts`** — Setup de jest-dom matchers para Vitest
+
+### Actualizado
+- **`README.md`** — Añadido Vitest al stack, tests a comandos, estructura de carpetas actualizada con sub-componentes, types/, __tests__/, y nuevos archivos en lib/
+
+---
+
+## [1.5.0] - 2026-02-08
+
+### Refactorizado
+- **TreasuryPage (~2163 lineas -> ~500 lineas):** Extraidos 5 sub-componentes en `components/views/treasury/`: `TreasuryDashboardTab`, `TreasuryMovimientosTab`, `TreasuryCategoriaTab`, `TreasuryPoolBancarioTab`, `TreasuryCuentaTab`, mas `constants.ts` con tipos, labels, mapas de iconos y configuracion compartida
+- **ComprasPage (~1550 lineas -> ~660 lineas):** Extraidos 3 sub-componentes en `components/views/compras/`: `ComprasPedidosTab`, `ComprasConciliacionTab`, `ComprasAnalisisTab`, mas `constants.tsx` con configuracion de estados (pedido, conciliacion, pago) y colores
+- **ExpensesPage (~1591 lineas -> ~632 lineas):** Extraidos 3 sub-componentes en `components/views/expenses/`: `ExpensesCategoriaTab`, `ExpensesProveedorTab`, `ExpensesCalendarioTab`, mas `constants.ts` con tipos de filtro, labels y colores
+- **ReservationsPage (~1442 lineas -> ~591 lineas):** Extraidos 3 sub-componentes en `components/views/reservations/`: `ReservationsKPISection`, `ReservationsYearlyChart`, `ReservationsComparatorSection`, mas `constants.ts` con tipos de periodo, colores de ano y nombres de mes
+- **Patron de separacion aplicado:** Componente padre mantiene useState, useEffect, data fetching, useMemo y navegacion de tabs. Sub-componentes reciben datos y callbacks via props tipados (interfaces explicitas). Constantes compartidas extraidas a archivos dedicados
+
+---
+
+## [1.4.2] - 2026-02-08
+
+### Refactorizado
+- **Mock data extraído a `lib/mockData.ts`:** Separados los datos ficticios, constantes de demo (`SMART_TABLES`, `CATEGORIES`, `PRODUCTS_DB`, `PROVIDERS_DB`), generadores (`generateSalesData`, `generateExpenses`, `generateTableSales`, `generateShift`, `generateMockHistory`, `generateMockForecastData`, `generateMockForecastCalendar`) y funciones dependientes de mocks (`fetchHistoryRange`, `fetchFinancialHistory`, `fetchUpcomingInvoices`) desde `dataService.ts` al nuevo módulo `lib/mockData.ts`
+- **`dataService.ts` reducido (~1500 líneas):** Solo contiene lógica de Supabase y funciones reales. Re-exporta las funciones mock para compatibilidad hacia atrás
+- **Inline mock en `fetchForecastCalendar` reemplazado** por llamada a `generateMockForecastCalendar` desde `mockData.ts`
+
+---
+
+## [1.4.1] - 2026-02-08
+
+### Refactorizado
+- **types.ts dividido en módulos por dominio:** El archivo monolítico `types.ts` (~1266 líneas) se ha separado en 15 archivos dentro de `types/`, organizados por dominio funcional (sales, dashboard, expenses, operations, products, forecasting, treasury, billing, purchases, etc.)
+- **Barrel re-export en `types/index.ts`:** Mantiene compatibilidad total con todos los imports existentes (`import { X } from '@/types'` sigue funcionando)
+- **`types.ts` raíz reducido a 1 línea:** Solo re-exporta desde `types/index.ts`
+- **Dependencias cruzadas correctas:** `sales.ts` importa `ExpenseStats` de `expenses.ts`; `dashboard.ts` importa `ShiftMetrics` de `sales.ts`
+
+---
+
+## [1.4.0] - 2026-02-08
+
+### Añadido
+- **Hook `useAppRouter`:** Nuevo hook de navegación SPA con soporte de hash-based routing (`#/ruta`), historial del navegador (back/forward), y validación de rutas
+- **Lazy loading de vistas:** Las 16 vistas principales ahora se cargan bajo demanda con `React.lazy()` + `Suspense`, reduciendo el bundle inicial
+- **`ViewLoadingFallback`:** Componente de loading spinner mostrado mientras se cargan vistas lazy
+- **`ErrorBoundary` en contenido principal:** Envuelve el área de contenido para capturar errores de render en vistas y ofrecer recuperación al dashboard
+
+### Refactorizado
+- **`app/page.tsx`:** Reemplazado `useState("/")` por `useAppRouter()` para navegación con hash. Imports estáticos de vistas reemplazados por `lazy()`. Contenido envuelto en `ErrorBoundary` + `Suspense`
+- **Sidebar:** `onNavigate` ahora recibe `navigate` de `useAppRouter` en vez de `setCurrentPath`
+
+---
+
+## [1.3.6] - 2026-02-08
+
+### Añadido
+- **`lib/env.ts`** — Módulo centralizado de variables de entorno con validación. `getRequiredEnv()` lanza error descriptivo si falta una variable requerida. Exporta `SUPABASE_URL`, `SUPABASE_ANON_KEY` (requeridas) y `AI_API_KEY` (opcional)
+- **`lib/errorLogger.ts`** — Sistema de logging estructurado con severidades (`info`, `warning`, `error`, `critical`). Funciones `logError()` y `logWarning()`. Preparado para integración futura con Supabase/Sentry
+- **`components/ErrorBoundary.tsx`** — Componente React class-based para captura de errores en el árbol de componentes. Muestra UI de fallback con opción de reset y loguea errores críticos via `errorLogger`
+
+### Refactorizado
+- **`lib/supabase.ts`** — Reemplazado acceso directo a `process.env` por imports de `lib/env.ts` (`SUPABASE_URL`, `SUPABASE_ANON_KEY`)
+- **`lib/gemini.ts`** — Reemplazado acceso directo a `process.env.IA_ASSISTANT_SMART_APP` por import de `AI_API_KEY` desde `lib/env.ts`
+
+---
+
 ## [1.3.5] - 2026-02-06
 
 ### Añadido

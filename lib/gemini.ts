@@ -1,12 +1,13 @@
 import { GoogleGenAI } from "@google/genai"
+import { AI_API_KEY } from './env'
 
 export const generateInsight = async (contextName: string, data: any): Promise<string> => {
-  if (!process.env.IA_ASSISTANT_SMART_APP) {
+  if (!AI_API_KEY) {
     return "Configura tu IA_ASSISTANT_SMART_APP para obtener insights de IA."
   }
 
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.IA_ASSISTANT_SMART_APP })
+    const ai = new GoogleGenAI({ apiKey: AI_API_KEY! })
 
     // Compact data for token efficiency
     const dataString = JSON.stringify(data, null, 2)
@@ -34,7 +35,7 @@ export const generateInsight = async (contextName: string, data: any): Promise<s
       contents: prompt,
     })
 
-    return response.text() || "No se pudieron generar insights en este momento."
+    return response.text ?? "No se pudieron generar insights en este momento."
   } catch (error: any) {
     console.error("Gemini Error:", error)
 

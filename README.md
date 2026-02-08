@@ -13,6 +13,7 @@ Dashboard inteligente para gestión integral de restaurantes. Proporciona analí
 |------|-----------|---------|
 | Framework | Next.js (App Router + Turbopack) | 16.0.10 |
 | UI Library | React | 19.2.0 |
+| Testing | Vitest + Testing Library | 4.0.x |
 | Lenguaje | TypeScript | 5.x |
 | Estilos | Tailwind CSS + PostCSS | 4.1.9 |
 | Componentes UI | Radix UI (patrón Shadcn) | últimas |
@@ -64,15 +65,28 @@ NÜA Smart App/
 │   └── page.tsx                  # Página principal (router SPA)
 ├── components/
 │   ├── charts/                   # Componentes de gráficos
+│   ├── ErrorBoundary.tsx         # Error boundary para captura de errores
 │   ├── features/                 # Componentes de negocio (SmartAssistant, Login, etc.)
 │   ├── layout/                   # Sidebar, PageHeader, PageContent
 │   ├── ui/                       # Componentes UI base (Shadcn/Radix)
-│   └── views/                    # 15 páginas principales
-├── hooks/                        # Custom React hooks (useAuth, useAsyncData, etc.)
+│   └── views/                    # 16 páginas principales (lazy loaded)
+│       ├── treasury/             # Sub-componentes TreasuryPage (5 tabs)
+│       ├── compras/              # Sub-componentes ComprasPage (3 tabs)
+│       ├── expenses/             # Sub-componentes ExpensesPage (3 tabs)
+│       └── reservations/         # Sub-componentes ReservationsPage (3 secciones)
+├── hooks/                        # Custom React hooks (useAuth, useAppRouter, etc.)
+│   └── __tests__/                # Tests de hooks
 ├── lib/                          # Servicios de datos, utilidades, API clients
-├── public/images/                # Logo y assets estáticos
-├── types.ts                      # Definiciones TypeScript centralizadas
+│   ├── __tests__/                # Tests de servicios
+│   ├── env.ts                    # Validación de variables de entorno
+│   ├── errorLogger.ts            # Logging estructurado de errores
+│   ├── mockData.ts               # Datos mock separados de datos reales
+│   ├── dataService.ts            # Servicio principal (solo datos reales)
+│   └── ...                       # Otros servicios (supabase, gemini, etc.)
+├── types/                        # Tipos TypeScript organizados por dominio (15 archivos)
+├── types.ts                      # Barrel re-export → types/index.ts
 ├── constants.ts                  # Constantes de la app (colores, capacidad, etc.)
+├── vitest.config.ts              # Configuración de Vitest
 └── docs/                         # Documentación técnica detallada
 ```
 
@@ -85,6 +99,8 @@ pnpm dev          # Servidor de desarrollo (localhost:3000)
 pnpm build        # Build de producción
 pnpm start        # Ejecutar build de producción
 pnpm lint         # Ejecutar linter
+pnpm test         # Tests en modo watch (Vitest)
+pnpm test:run     # Tests en modo single-run
 ```
 
 ---

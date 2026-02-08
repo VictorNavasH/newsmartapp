@@ -1,6 +1,34 @@
 # Tipos TypeScript — NÜA Smart App
 
-Referencia de todos los tipos exportados en `types.ts` (~1213 líneas), organizados por dominio.
+Los tipos están organizados en archivos por dominio dentro de `types/`. El archivo raíz `types.ts` re-exporta todo mediante un barrel (`types/index.ts`), manteniendo compatibilidad con todos los imports existentes.
+
+### Estructura de archivos
+
+```
+types.ts                    # Re-export: export * from './types/index'
+types/
+├── index.ts               # Barrel re-export de todos los módulos
+├── sales.ts               # ShiftType, PaymentMethods, SalesItem, ShiftMetrics, etc.
+├── common.ts              # ComparisonResult, MetricComparison, DateRange, InsightResponse
+├── weather.ts             # WeatherDay
+├── dashboard.ts           # WeekReservationDay, FinancialKPIs, RealTimeData, LaborCostDay, etc.
+├── expenses.ts            # ExpenseStats, Invoice, Expense, ExpenseTag, etc.
+├── operations.ts          # OperacionesResumen, OperativaItem, OperativaKPI, etc.
+├── products.ts            # ProductMixItem, CategoryMixItem, OptionMixItem, agregados
+├── forecasting.ts         # ForecastDay, ForecastKPIs, YearlyComparisonData, etc.
+├── treasury.ts            # TreasuryKPIs, TreasuryAccount, TreasuryTransaction, etc.
+├── whatif.ts              # WhatIfReferenceData
+├── pool-bancario.ts       # PoolBancarioResumen, PoolBancarioPrestamo, etc.
+├── billing.ts             # FacturacionResumenGlobal, CuadreListadoItem, BenchmarkResumen, etc.
+├── food-cost.ts           # FoodCostProduct, FoodCostSummary
+├── purchases.ts           # CompraPedido, CompraKPIs, CompraFacturaConciliacion, etc.
+└── recharts.ts            # RechartsPayloadEntry, RechartsTooltipProps
+```
+
+### Dependencias entre módulos
+
+- `sales.ts` importa `ExpenseStats` de `./expenses` (usado en `ShiftMetrics.expenses`)
+- `dashboard.ts` importa `ShiftMetrics` de `./sales` (usado en `RealTimeData`)
 
 ---
 

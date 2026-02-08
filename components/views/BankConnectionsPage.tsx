@@ -75,7 +75,7 @@ export default function BankConnectionsPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <PageHeader title="Conexiones Bancarias" subtitle="Gestiona tus cuentas bancarias conectadas via Open Banking" />
+      <PageHeader icon={Building2} title="Conexiones Bancarias" subtitle="Gestiona tus cuentas bancarias conectadas via Open Banking" />
 
       {/* Boton para conectar nuevo banco */}
       <TremorCard className="p-6">
