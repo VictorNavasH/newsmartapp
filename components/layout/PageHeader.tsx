@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react"
 import type { ReactNode } from "react"
+import { NotificationCenter } from "@/components/features/NotificationCenter"
 
 interface PageHeaderProps {
   icon: LucideIcon
@@ -22,8 +23,11 @@ export function PageHeader({ icon: Icon, title, subtitle, actions }: PageHeaderP
             {subtitle && <p className="text-sm text-slate-500 ml-9">{subtitle}</p>}
           </div>
 
-          {/* Right: Custom Actions (Date Pickers, Tabs, etc.) */}
-          {actions && <div className="flex items-center gap-4">{actions}</div>}
+          {/* Right: Custom Actions + Notifications */}
+          <div className="flex items-center gap-4">
+            {actions}
+            <NotificationCenter />
+          </div>
         </div>
       </div>
     </div>

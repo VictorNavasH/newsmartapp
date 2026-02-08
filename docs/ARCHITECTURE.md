@@ -21,7 +21,6 @@ app/layout.tsx                    # Layout raíz: fonts, <Analytics />, <Toaster
             ├── <ErrorBoundary>   # Captura errores de render en vistas
             │   └── <Suspense>    # Loading fallback para lazy imports
             │       └── <main>    # Vista activa según currentPath
-            │           ├── <NotificationCenter /> # Campana de notificaciones (flotante)
             │           └── renderContent() → switch(currentPath)
             │               ├── "/" → <DashboardPage />          (lazy, con useAlerts)
             │               ├── "/reservations" → <ReservationsPage /> (lazy)
@@ -157,7 +156,7 @@ components/
 │
 ├── features/       # Componentes de negocio reutilizables
 │   ├── SmartAssistant.tsx      # Widget flotante de chat IA
-│   ├── NotificationCenter.tsx  # Centro de notificaciones con campana y lista desplegable
+│   ├── NotificationCenter.tsx  # Centro de notificaciones con campana y lista desplegable (integrado en PageHeader)
 │   ├── LoginScreen.tsx         # Pantalla de login
 │   ├── WeatherCard.tsx         # Previsión meteorológica
 │   ├── WeekReservationsCard.tsx # Ocupación semanal
@@ -167,7 +166,7 @@ components/
 │
 ├── layout/         # Componentes estructurales
 │   ├── Sidebar.tsx             # Navegación lateral (260px / 80px colapsado)
-│   ├── PageHeader.tsx          # Cabecera con icono, título, subtítulo, acciones
+│   ├── PageHeader.tsx          # Cabecera con icono, título, subtítulo, acciones + NotificationCenter
 │   └── PageContent.tsx         # Wrapper del contenido principal
 │
 ├── charts/         # Componentes de gráficos

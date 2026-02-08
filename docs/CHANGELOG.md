@@ -12,6 +12,16 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 
 ---
 
+## [2.2.1] - 2026-02-08
+
+### Corregido
+- **Fix superposición de notificaciones:** El `NotificationCenter` estaba posicionado como `fixed top-4 right-20 z-50` flotando sobre la app, superponiéndose con los botones del `PageHeader` (Exportar, Actualizar, etc.)
+  - Movido el `NotificationCenter` al componente `PageHeader` como última acción del header, integrado de forma consistente en todas las 16 vistas
+  - Eliminado el wrapper `fixed` en `app/page.tsx`
+  - El Toaster de Sonner movido de `top-right` a `bottom-right` para evitar conflictos con el header
+
+---
+
 ## [2.2.0] - 2026-02-08
 
 ### Seguridad
