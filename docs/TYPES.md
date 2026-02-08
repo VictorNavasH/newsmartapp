@@ -22,7 +22,8 @@ types/
 ├── billing.ts             # FacturacionResumenGlobal, CuadreListadoItem, BenchmarkResumen, etc.
 ├── food-cost.ts           # FoodCostProduct, FoodCostSummary
 ├── purchases.ts           # CompraPedido, CompraKPIs, CompraFacturaConciliacion, etc.
-└── recharts.ts            # RechartsPayloadEntry, RechartsTooltipProps
+├── recharts.ts            # RechartsPayloadEntry, RechartsTooltipProps
+└── kpiTargets.ts          # KPITargets, DEFAULT_KPI_TARGETS, KPIProgress
 ```
 
 ### Dependencias entre módulos

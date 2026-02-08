@@ -14,6 +14,7 @@ import {
   FileText,
   Loader2,
 } from "lucide-react"
+import { supabase } from "@/lib/supabase"
 
 // ============================================
 // CONFIGURACIÓN DE DOCUMENTOS
@@ -49,7 +50,16 @@ export function DocumentationTab() {
     try {
       setLoading(true)
       setError(null)
-      const res = await fetch("/api/docs?file=all")
+      // Obtener token de sesión para autenticación
+      const { data: { session } } = await supabase.auth.getSession()
+
+      const res = await fetch("/api/docs?file=all", {
+        headers: {
+          ...(session?.access_token && {
+            Authorization: `Bearer ${session.access_token}`,
+          }),
+        },
+      })
       if (!res.ok) throw new Error(`Error ${res.status}`)
       const data = await res.json()
       setDocs(data.docs)

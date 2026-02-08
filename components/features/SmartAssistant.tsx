@@ -7,6 +7,7 @@ import { X, Send, Sparkles, RotateCcw, MessageCircle } from "lucide-react"
 import { MovingBorderButton } from "@/components/ui/moving-border-button"
 import { ASSISTANT_CHIPS } from "@/lib/assistantChips"
 import { BRAND_COLORS } from "@/constants"
+import { supabase } from "@/lib/supabase"
 import ReactMarkdown from "react-markdown"
 
 interface Message {
@@ -55,9 +56,17 @@ export function SmartAssistant({ currentPath }: SmartAssistantProps) {
     setIsLoading(true)
 
     try {
+      // Obtener token de sesión para autenticación
+      const { data: { session } } = await supabase.auth.getSession()
+
       const response = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token && {
+            Authorization: `Bearer ${session.access_token}`,
+          }),
+        },
         body: JSON.stringify({
           message: content,
           sessionId,

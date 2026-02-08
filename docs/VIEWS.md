@@ -32,8 +32,11 @@ Documentación detallada de las 16 vistas principales. Cada vista se carga con `
 | **Ruta** | `/` |
 | **Componente** | `DashboardPage.tsx` |
 | **Archivo** | `components/views/DashboardPage.tsx` |
-| **Servicio(s)** | `dataService.ts` |
+| **Servicio(s)** | `dataService.ts`, `alertEngine.ts`, `exportUtils.ts`, `kpiTargets.ts` |
 | **Export** | Named export `DashboardPage` |
+| **Hooks** | `useAlerts(alertContext)` — Evalúa alertas automáticas sobre métricas |
+| **KPI Progress** | Sección "Progreso vs Objetivos" con barras de progreso comparando datos reales vs objetivos configurados en Ajustes |
+| **Exportación** | CSV/PDF de KPIs financieros, facturación en vivo y costes laborales vía `ExportButton` |
 
 ### Datos que consume
 
@@ -43,6 +46,20 @@ Documentación detallada de las 16 vistas principales. Cada vista se carga con `
 | `fetchFinancialKPIs()` | Vista `vw_dashboard_financiero` | `FinancialKPIs[]` |
 | `fetchLaborCostAnalysis(start, end)` | Vista `vw_labor_cost_analysis` | `LaborCostDay[]` |
 | `fetchWeekRevenue(weekOffset)` | RPC `rpc_facturacion_semana` | `WeekRevenueDay[]` |
+
+### Sistema de Alertas
+
+El Dashboard construye un `AlertContext` con métricas relevantes y lo pasa al hook `useAlerts()`:
+
+| Métrica AlertContext | Fuente en Dashboard |
+|---------------------|---------------------|
+| `ticketMedio` | `currentKPIs.ticket_medio` |
+| `ticketMedioTarget` | `currentKPIs.ticket_medio_ant` |
+| `dailyRevenue` | `liveData.total.revenue` |
+| `dailyRevenueTarget` | `liveData.prevision.prevision_facturacion` |
+| `monthlyRevenue` | `currentKPIs.ingresos` |
+| `laborCostPercentage` | Último día de `laborCostData` |
+| `occupancyRate` | `liveData.prevision.porcentaje_prevision_alcanzado` |
 
 ### Secciones
 
@@ -75,8 +92,9 @@ Documentación detallada de las 16 vistas principales. Cada vista se carga con `
 | **Componente** | `ReservationsPage` |
 | **Archivo** | `components/views/ReservationsPage.tsx` |
 | **Sub-componentes** | `reservations/ReservationsKPISection.tsx`, `reservations/ReservationsYearlyChart.tsx`, `reservations/ReservationsComparatorSection.tsx`, `reservations/constants.ts` |
-| **Servicio(s)** | `dataService.ts` |
+| **Servicio(s)** | `dataService.ts`, `exportUtils.ts` |
 | **Export** | Default export |
+| **Exportación** | CSV/PDF de métricas de reservas/ocupación y comparativa anual vía `ExportButton` |
 
 ### Datos que consume
 
@@ -153,8 +171,9 @@ Documentación detallada de las 16 vistas principales. Cada vista se carga con `
 | **Componente** | `ExpensesPage` |
 | **Archivo** | `components/views/ExpensesPage.tsx` |
 | **Sub-componentes** | `expenses/ExpensesCategoriaTab.tsx`, `expenses/ExpensesProveedorTab.tsx`, `expenses/ExpensesCalendarioTab.tsx`, `expenses/constants.ts` |
-| **Servicio(s)** | `dataService.ts` |
+| **Servicio(s)** | `dataService.ts`, `exportUtils.ts` |
 | **Export** | Default export |
+| **Exportación** | CSV/PDF de detalle de facturas por categoría o resumen por proveedor (según tab activa) vía `ExportButton` |
 
 ### Datos que consume
 
@@ -423,8 +442,9 @@ Sala:   bueno ≤ 8min, advertencia ≤ 15min, alerta > 15min
 | **Componente** | `TreasuryPage` |
 | **Archivo** | `components/views/TreasuryPage.tsx` |
 | **Sub-componentes** | `treasury/TreasuryDashboardTab.tsx`, `treasury/TreasuryMovimientosTab.tsx`, `treasury/TreasuryCategoriaTab.tsx`, `treasury/TreasuryPoolBancarioTab.tsx`, `treasury/TreasuryCuentaTab.tsx`, `treasury/constants.ts` |
-| **Servicio(s)** | `treasuryService.ts` |
+| **Servicio(s)** | `treasuryService.ts`, `exportUtils.ts` |
 | **Export** | Default export |
+| **Exportación** | CSV/PDF de movimientos bancarios (tab Movimientos) o resumen general con cuentas y categorías vía `ExportButton` |
 
 ### Datos que consume
 
@@ -644,9 +664,10 @@ Esta vista embebe dashboards externos. No consume servicios propios. Los tabs us
 | **Ruta** | `/settings` |
 | **Componente** | `SettingsPage` |
 | **Archivo** | `components/views/SettingsPage.tsx` |
-| **Servicio(s)** | `settingsService.ts` |
+| **Servicio(s)** | `settingsService.ts`, `kpiTargets.ts` |
 | **Export** | Default export |
 | **Props** | `userName?: string`, `userEmail?: string` |
+| **Tabs** | Estado del Sistema, Datos y Vistas, Perfil, Apariencia, Acerca de, Objetivos KPI, Documentación |
 
 ### Datos que consume
 

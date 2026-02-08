@@ -22,8 +22,10 @@ import type {
 import { CalendarCheck } from "lucide-react"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { PageContent } from "@/components/layout/PageContent"
+import { ExportButton } from "@/components/ui/ExportButton"
 import { BRAND_COLORS } from "@/constants"
-import { formatDateLong, formatDateShort } from "@/lib/utils"
+import { formatDateLong, formatDateShort, formatNumber } from "@/lib/utils"
+import { exportToCSV, exportToPDF } from "@/lib/exportUtils"
 
 import { ReservationsKPISection } from "./reservations/ReservationsKPISection"
 import { ReservationsYearlyChart } from "./reservations/ReservationsYearlyChart"
@@ -515,6 +517,120 @@ const ReservationsPage: React.FC = () => {
 
   const availableYears = useMemo(() => yearlyData.map((y) => y.año), [yearlyData])
 
+  // --- Exportación de datos ---
+  const handleReservationsExportCSV = () => {
+    const headers = ["Métrica", "Total", "Comida", "Cena"]
+    const rows: (string | number)[][] = []
+
+    if (current) {
+      rows.push(["Reservas", current.total.reservations, current.lunch.reservations, current.dinner.reservations])
+      rows.push(["Comensales", current.total.pax, current.lunch.pax, current.dinner.pax])
+      rows.push([
+        "Ocupación %",
+        Number(current.total.occupancy_rate.toFixed(1)),
+        Number(current.lunch.occupancy_rate.toFixed(1)),
+        Number(current.dinner.occupancy_rate.toFixed(1)),
+      ])
+      rows.push([
+        "Mesas Ocupadas",
+        current.total.tables_used,
+        current.lunch.tables_used,
+        current.dinner.tables_used,
+      ])
+      rows.push([
+        "Pax/Reserva",
+        Number(current.total.avg_pax_per_res.toFixed(1)),
+        Number(current.lunch.avg_pax_per_res.toFixed(1)),
+        Number(current.dinner.avg_pax_per_res.toFixed(1)),
+      ])
+      rows.push([
+        "Rotación Mesas",
+        Number(current.total.table_rotation.toFixed(2)),
+        Number(current.lunch.table_rotation.toFixed(2)),
+        Number(current.dinner.table_rotation.toFixed(2)),
+      ])
+    }
+
+    // Datos interanuales
+    if (yearlyData.length > 0) {
+      rows.push(["", "", "", ""])
+      rows.push(["--- Comparativa Anual ---", "", "", ""])
+      yearlyData.forEach((yearItem) => {
+        rows.push([
+          `Año ${yearItem.año} — Total Comensales`,
+          yearItem.totals.comensales,
+          yearItem.totals.comensales_comida,
+          yearItem.totals.comensales_cena,
+        ])
+        rows.push([
+          `Año ${yearItem.año} — Total Reservas`,
+          yearItem.totals.reservas,
+          "",
+          "",
+        ])
+      })
+    }
+
+    exportToCSV({
+      filename: `nua-reservas-${formatDateShort(dateRange.from)}_${formatDateShort(dateRange.to)}`,
+      headers,
+      rows,
+    })
+  }
+
+  const handleReservationsExportPDF = async () => {
+    const headers = ["Métrica", "Total", "Comida", "Cena"]
+    const rows: (string | number)[][] = []
+
+    if (current) {
+      rows.push(["Reservas", formatNumber(current.total.reservations), formatNumber(current.lunch.reservations), formatNumber(current.dinner.reservations)])
+      rows.push(["Comensales", formatNumber(current.total.pax), formatNumber(current.lunch.pax), formatNumber(current.dinner.pax)])
+      rows.push([
+        "Ocupación %",
+        `${current.total.occupancy_rate.toFixed(1)}%`,
+        `${current.lunch.occupancy_rate.toFixed(1)}%`,
+        `${current.dinner.occupancy_rate.toFixed(1)}%`,
+      ])
+      rows.push([
+        "Mesas Ocupadas",
+        formatNumber(current.total.tables_used),
+        formatNumber(current.lunch.tables_used),
+        formatNumber(current.dinner.tables_used),
+      ])
+      rows.push([
+        "Pax/Reserva",
+        current.total.avg_pax_per_res.toFixed(1),
+        current.lunch.avg_pax_per_res.toFixed(1),
+        current.dinner.avg_pax_per_res.toFixed(1),
+      ])
+      rows.push([
+        "Rotación Mesas",
+        current.total.table_rotation.toFixed(2),
+        current.lunch.table_rotation.toFixed(2),
+        current.dinner.table_rotation.toFixed(2),
+      ])
+    }
+
+    const summary = current
+      ? [
+          { label: "Reservas", value: formatNumber(current.total.reservations) },
+          { label: "Comensales", value: formatNumber(current.total.pax) },
+          { label: "Ocupación", value: `${current.total.occupancy_rate.toFixed(1)}%` },
+          { label: "Mesas Ocupadas", value: formatNumber(current.total.tables_used) },
+        ]
+      : []
+
+    await exportToPDF({
+      filename: `nua-reservas-${formatDateShort(dateRange.from)}_${formatDateShort(dateRange.to)}`,
+      title: "Reservas & Ocupación — NÜA Smart Restaurant",
+      subtitle: `Periodo: ${getPeriodLabel()}`,
+      headers,
+      rows,
+      orientation: "landscape",
+      summary,
+    })
+  }
+
   // --- Render ---
   return (
     <div className="relative min-h-screen bg-slate-50 pb-20">
@@ -524,6 +640,8 @@ const ReservationsPage: React.FC = () => {
         subtitle={`Vision unificada de demanda y eficiencia: ${getPeriodLabel()}`}
         actions={
           <>
+            <ExportButton onExportCSV={handleReservationsExportCSV} onExportPDF={handleReservationsExportPDF} />
+
             <Tabs value={activeTab} onValueChange={(v) => setPeriod(v as PeriodKey)}>
               <TabsList className="bg-white border border-slate-200 shadow-sm">
                 <TabsTrigger value="ayer" className={activeTabStyle}>

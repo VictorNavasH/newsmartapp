@@ -15,7 +15,9 @@ import {
 import { PageHeader } from "@/components/layout/PageHeader"
 import { TremorCard } from "@/components/ui/TremorCard"
 import { DateRangePickerExpenses } from "@/components/ui/date-range-picker-expenses"
+import { ExportButton } from "@/components/ui/ExportButton"
 import { MenuBar } from "@/components/ui/menu-bar"
+import { exportToCSV, exportToPDF } from "@/lib/exportUtils"
 import {
   fetchExpenseTags,
   fetchExpensesByTags,
@@ -427,13 +429,107 @@ export default function ExpensesPage() {
     return getExpensesForDay(selectedDay)
   }, [selectedDay, calendarExpenses])
 
+  // --- Exportación de datos ---
+  const handleExpensesExportCSV = () => {
+    const startStr = format(dateRange.from, "yyyy-MM-dd")
+    const endStr = format(dateRange.to, "yyyy-MM-dd")
+
+    if (activeTab === "proveedor") {
+      // Exportar resumen por proveedor
+      exportToCSV({
+        filename: `nua-gastos-proveedores-${startStr}_${endStr}`,
+        headers: ["Proveedor", "Total", "Pagado", "Pendiente", "Vencido", "Facturas"],
+        rows: providerSummary.map((p) => [
+          p.proveedor,
+          p.total,
+          p.pagado,
+          p.pendiente,
+          p.vencido,
+          p.facturas,
+        ]),
+      })
+    } else {
+      // Exportar detalle de facturas
+      exportToCSV({
+        filename: `nua-gastos-detalle-${startStr}_${endStr}`,
+        headers: ["Fecha", "Proveedor", "Categoría", "Estado", "Importe", "Base", "IVA", "Vencimiento"],
+        rows: filteredExpenses.map((e) => [
+          e.fecha,
+          e.proveedor,
+          e.categoria_nombre,
+          e.status === "partial" ? "Pagado" : e.status === "pending" ? "Pendiente" : "Vencido",
+          e.total_amount,
+          e.base_amount,
+          e.tax_amount,
+          e.due_date || "",
+        ]),
+      })
+    }
+  }
+
+  const handleExpensesExportPDF = async () => {
+    const startStr = format(dateRange.from, "yyyy-MM-dd")
+    const endStr = format(dateRange.to, "yyyy-MM-dd")
+
+    if (activeTab === "proveedor") {
+      await exportToPDF({
+        filename: `nua-gastos-proveedores-${startStr}_${endStr}`,
+        title: "Gastos — Por Proveedor",
+        subtitle: `Periodo: ${dateRange.from.toLocaleDateString("es-ES")} - ${dateRange.to.toLocaleDateString("es-ES")}`,
+        headers: ["Proveedor", "Total", "Pagado", "Pendiente", "Vencido", "Facturas"],
+        rows: providerSummary.map((p) => [
+          p.proveedor,
+          formatCurrency(p.total),
+          formatCurrency(p.pagado),
+          formatCurrency(p.pendiente),
+          formatCurrency(p.vencido),
+          p.facturas,
+        ]),
+        orientation: "landscape",
+        summary: [
+          { label: "Total Gastos", value: formatCurrency(totals.total) },
+          { label: "Pagado", value: formatCurrency(totals.pagado) },
+          { label: "Pendiente", value: formatCurrency(totals.pendiente) },
+          { label: "Vencido", value: formatCurrency(totals.vencido) },
+        ],
+      })
+    } else {
+      await exportToPDF({
+        filename: `nua-gastos-detalle-${startStr}_${endStr}`,
+        title: "Gastos — Detalle de Facturas",
+        subtitle: `Periodo: ${dateRange.from.toLocaleDateString("es-ES")} - ${dateRange.to.toLocaleDateString("es-ES")}`,
+        headers: ["Fecha", "Proveedor", "Categoría", "Estado", "Importe", "Vencimiento"],
+        rows: filteredExpenses.map((e) => [
+          e.fecha,
+          e.proveedor.length > 30 ? e.proveedor.substring(0, 30) + "..." : e.proveedor,
+          e.categoria_nombre,
+          e.status === "partial" ? "Pagado" : e.status === "pending" ? "Pendiente" : "Vencido",
+          formatCurrency(e.total_amount),
+          e.due_date || "-",
+        ]),
+        orientation: "landscape",
+        summary: [
+          { label: "Total Gastos", value: formatCurrency(totals.total) },
+          { label: "Facturas", value: String(totals.facturas) },
+          { label: "Pagado", value: formatCurrency(totals.pagado) },
+          { label: "Vencido", value: formatCurrency(totals.vencido) },
+        ],
+      })
+    }
+  }
+
   return (
     <div className="relative min-h-screen bg-slate-50 pb-20">
       <PageHeader
         icon={PieChartIcon}
         title="Gastos"
         subtitle={`Analisis de gastos: ${dateRange.from.toLocaleDateString("es-ES")} - ${dateRange.to.toLocaleDateString("es-ES")}`}
-        actions={<DateRangePickerExpenses from={dateRange.from} to={dateRange.to} onChange={handleDateChange} />}
+        actions={
+          <div className="flex items-center gap-3">
+            <ExportButton onExportCSV={handleExpensesExportCSV} onExportPDF={handleExpensesExportPDF} />
+            <DateRangePickerExpenses from={dateRange.from} to={dateRange.to} onChange={handleDateChange} />
+          </div>
+        }
       />
 
       <div className="max-w-[1400px] mx-auto px-6 py-6 space-y-6">

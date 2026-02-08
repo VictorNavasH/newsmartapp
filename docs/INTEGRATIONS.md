@@ -1,6 +1,6 @@
 # Integraciones Externas — NÜA Smart App
 
-Documentación de las 11 integraciones externas del ecosistema NÜA Smart App.
+Documentación de las 12 integraciones externas del ecosistema NÜA Smart App.
 
 ---
 
@@ -17,6 +17,7 @@ Documentación de las 11 integraciones externas del ecosistema NÜA Smart App.
 9. [n8n (Orquestación)](#9-n8n)
 10. [Google Generative AI (Gemini)](#10-google-generative-ai)
 11. [Vercel (Hosting + Analytics)](#11-vercel)
+12. [Sentry (Error Monitoring)](#12-sentry)
 
 ---
 
@@ -434,6 +435,59 @@ git push main
       → Si exitoso → Deploy a producción
       → Si falla → Notifica, mantiene versión anterior
 ```
+
+---
+
+## 12. Sentry
+
+| Campo | Valor |
+|-------|-------|
+| **Tipo** | Error Monitoring + Performance |
+| **SDK** | `@sentry/nextjs` |
+| **DSN** | `NEXT_PUBLIC_SENTRY_DSN` (env var) |
+| **Protocolo** | SDK JavaScript (envío automático de errores) |
+| **Entornos** | Solo producción (`enabled: process.env.NODE_ENV === "production"`) |
+
+### Configuración
+
+| Archivo | Entorno | Descripción |
+|---------|---------|-------------|
+| `sentry.client.config.ts` | Cliente (browser) | Traces 10%, Replay 100% en errores / 10% normal, filtro de extensiones, sanitización de URLs Supabase |
+| `sentry.server.config.ts` | Servidor (Node.js) | Traces 10%, filtro de errores de red |
+| `sentry.edge.config.ts` | Edge Runtime | Traces 10% |
+| `instrumentation.ts` | Hook Next.js | Carga server/edge configs según runtime |
+| `instrumentation-client.ts` | Hook Next.js | Carga client config |
+| `next.config.mjs` | Build config | `withSentryConfig` para source maps |
+
+### Flujo de errores
+
+```
+Error en la app
+  │
+  ├── ErrorBoundary → Sentry.captureException() (con componentStack)
+  ├── logError(severity=error|critical) → Sentry.captureException() (con tags y context)
+  ├── logError(severity=warning) → Sentry.captureMessage() (level warning)
+  └── Errores no capturados → SDK de Sentry (auto-capture)
+```
+
+### Variables de entorno
+
+| Variable | Requerida | Descripción |
+|----------|-----------|-------------|
+| `NEXT_PUBLIC_SENTRY_DSN` | No* | DSN del proyecto. Sin ella Sentry se desactiva silenciosamente |
+| `SENTRY_ORG` | No | Organización para subir source maps |
+| `SENTRY_PROJECT` | No | Proyecto para subir source maps |
+| `SENTRY_AUTH_TOKEN` | No | Token de auth. Sin él se desactiva la subida de source maps |
+
+> *Sentry funciona en modo degradado sin DSN: no envía datos pero no rompe la app.
+
+### En la webapp
+
+- **Errores de render:** Capturados por `ErrorBoundary` → `Sentry.captureException`
+- **Errores de servicio:** Via `logError()` de `errorLogger.ts` → `Sentry.captureException`
+- **Warnings:** Via `logError()` o `logWarning()` → `Sentry.captureMessage`
+- **Session replay:** Graba sesiones de usuario cuando hay error (100% de sesiones con error)
+- **Performance:** 10% de transacciones monitorizadas para detectar cuellos de botella
 
 ---
 

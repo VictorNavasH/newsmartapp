@@ -24,6 +24,9 @@ import {
   Armchair,
   UtensilsCrossed,
   FileText,
+  Target,
+  Save,
+  RotateCcw,
 } from "lucide-react"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { PageContent } from "@/components/layout/PageContent"
@@ -39,6 +42,9 @@ import {
   type RestaurantCapacity,
   type SyncLogEntry,
 } from "@/lib/settingsService"
+import { loadKPITargets, saveKPITargets } from "@/lib/kpiTargets"
+import { DEFAULT_KPI_TARGETS } from "@/types/kpiTargets"
+import type { KPITargets } from "@/types/kpiTargets"
 
 // ============================================
 // HELPERS
@@ -142,6 +148,13 @@ const settingsMenuItems = [
     iconColor: "text-[#17c3b2]",
   },
   {
+    icon: Target,
+    label: "Objetivos KPI",
+    href: "#kpi-targets",
+    gradient: "radial-gradient(circle, rgba(23,195,178,0.15) 0%, transparent 70%)",
+    iconColor: "text-[#17c3b2]",
+  },
+  {
     icon: FileText,
     label: "Documentación",
     href: "#docs",
@@ -157,6 +170,7 @@ const labelToTab: Record<string, string> = {
   "Perfil": "profile",
   "Apariencia": "appearance",
   "Acerca de": "about",
+  "Objetivos KPI": "kpi-targets",
   "Documentación": "docs",
 }
 
@@ -184,6 +198,8 @@ export default function SettingsPage({ userName, userEmail }: SettingsPageProps)
   const [capacity, setCapacity] = useState<RestaurantCapacity | null>(null)
   const [syncLogs, setSyncLogs] = useState<SyncLogEntry[]>([])
   const [theme, setTheme] = useState<"light" | "dark" | "system">("light")
+  const [kpiTargets, setKpiTargets] = useState<KPITargets>(DEFAULT_KPI_TARGETS)
+  const [kpiSaved, setKpiSaved] = useState(false)
 
   const loadData = useCallback(async () => {
     try {
@@ -206,6 +222,9 @@ export default function SettingsPage({ userName, userEmail }: SettingsPageProps)
     // Load theme from localStorage
     const savedTheme = localStorage.getItem("nua-theme") as "light" | "dark" | "system" | null
     if (savedTheme) setTheme(savedTheme)
+
+    // Cargar objetivos KPI
+    setKpiTargets(loadKPITargets())
 
     loadData().then(() => setLoading(false))
   }, [loadData])
@@ -233,6 +252,25 @@ export default function SettingsPage({ userName, userEmail }: SettingsPageProps)
         root.classList.remove("dark")
       }
     }
+  }
+
+  const handleKpiChange = (key: keyof KPITargets, value: string) => {
+    const numValue = parseFloat(value) || 0
+    setKpiTargets(prev => ({ ...prev, [key]: numValue }))
+    setKpiSaved(false)
+  }
+
+  const handleKpiSave = () => {
+    saveKPITargets(kpiTargets)
+    setKpiSaved(true)
+    setTimeout(() => setKpiSaved(false), 3000)
+  }
+
+  const handleKpiReset = () => {
+    setKpiTargets(DEFAULT_KPI_TARGETS)
+    saveKPITargets(DEFAULT_KPI_TARGETS)
+    setKpiSaved(true)
+    setTimeout(() => setKpiSaved(false), 3000)
   }
 
   // Get unique views (latest refresh per view)
@@ -666,6 +704,195 @@ export default function SettingsPage({ userName, userEmail }: SettingsPageProps)
                         {tech}
                       </span>
                     ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ===================== TAB: OBJETIVOS KPI ===================== */}
+            {activeTab === "kpi-targets" && (
+              <div className="space-y-6">
+                <div className="bg-white border border-slate-200 rounded-2xl p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h3 className="text-lg font-bold text-[#364f6b]">Objetivos KPI</h3>
+                      <p className="text-sm text-slate-500 mt-1">
+                        Configura los objetivos para comparar el rendimiento real del restaurante.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleKpiReset}
+                        className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 text-slate-600 text-sm font-medium hover:bg-slate-200 transition-all"
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                        Restaurar
+                      </button>
+                      <button
+                        onClick={handleKpiSave}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#02b1c4] text-white text-sm font-medium hover:bg-[#02a0b2] transition-all"
+                      >
+                        <Save className="w-4 h-4" />
+                        {kpiSaved ? "Guardado" : "Guardar"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {kpiSaved && (
+                    <div className="flex items-center gap-2 mb-4 p-3 bg-emerald-50 rounded-xl border border-emerald-100">
+                      <CheckCircle className="w-4 h-4 text-emerald-500" />
+                      <span className="text-sm text-emerald-700">Objetivos guardados correctamente</span>
+                    </div>
+                  )}
+
+                  {/* Ingresos */}
+                  <div className="mb-6">
+                    <h4 className="text-sm font-bold text-[#364f6b] uppercase tracking-wider mb-3 flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-[#17c3b2]" />
+                      Ingresos
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Ingresos diarios</label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            value={kpiTargets.dailyRevenueTarget}
+                            onChange={(e) => handleKpiChange("dailyRevenueTarget", e.target.value)}
+                            className="w-full px-3 py-2 pr-8 rounded-lg border border-slate-200 text-sm text-[#364f6b] focus:outline-none focus:border-[#02b1c4] focus:ring-1 focus:ring-[#02b1c4]"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">€</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Ingresos mensuales</label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            value={kpiTargets.monthlyRevenueTarget}
+                            onChange={(e) => handleKpiChange("monthlyRevenueTarget", e.target.value)}
+                            className="w-full px-3 py-2 pr-8 rounded-lg border border-slate-200 text-sm text-[#364f6b] focus:outline-none focus:border-[#02b1c4] focus:ring-1 focus:ring-[#02b1c4]"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">€</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Ticket medio</label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            value={kpiTargets.ticketMedioTarget}
+                            onChange={(e) => handleKpiChange("ticketMedioTarget", e.target.value)}
+                            className="w-full px-3 py-2 pr-8 rounded-lg border border-slate-200 text-sm text-[#364f6b] focus:outline-none focus:border-[#02b1c4] focus:ring-1 focus:ring-[#02b1c4]"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">€</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Costes */}
+                  <div className="mb-6">
+                    <h4 className="text-sm font-bold text-[#364f6b] uppercase tracking-wider mb-3 flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-[#fe6d73]" />
+                      Costes
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Food cost</label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            value={kpiTargets.foodCostTarget}
+                            onChange={(e) => handleKpiChange("foodCostTarget", e.target.value)}
+                            className="w-full px-3 py-2 pr-8 rounded-lg border border-slate-200 text-sm text-[#364f6b] focus:outline-none focus:border-[#02b1c4] focus:ring-1 focus:ring-[#02b1c4]"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">%</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Coste laboral</label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            value={kpiTargets.laborCostTarget}
+                            onChange={(e) => handleKpiChange("laborCostTarget", e.target.value)}
+                            className="w-full px-3 py-2 pr-8 rounded-lg border border-slate-200 text-sm text-[#364f6b] focus:outline-none focus:border-[#02b1c4] focus:ring-1 focus:ring-[#02b1c4]"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">%</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Ocupación */}
+                  <div className="mb-6">
+                    <h4 className="text-sm font-bold text-[#364f6b] uppercase tracking-wider mb-3 flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-[#ffcb77]" />
+                      Ocupación
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Ocupación comida</label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            value={kpiTargets.lunchOccupancyTarget}
+                            onChange={(e) => handleKpiChange("lunchOccupancyTarget", e.target.value)}
+                            className="w-full px-3 py-2 pr-8 rounded-lg border border-slate-200 text-sm text-[#364f6b] focus:outline-none focus:border-[#02b1c4] focus:ring-1 focus:ring-[#02b1c4]"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">%</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Ocupación cena</label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            value={kpiTargets.dinnerOccupancyTarget}
+                            onChange={(e) => handleKpiChange("dinnerOccupancyTarget", e.target.value)}
+                            className="w-full px-3 py-2 pr-8 rounded-lg border border-slate-200 text-sm text-[#364f6b] focus:outline-none focus:border-[#02b1c4] focus:ring-1 focus:ring-[#02b1c4]"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">%</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Operaciones y Reservas */}
+                  <div>
+                    <h4 className="text-sm font-bold text-[#364f6b] uppercase tracking-wider mb-3 flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-[#02b1c4]" />
+                      Operaciones y Reservas
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Valoración media</label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            step="0.1"
+                            min="1"
+                            max="5"
+                            value={kpiTargets.averageRatingTarget}
+                            onChange={(e) => handleKpiChange("averageRatingTarget", e.target.value)}
+                            className="w-full px-3 py-2 pr-12 rounded-lg border border-slate-200 text-sm text-[#364f6b] focus:outline-none focus:border-[#02b1c4] focus:ring-1 focus:ring-[#02b1c4]"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">/ 5</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Reservas diarias</label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            value={kpiTargets.dailyReservationsTarget}
+                            onChange={(e) => handleKpiChange("dailyReservationsTarget", e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-[#364f6b] focus:outline-none focus:border-[#02b1c4] focus:ring-1 focus:ring-[#02b1c4]"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

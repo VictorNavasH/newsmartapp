@@ -6,6 +6,7 @@ import { useAppRouter } from "@/hooks/useAppRouter"
 import { LoginScreen } from "@/components/features/LoginScreen"
 import { Sidebar } from "@/components/layout/Sidebar"
 import { SmartAssistant } from "@/components/features/SmartAssistant"
+import { NotificationCenter } from "@/components/features/NotificationCenter"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 
 const DashboardPage = lazy(() => import("@/components/views/DashboardPage"))
@@ -115,7 +116,11 @@ export default function App() {
       />
       <ErrorBoundary onReset={() => navigate("/")}>
         <Suspense fallback={<ViewLoadingFallback />}>
-          <main className="flex-1 overflow-auto h-full w-full">
+          <main className="flex-1 overflow-auto h-full w-full relative">
+            {/* Centro de notificaciones flotante */}
+            <div className="fixed top-4 right-20 z-50">
+              <NotificationCenter />
+            </div>
             {renderContent()}
           </main>
         </Suspense>

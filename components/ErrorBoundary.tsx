@@ -1,6 +1,7 @@
 "use client"
 
 import React from "react"
+import * as Sentry from "@sentry/nextjs"
 import { logError } from "@/lib/errorLogger"
 import { AlertTriangle, RotateCcw } from "lucide-react"
 
@@ -28,6 +29,12 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     logError('ErrorBoundary', error, {
       componentStack: errorInfo.componentStack ?? undefined,
     }, 'critical')
+
+    // Reportar a Sentry con contexto del componente
+    Sentry.captureException(error, {
+      tags: { component: 'ErrorBoundary' },
+      extra: { componentStack: errorInfo?.componentStack },
+    })
   }
 
   handleReset = (): void => {

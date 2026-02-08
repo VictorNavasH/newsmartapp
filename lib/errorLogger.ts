@@ -1,3 +1,5 @@
+import * as Sentry from "@sentry/nextjs"
+
 type ErrorSeverity = 'info' | 'warning' | 'error' | 'critical'
 
 interface ErrorLogEntry {
@@ -30,7 +32,22 @@ export function logError(
     console.warn(`[${entry.severity.toUpperCase()}] [${entry.source}]`, entry.message, context ?? '')
   }
 
-  // Futuro: enviar a Supabase, Sentry, o servicio externo
+  // Enviar errores críticos y errores a Sentry
+  if (severity === 'error' || severity === 'critical') {
+    Sentry.captureException(error instanceof Error ? error : new Error(String(error)), {
+      tags: { source, severity },
+      extra: context,
+    })
+  }
+
+  // Enviar warnings a Sentry como mensajes
+  if (severity === 'warning') {
+    Sentry.captureMessage(entry.message, {
+      level: 'warning',
+      tags: { source },
+      extra: context,
+    })
+  }
 }
 
 export function logWarning(source: string, message: string, context?: Record<string, unknown>): void {

@@ -1,8 +1,40 @@
 import { type NextRequest, NextResponse } from "next/server"
-
-const N8N_WEBHOOK_URL = "https://n8n.nuasmartrestaurant.com/webhook/nua-assistant-api"
+import { N8N_WEBHOOK_URL } from "@/lib/env"
+import { verifyAuth, unauthorizedResponse } from "@/lib/apiAuth"
+import { checkRateLimit } from "@/lib/rateLimit"
 
 export async function POST(request: NextRequest) {
+  // Verificar autenticación
+  const auth = await verifyAuth(request)
+  if (!auth.authenticated) {
+    return unauthorizedResponse(auth.error!)
+  }
+
+  // Verificar rate limit (10 peticiones por minuto para chat)
+  const rateLimit = checkRateLimit(`chat:${auth.email}`, {
+    maxRequests: 10,
+    windowMs: 60_000,
+  })
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Demasiadas peticiones. Intenta de nuevo en unos segundos." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": Math.ceil(rateLimit.resetIn / 1000).toString(),
+        },
+      }
+    )
+  }
+
+  // Verificar que el webhook está configurado
+  if (!N8N_WEBHOOK_URL) {
+    return NextResponse.json(
+      { response: "El asistente no está configurado. Contacta al administrador." },
+      { status: 503 }
+    )
+  }
+
   try {
     const { message, sessionId } = await request.json()
 
@@ -14,7 +46,7 @@ export async function POST(request: NextRequest) {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 30000)
 
-    let response: Response
+    let response: Response | undefined
     let retries = 0
     const maxRetries = 1
 
@@ -26,6 +58,7 @@ export async function POST(request: NextRequest) {
           body: JSON.stringify({
             message,
             sessionId: sessionId || `session_${Date.now()}`,
+            userEmail: auth.email,
           }),
           signal: controller.signal,
         })
@@ -42,10 +75,10 @@ export async function POST(request: NextRequest) {
           await new Promise((resolve) => setTimeout(resolve, 1000))
           continue
         }
-      } catch (fetchError: any) {
+      } catch (fetchError: unknown) {
         clearTimeout(timeoutId)
 
-        if (fetchError.name === "AbortError") {
+        if (fetchError instanceof Error && fetchError.name === "AbortError") {
           return NextResponse.json(
             { response: "La consulta está tardando demasiado. Por favor, intenta de nuevo." },
             { status: 504 },
@@ -69,7 +102,7 @@ export async function POST(request: NextRequest) {
     const assistantResponse = data.output || data.response || "No se pudo obtener una respuesta."
 
     return NextResponse.json({ response: assistantResponse })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Chat API Error:", error)
 
     return NextResponse.json(

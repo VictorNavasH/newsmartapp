@@ -9,7 +9,7 @@ NÜA Smart App es un dashboard de gestión integral para restaurantes. Aunque us
 ## Flujo de Renderizado
 
 ```
-app/layout.tsx                    # Layout raíz: fonts, <Analytics />, dark mode script
+app/layout.tsx                    # Layout raíz: fonts, <Analytics />, <Toaster />, dark mode script
   └── app/page.tsx                # Componente principal "use client"
         ├── useAuth()             # Autenticación (Supabase Google OAuth)
         ├── useAppRouter()        # Navegación SPA con hash routing
@@ -21,8 +21,9 @@ app/layout.tsx                    # Layout raíz: fonts, <Analytics />, dark mod
             ├── <ErrorBoundary>   # Captura errores de render en vistas
             │   └── <Suspense>    # Loading fallback para lazy imports
             │       └── <main>    # Vista activa según currentPath
+            │           ├── <NotificationCenter /> # Campana de notificaciones (flotante)
             │           └── renderContent() → switch(currentPath)
-            │               ├── "/" → <DashboardPage />          (lazy)
+            │               ├── "/" → <DashboardPage />          (lazy, con useAlerts)
             │               ├── "/reservations" → <ReservationsPage /> (lazy)
             │               ├── "/revenue" → <IncomePage />      (lazy)
             │               ├── ... (16 vistas, todas lazy)
@@ -156,6 +157,7 @@ components/
 │
 ├── features/       # Componentes de negocio reutilizables
 │   ├── SmartAssistant.tsx      # Widget flotante de chat IA
+│   ├── NotificationCenter.tsx  # Centro de notificaciones con campana y lista desplegable
 │   ├── LoginScreen.tsx         # Pantalla de login
 │   ├── WeatherCard.tsx         # Previsión meteorológica
 │   ├── WeekReservationsCard.tsx # Ocupación semanal
@@ -171,11 +173,16 @@ components/
 ├── charts/         # Componentes de gráficos
 │   └── ChartTooltip.tsx        # Tooltip genérico para Recharts
 │
+├── providers/      # Context providers
+│   └── QueryProvider.tsx      # TanStack React Query provider global
+│
 └── ui/             # Componentes UI base (Shadcn/Radix)
     ├── badge.tsx, button.tsx, calendar.tsx, card.tsx ...
     ├── MetricGroupCard.tsx     # Tarjetas de métricas con delta
     ├── TremorCard.tsx          # Wrapper de tarjetas Tremor
-    └── MovingBorderButton.tsx  # Botón animado
+    ├── MovingBorderButton.tsx  # Botón animado
+    ├── ExportButton.tsx        # Dropdown de exportación CSV/PDF
+    └── KPIProgressBar.tsx      # Barra de progreso de objetivos KPI
 ```
 
 ---
@@ -202,7 +209,8 @@ types/
 ├── billing.ts             # FacturacionResumenGlobal, CuadreListadoItem, BenchmarkResumen
 ├── food-cost.ts           # FoodCostProduct, FoodCostSummary
 ├── purchases.ts           # CompraPedido, CompraKPIs, CompraFacturaConciliacion
-└── recharts.ts            # RechartsPayloadEntry, RechartsTooltipProps
+├── recharts.ts            # RechartsPayloadEntry, RechartsTooltipProps
+└── kpiTargets.ts          # KPITargets, DEFAULT_KPI_TARGETS, KPIProgress
 ```
 
 El archivo raíz `types.ts` re-exporta todo desde `types/index.ts`, por lo que los imports existentes (`import { X } from '@/types'`) siguen funcionando sin cambios.
@@ -211,15 +219,36 @@ El archivo raíz `types.ts` re-exporta todo desde `types/index.ts`, por lo que l
 
 ## Gestión de Estado
 
-La app usa **estado local** por página, sin store global:
+La app usa **estado local** por página, sin store global, complementado con **TanStack React Query** para server state:
 
 | Patrón | Uso |
 |--------|-----|
-| `useState` | Estado de datos, filtros, tabs activos, fechas seleccionadas |
-| `useEffect` | Data fetching cuando cambian las dependencias (fechas, filtros) |
+| `useState` | Estado de UI: filtros, tabs activos, fechas seleccionadas |
+| `useEffect` | Side effects y data fetching legacy |
 | `useMemo` | Datos derivados, filtrados, cálculos sobre datos raw |
-| `useCallback` | Funciones de fetch memoizadas para evitar re-renders |
-| `useAsyncData<T>` | Hook genérico para fetching con loading/error/refresh automático |
+| `useCallback` | Funciones memoizadas para evitar re-renders |
+| `useAsyncData<T>` | Hook genérico legacy para fetching con loading/error/refresh |
+| `hooks/queries/*` | **React Query hooks** para data fetching con cache, deduplicación y refetch automático |
+
+### Data Fetching con React Query
+
+El proyecto incluye **43 hooks de React Query** organizados en `hooks/queries/` que envuelven las funciones de fetching de los servicios. Estos proporcionan:
+
+- **Cache automático** con staleTime adaptado al tipo de dato (1-30 min)
+- **Deduplicación** de requests idénticos
+- **Refetch on window focus** para datos siempre actualizados
+- **Invalidación automática** del cache al cambiar filtros (queryKey)
+- **`enabled` condicional** para hooks con parámetros opcionales
+
+```typescript
+// Uso con React Query (recomendado para código nuevo)
+const { data, isLoading, error } = useFinancialKPIs()
+const { data: reservations } = useWeekReservations(weekOffset)
+```
+
+**Proveedor:** `QueryProvider` en `components/providers/QueryProvider.tsx`, integrado en `app/layout.tsx`.
+
+**Barrel export:** `import { useFinancialKPIs, useWeekReservations } from "@/hooks/queries"`
 
 ### Patron de sub-componentes por tab/seccion
 
@@ -290,7 +319,43 @@ export default function ExamplePage() {
 | ErrorBoundary | `components/ErrorBoundary.tsx` — React class component que captura errores en el árbol de componentes. Muestra UI de fallback con botón de reset. Loguea errores críticos via `logError()` |
 | UI | Skeleton loading states en todas las vistas, mensajes de error cuando aplica |
 | Red | Sin retry automático (excepto API chat: 1 reintento, timeout 30s) |
-| Logging | `lib/errorLogger.ts` — Sistema estructurado con severidades (`info`, `warning`, `error`, `critical`). Preparado para envío a servicio externo (Supabase, Sentry) |
+| Logging | `lib/errorLogger.ts` — Sistema estructurado con severidades (`info`, `warning`, `error`, `critical`). Integrado con Sentry: errores error/critical → `captureException`, warnings → `captureMessage` |
+| Sentry | `@sentry/nextjs` — Monitoreo de errores en producción: client/server/edge configs, session replay (100% en errores), performance monitoring (10%), source maps. Solo activo en producción |
+| Alertas | `lib/alertEngine.ts` — Motor de alertas basado en reglas con cooldowns. Evalúa métricas y dispara toasts (Sonner) + notificaciones al NotificationCenter via pub/sub |
+
+---
+
+## Sistema de Alertas y Notificaciones
+
+### Arquitectura
+
+```
+lib/alertEngine.ts           # Motor: reglas, cooldowns, evaluación, pub/sub
+  ├── evaluateAlerts()       # Evalúa reglas → dispara toasts + notifica listeners
+  └── onAlertFired()         # Suscripción para componentes (NotificationCenter)
+
+hooks/useAlerts.ts           # Hook: conecta datos de vista al motor
+  └── useAlerts(context)     # Evalúa alertas con throttle de 30s
+
+components/features/
+  └── NotificationCenter.tsx # UI: campana con contador, lista desplegable
+```
+
+### Flujo
+1. `DashboardPage` carga datos (financieros, laborales, ocupación)
+2. `useMemo` construye `AlertContext` con las métricas relevantes
+3. `useAlerts(context)` llama a `evaluateAlerts()` (con throttle 30s)
+4. El motor evalúa 7 reglas predefinidas contra el contexto
+5. Si una regla se cumple y no está en cooldown:
+   - Dispara toast via Sonner (info/warning/critical)
+   - Notifica listeners via `onAlertFired()`
+   - Registra cooldown para esa regla
+6. `NotificationCenter` recibe la alerta via listener y la añade a su lista
+
+### Toasts
+- **Librería:** Sonner (estandarizada). El Toaster provider está en `layout.tsx`
+- **Posición:** top-right con richColors y closeButton
+- **Duración:** info=5s, warning=7s, critical=10s
 
 ---
 
@@ -346,16 +411,38 @@ Configuradas en `layout.tsx` con `next/font/google`:
 
 ## API Endpoints
 
+Ambos endpoints están protegidos con autenticación Supabase y rate limiting:
+
+### Seguridad de API Routes
+
+| Componente | Archivo | Descripción |
+|------------|---------|-------------|
+| Autenticación | `lib/apiAuth.ts` | Verifica Bearer token contra Supabase Auth, valida dominio `@nuasmartrestaurant.com` |
+| Rate Limiting | `lib/rateLimit.ts` | In-memory con ventana deslizante, configurable por endpoint, limpieza automática cada 5 min |
+
 ### POST `/api/chat`
 Endpoint del asistente IA.
 
-**Request:** `{ "message": "string", "sessionId": "string" }`
+**Autenticación:** Bearer token de Supabase (requerido)
+**Rate limit:** 10 requests/minuto por usuario
+
+**Request:** `{ "message": "string", "sessionId": "string" }` + `Authorization: Bearer <token>`
 **Response:** `{ "response": "string" }`
 
 **Flujo:**
-1. Recibe mensaje del usuario
-2. Envía al webhook N8N: `https://n8n.nuasmartrestaurant.com/webhook/nua-assistant-api`
-3. N8N procesa con contexto del restaurante
-4. Retorna respuesta
+1. Verifica autenticación (Bearer token → Supabase → dominio)
+2. Verifica rate limit (10 req/min por email del usuario)
+3. Envía al webhook N8N (URL desde `N8N_WEBHOOK_URL` env var)
+4. N8N procesa con contexto del restaurante
+5. Retorna respuesta
 
 **Timeout:** 30 segundos, 1 reintento.
+
+### GET `/api/docs`
+Endpoint de documentación.
+
+**Autenticación:** Bearer token de Supabase (requerido)
+**Rate limit:** 30 requests/minuto por usuario
+
+**Query params:** `?file=CHANGELOG.md` (whitelist de archivos en `docs/`)
+**Response:** Contenido del archivo markdown

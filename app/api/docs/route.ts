@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import fs from "fs"
 import path from "path"
+import { verifyAuth, unauthorizedResponse } from "@/lib/apiAuth"
+import { checkRateLimit } from "@/lib/rateLimit"
 
 // Whitelist de archivos permitidos (seguridad anti-path traversal)
 const ALLOWED_FILES = [
@@ -13,6 +15,29 @@ const ALLOWED_FILES = [
 ]
 
 export async function GET(request: NextRequest) {
+  // Verificar autenticación
+  const auth = await verifyAuth(request)
+  if (!auth.authenticated) {
+    return unauthorizedResponse(auth.error!)
+  }
+
+  // Verificar rate limit (30 peticiones por minuto para docs)
+  const rateLimit = checkRateLimit(`docs:${auth.email}`, {
+    maxRequests: 30,
+    windowMs: 60_000,
+  })
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Demasiadas peticiones. Intenta de nuevo en unos segundos." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": Math.ceil(rateLimit.resetIn / 1000).toString(),
+        },
+      }
+    )
+  }
+
   const { searchParams } = new URL(request.url)
   const file = searchParams.get("file")
 

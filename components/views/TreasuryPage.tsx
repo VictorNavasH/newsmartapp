@@ -9,7 +9,9 @@ import {
 } from "lucide-react"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { DateRangePickerExpenses } from "@/components/ui/date-range-picker-expenses"
+import { ExportButton } from "@/components/ui/ExportButton"
 import { MenuBar } from "@/components/ui/menu-bar"
+import { exportToCSV, exportToPDF } from "@/lib/exportUtils"
 import { useToast } from "@/hooks/use-toast"
 import {
   fetchTreasuryKPIs,
@@ -394,6 +396,116 @@ export default function TreasuryPage() {
     },
   ]
 
+  // --- Exportación de datos ---
+  const handleTreasuryExportCSV = () => {
+    if (activeTab === "Movimientos" && transactions.length > 0) {
+      // Exportar movimientos
+      exportToCSV({
+        filename: `nua-tesoreria-movimientos-${format(dateRange.from, "yyyy-MM-dd")}_${format(dateRange.to, "yyyy-MM-dd")}`,
+        headers: ["Fecha", "Cuenta", "Banco", "Descripción", "Categoría", "Importe", "Moneda"],
+        rows: transactions.map((tx) => [
+          tx.booking_date,
+          tx.account_name,
+          tx.bank_name,
+          tx.description,
+          tx.category_name || "Sin categoría",
+          tx.amount,
+          tx.currency,
+        ]),
+      })
+    } else {
+      // Exportar resumen con KPIs y cuentas
+      const headers = ["Concepto", "Valor"]
+      const rows: (string | number)[][] = []
+
+      if (kpis) {
+        rows.push(["Saldo Total", kpis.saldo_total])
+        rows.push(["Ingresos Periodo", kpis.ingresos_periodo])
+        rows.push(["Gastos Periodo", kpis.gastos_periodo])
+        rows.push(["Transacciones Sin Categorizar", kpis.transacciones_sin_categorizar])
+      }
+
+      rows.push(["", ""])
+      rows.push(["--- Cuentas ---", ""])
+      accounts.forEach((acc) => {
+        rows.push([`${acc.bank_name} — ${acc.account_name}`, acc.balance])
+      })
+
+      if (categoryBreakdown.length > 0) {
+        rows.push(["", ""])
+        rows.push(["--- Desglose por Categoría ---", ""])
+        categoryBreakdown
+          .filter((c) => c.category_id !== null)
+          .forEach((cat) => {
+            rows.push([cat.category_name || "Sin categoría", cat.total_gastos])
+          })
+      }
+
+      exportToCSV({
+        filename: `nua-tesoreria-resumen-${format(dateRange.from, "yyyy-MM-dd")}_${format(dateRange.to, "yyyy-MM-dd")}`,
+        headers,
+        rows,
+      })
+    }
+  }
+
+  const handleTreasuryExportPDF = async () => {
+    if (activeTab === "Movimientos" && transactions.length > 0) {
+      await exportToPDF({
+        filename: `nua-tesoreria-movimientos-${format(dateRange.from, "yyyy-MM-dd")}_${format(dateRange.to, "yyyy-MM-dd")}`,
+        title: "Tesorería — Movimientos",
+        subtitle: `Periodo: ${format(dateRange.from, "dd/MM/yyyy")} - ${format(dateRange.to, "dd/MM/yyyy")}`,
+        headers: ["Fecha", "Cuenta", "Banco", "Descripción", "Categoría", "Importe"],
+        rows: transactions.map((tx) => [
+          tx.booking_date,
+          tx.account_name,
+          tx.bank_name,
+          tx.description.length > 50 ? tx.description.substring(0, 50) + "..." : tx.description,
+          tx.category_name || "Sin categoría",
+          formatCurrency(tx.amount),
+        ]),
+        orientation: "landscape",
+        summary: kpis
+          ? [
+              { label: "Saldo Total", value: formatCurrency(kpis.saldo_total) },
+              { label: "Ingresos", value: formatCurrency(kpis.ingresos_periodo) },
+              { label: "Gastos", value: formatCurrency(kpis.gastos_periodo) },
+            ]
+          : [],
+      })
+    } else {
+      // Exportar resumen general
+      const headers = ["Concepto", "Valor"]
+      const rows: (string | number)[][] = []
+
+      if (kpis) {
+        rows.push(["Saldo Total", formatCurrency(kpis.saldo_total)])
+        rows.push(["Ingresos Periodo", formatCurrency(kpis.ingresos_periodo)])
+        rows.push(["Gastos Periodo", formatCurrency(kpis.gastos_periodo)])
+        rows.push(["Sin Categorizar", String(kpis.transacciones_sin_categorizar)])
+      }
+
+      accounts.forEach((acc) => {
+        rows.push([`${acc.bank_name} — ${acc.account_name}`, formatCurrency(acc.balance)])
+      })
+
+      await exportToPDF({
+        filename: `nua-tesoreria-resumen-${format(dateRange.from, "yyyy-MM-dd")}_${format(dateRange.to, "yyyy-MM-dd")}`,
+        title: "Tesorería — Resumen General",
+        subtitle: `Periodo: ${format(dateRange.from, "dd/MM/yyyy")} - ${format(dateRange.to, "dd/MM/yyyy")}`,
+        headers,
+        rows,
+        orientation: "portrait",
+        summary: kpis
+          ? [
+              { label: "Saldo Total", value: formatCurrency(kpis.saldo_total) },
+              { label: "Num. Cuentas", value: String(kpis.num_cuentas) },
+            ]
+          : [],
+      })
+    }
+  }
+
   return (
     <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
       <PageHeader
@@ -401,15 +513,18 @@ export default function TreasuryPage() {
         title="Tesorería"
         subtitle="Control de cuentas bancarias y movimientos"
         actions={
-          <DateRangePickerExpenses
-            from={dateRange.from}
-            to={dateRange.to}
-            onChange={(range) => {
-              if (range.from && range.to) {
-                setDateRange({ from: range.from, to: range.to })
-              }
-            }}
-          />
+          <div className="flex items-center gap-3">
+            <ExportButton onExportCSV={handleTreasuryExportCSV} onExportPDF={handleTreasuryExportPDF} />
+            <DateRangePickerExpenses
+              from={dateRange.from}
+              to={dateRange.to}
+              onChange={(range) => {
+                if (range.from && range.to) {
+                  setDateRange({ from: range.from, to: range.to })
+                }
+              }}
+            />
+          </div>
         }
       />
 

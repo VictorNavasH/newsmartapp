@@ -5,6 +5,8 @@ import { WeekReservationsCard } from "@/components/features/WeekReservationsCard
 import { MetricGroupCard } from "@/components/ui/MetricGroupCard"
 import { TremorCard, TremorTitle } from "@/components/ui/TremorCard"
 import { fetchRealTimeData, fetchFinancialKPIs, fetchLaborCostAnalysis, fetchWeekRevenue } from "@/lib/dataService"
+import { useAlerts } from "@/hooks/useAlerts"
+import type { AlertContext } from "@/lib/alertEngine"
 import type { RealTimeData, FinancialKPIs, LaborCostDay, WeekRevenueDay, RechartsTooltipProps } from "@/types"
 import {
   Banknote,
@@ -23,6 +25,11 @@ import {
 } from "lucide-react"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { PageContent } from "@/components/layout/PageContent"
+import { KPIProgressBar } from "@/components/ui/KPIProgressBar"
+import { loadKPITargets, calculateProgress } from "@/lib/kpiTargets"
+import type { KPITargets } from "@/types/kpiTargets"
+import { ExportButton } from "@/components/ui/ExportButton"
+import { exportToCSV, exportToPDF } from "@/lib/exportUtils"
 import { formatCurrency, formatNumber, formatTime, formatDateLong } from "@/lib/utils"
 import { BRAND_COLORS, CHART_CONFIG } from "@/constants"
 import {
@@ -53,6 +60,7 @@ export function DashboardPage() {
   const [laborCostDays, setLaborCostDays] = useState<number>(15)
   const [weekRevenueData, setWeekRevenueData] = useState<WeekRevenueDay[]>([])
   const [weekOffset, setWeekOffset] = useState<number>(0)
+  const [kpiTargets, setKpiTargets] = useState<KPITargets | null>(null)
 
   const loadData = useCallback(
     async (isRefresh = false) => {
@@ -86,6 +94,7 @@ export function DashboardPage() {
 
   useEffect(() => {
     loadData()
+    setKpiTargets(loadKPITargets())
   }, [loadData])
 
   const currentKPIs = useMemo(() => {
@@ -140,6 +149,32 @@ export function DashboardPage() {
     const porcentajeTotal = previsionSemana > 0 ? (totalFacturado / previsionSemana) * 100 : 0
     return { totalFacturado, totalPrevision, previsionSemana, porcentajeTotal }
   }, [weekRevenueData, weekOffset])
+
+  // ─── Sistema de alertas ───────────────────────────────────────
+  const alertContext = useMemo((): AlertContext | null => {
+    if (!liveData && !currentKPIs) return null
+
+    // Calcular porcentaje laboral promedio reciente
+    const recentLaborCost = laborCostData.length > 0
+      ? laborCostData[laborCostData.length - 1]?.porcentaje_laboral
+      : undefined
+
+    return {
+      // Financieros
+      ticketMedio: currentKPIs?.ticket_medio,
+      ticketMedioTarget: currentKPIs?.ticket_medio_ant || undefined,
+      dailyRevenue: liveData?.total?.revenue,
+      dailyRevenueTarget: liveData?.prevision?.prevision_facturacion,
+      monthlyRevenue: currentKPIs?.ingresos,
+      // Costes laborales
+      laborCostPercentage: recentLaborCost,
+      laborCostTarget: 35,
+      // Ocupación (previsión alcanzada como proxy)
+      occupancyRate: liveData?.prevision?.porcentaje_prevision_alcanzado,
+    }
+  }, [liveData, currentKPIs, laborCostData])
+
+  useAlerts(alertContext, !loading)
 
   const LaborCostTooltip = ({ active, payload, label }: RechartsTooltipProps) => {
     if (!active || !payload || payload.length === 0) return null
@@ -250,6 +285,83 @@ export function DashboardPage() {
     )
   }
 
+  // --- Exportación de datos ---
+  const todayStr = new Date().toISOString().split("T")[0]
+
+  const handleDashboardExportCSV = () => {
+    const headers = ["Métrica", "Valor", "Periodo"]
+    const rows: (string | number)[][] = []
+
+    // KPIs financieros
+    if (currentKPIs) {
+      rows.push(["Ingresos", currentKPIs.ingresos, currentKPIs.periodo])
+      rows.push(["Gastos", currentKPIs.gastos, currentKPIs.periodo])
+      rows.push(["Margen", currentKPIs.margen, currentKPIs.periodo])
+      rows.push(["Margen %", currentKPIs.margen_pct, currentKPIs.periodo])
+      rows.push(["Ticket Medio", currentKPIs.ticket_medio, currentKPIs.periodo])
+      rows.push(["Comensales", currentKPIs.comensales, currentKPIs.periodo])
+      rows.push(["Num. Facturas", currentKPIs.num_facturas, currentKPIs.periodo])
+    }
+
+    // Facturación en vivo
+    if (liveData) {
+      rows.push(["Facturación Hoy (Total)", currentShift?.revenue || 0, "hoy"])
+      rows.push(["Facturación Comida", liveData.lunch?.revenue || 0, "hoy"])
+      rows.push(["Facturación Cena", liveData.dinner?.revenue || 0, "hoy"])
+      rows.push(["Ticket Medio Hoy", currentShift?.avg_ticket_transaction || 0, "hoy"])
+    }
+
+    // Costes laborales
+    laborCostData.forEach((d) => {
+      rows.push([`Ventas Netas (${d.fecha})`, d.ventas_netas, d.fecha])
+      rows.push([`Coste Laboral (${d.fecha})`, d.coste_laboral, d.fecha])
+      rows.push([`% Laboral (${d.fecha})`, d.porcentaje_laboral, d.fecha])
+    })
+
+    exportToCSV({ filename: `nua-dashboard-${todayStr}`, headers, rows })
+  }
+
+  const handleDashboardExportPDF = async () => {
+    const headers = ["Métrica", "Valor", "Periodo"]
+    const rows: (string | number)[][] = []
+
+    if (currentKPIs) {
+      rows.push(["Ingresos", formatCurrency(currentKPIs.ingresos), currentKPIs.periodo])
+      rows.push(["Gastos", formatCurrency(currentKPIs.gastos), currentKPIs.periodo])
+      rows.push(["Margen", formatCurrency(currentKPIs.margen), currentKPIs.periodo])
+      rows.push(["Margen %", `${currentKPIs.margen_pct.toFixed(1)}%`, currentKPIs.periodo])
+      rows.push(["Ticket Medio", formatCurrency(currentKPIs.ticket_medio), currentKPIs.periodo])
+      rows.push(["Comensales", formatNumber(currentKPIs.comensales), currentKPIs.periodo])
+      rows.push(["Num. Facturas", formatNumber(currentKPIs.num_facturas), currentKPIs.periodo])
+    }
+
+    if (liveData) {
+      rows.push(["Facturación Hoy (Total)", formatCurrency(currentShift?.revenue || 0), "hoy"])
+      rows.push(["Facturación Comida", formatCurrency(liveData.lunch?.revenue || 0), "hoy"])
+      rows.push(["Facturación Cena", formatCurrency(liveData.dinner?.revenue || 0), "hoy"])
+      rows.push(["Ticket Medio Hoy", formatCurrency(currentShift?.avg_ticket_transaction || 0), "hoy"])
+    }
+
+    const summary = currentKPIs
+      ? [
+          { label: "Ingresos", value: formatCurrency(currentKPIs.ingresos) },
+          { label: "Gastos", value: formatCurrency(currentKPIs.gastos) },
+          { label: "Margen", value: `${formatCurrency(currentKPIs.margen)} (${currentKPIs.margen_pct.toFixed(1)}%)` },
+          { label: "Ticket Medio", value: formatCurrency(currentKPIs.ticket_medio) },
+        ]
+      : []
+
+    await exportToPDF({
+      filename: `nua-dashboard-${todayStr}`,
+      title: "Dashboard — NÜA Smart Restaurant",
+      subtitle: `Resumen financiero del periodo: ${currentKPIs?.periodo || "mes"}`,
+      headers,
+      rows,
+      orientation: "landscape",
+      summary,
+    })
+  }
+
   return (
     <div className="relative min-h-screen bg-slate-50 pb-20">
       <PageHeader
@@ -258,6 +370,8 @@ export function DashboardPage() {
         subtitle="Panel de control general de NÜA"
         actions={
           <>
+            <ExportButton onExportCSV={handleDashboardExportCSV} onExportPDF={handleDashboardExportPDF} />
+
             <button
               onClick={() => loadData(true)}
               disabled={refreshing}
@@ -792,7 +906,74 @@ export function DashboardPage() {
           </TremorCard>
         </div>
 
-        {/* FILA 5: Top Productos */}
+        {/* FILA 5: Progreso KPI vs Objetivos */}
+        {kpiTargets && (
+          <TremorCard>
+            <div className="flex items-center justify-between mb-4">
+              <TremorTitle className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-[#17c3b2]" />
+                Progreso vs Objetivos
+              </TremorTitle>
+              <span className="text-xs text-slate-400">
+                Configurar en Ajustes &rarr; Objetivos KPI
+              </span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <KPIProgressBar
+                label="Facturación Hoy"
+                progress={calculateProgress(currentShift?.revenue || 0, kpiTargets.dailyRevenueTarget)}
+                suffix="€"
+                variant="full"
+              />
+              <KPIProgressBar
+                label="Ticket Medio"
+                progress={calculateProgress(currentShift?.avg_ticket_transaction || 0, kpiTargets.ticketMedioTarget)}
+                suffix="€"
+                variant="full"
+              />
+              <KPIProgressBar
+                label="Ingresos Mensuales"
+                progress={calculateProgress(currentKPIs?.ingresos || 0, kpiTargets.monthlyRevenueTarget)}
+                suffix="€"
+                variant="full"
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <div className="space-y-3">
+                <KPIProgressBar
+                  label="Food Cost"
+                  progress={calculateProgress(0, kpiTargets.foodCostTarget, true)}
+                  suffix="%"
+                  isLowerBetter
+                />
+                <KPIProgressBar
+                  label="Coste Laboral"
+                  progress={calculateProgress(
+                    laborCostData.length > 0 ? laborCostData[laborCostData.length - 1]?.porcentaje_laboral || 0 : 0,
+                    kpiTargets.laborCostTarget,
+                    true
+                  )}
+                  suffix="%"
+                  isLowerBetter
+                />
+              </div>
+              <div className="space-y-3">
+                <KPIProgressBar
+                  label="Ocupación Comida"
+                  progress={calculateProgress(liveData?.lunch_percentage || 0, kpiTargets.lunchOccupancyTarget)}
+                  suffix="%"
+                />
+                <KPIProgressBar
+                  label="Ocupación Cena"
+                  progress={calculateProgress(liveData?.dinner_percentage || 0, kpiTargets.dinnerOccupancyTarget)}
+                  suffix="%"
+                />
+              </div>
+            </div>
+          </TremorCard>
+        )}
+
+        {/* FILA 6: Top Productos */}
         <TremorCard>
           <div className="flex items-center justify-between mb-4">
             <TremorTitle>Top Productos Hoy</TremorTitle>

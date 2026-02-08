@@ -12,6 +12,110 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 
 ---
 
+## [2.2.0] - 2026-02-08
+
+### Seguridad
+- **Monitoreo de errores con Sentry (`@sentry/nextjs`):**
+  - **`sentry.client.config.ts`** — Configuración cliente: tracesSampleRate 10%, replays 100% en errores / 10% general, filtrado de errores de extensiones de navegador, sanitización de URLs de Supabase en breadcrumbs
+  - **`sentry.server.config.ts`** — Configuración servidor: tracesSampleRate 10%, filtrado de errores de red
+  - **`sentry.edge.config.ts`** — Configuración edge runtime: tracesSampleRate 10%
+  - **`instrumentation.ts`** / **`instrumentation-client.ts`** — Hooks de instrumentación de Next.js para carga de configs Sentry
+  - **`next.config.mjs`** — Envuelto con `withSentryConfig` para source maps y configuración automática
+  - **`lib/errorLogger.ts`** — Integración con Sentry: errores error/critical van a `Sentry.captureException`, warnings a `Sentry.captureMessage`
+  - **`components/ErrorBoundary.tsx`** — Reporta errores de boundary a Sentry con tags y componentStack
+- **Variables de entorno nuevas:** `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN`
+
+---
+
+## [2.1.0] - 2026-02-08
+
+### Seguridad
+- **Autenticación en rutas API:**
+  - **`lib/apiAuth.ts`** — Middleware de autenticación: verifica Bearer token contra Supabase, valida dominio `@nuasmartrestaurant.com`. Exporta `verifyAuth()` y `unauthorizedResponse()`
+  - **`lib/rateLimit.ts`** — Rate limiting in-memory con ventana deslizante: configurable por endpoint (chat: 10/min, docs: 30/min). Limpieza automática cada 5 minutos. Exporta `checkRateLimit()`
+  - **`app/api/chat/route.ts`** — Reescrito: verificación de autenticación + rate limiting (10 req/min) + URL de n8n desde variable de entorno
+  - **`app/api/docs/route.ts`** — Reescrito: verificación de autenticación + rate limiting (30 req/min)
+  - **`lib/env.ts`** — Nuevas exports: `N8N_WEBHOOK_URL` (opcional, antes hardcoded), `SENTRY_DSN` (opcional)
+  - **Frontend (3 componentes):** `SmartAssistant.tsx`, `SmartAssistantPage.tsx`, `DocumentationTab.tsx` — Envían Bearer token de sesión Supabase en headers de fetch
+
+---
+
+## [2.0.0] - 2026-02-08
+
+### Añadido
+- **Sistema de Objetivos KPI:** Configuración y seguimiento de objetivos para métricas del restaurante
+  - **`types/kpiTargets.ts`** — Tipos `KPITargets` (9 objetivos configurables), `KPIProgress` (resultado de comparación real vs objetivo), y constantes `DEFAULT_KPI_TARGETS` con valores por defecto para un restaurante tipo
+  - **`lib/kpiTargets.ts`** — Servicio para gestión de objetivos: `loadKPITargets()` (carga desde localStorage con merge de defaults), `saveKPITargets()` (persiste en localStorage), `calculateProgress()` (calcula progreso con soporte para métricas inversas como food cost)
+  - **`components/ui/KPIProgressBar.tsx`** — Componente de barra de progreso con dos variantes (`compact` y `full`), colores por estado (on-track/at-risk/behind), formato español, y soporte para métricas inversas
+  - **SettingsPage** — Nueva pestaña "Objetivos KPI" con formulario para configurar los 9 objetivos agrupados por categoría (Ingresos, Costes, Ocupación, Operaciones), botón Guardar y Restaurar
+  - **DashboardPage** — Nueva sección "Progreso vs Objetivos" con 7 barras de progreso KPI (facturación diaria, ticket medio, ingresos mensuales, food cost, coste laboral, ocupación comida/cena)
+- **Ampliación de tests (63 tests en 10 archivos):**
+  - **`lib/__tests__/kpiTargets.test.ts`** — 11 tests: calculateProgress normal, isLowerBetter, behind, zero target, on-track, at-risk, loadKPITargets defaults, invalid JSON, merge, round trip
+  - **`lib/__tests__/alertEngine.test.ts`** — 6 tests: low occupancy warning, high food cost critical, cooldown, resetCooldowns, no alerts when good, multiple alerts
+  - **`lib/__tests__/exportUtils.test.ts`** — 6 tests: CSV content, semicolon escaping, BOM UTF-8, Spanish decimal format, null/undefined, semicolon separator
+  - **`lib/__tests__/rateLimit.test.ts`** — 5 tests: allows within limit, blocks over limit, resets after window, independent identifiers, resetIn value
+  - **`lib/__tests__/apiAuth.test.ts`** — 5 tests: no Authorization header, no Bearer prefix, invalid token, domain restriction, valid auth
+  - **`hooks/__tests__/useAlerts.test.ts`** — 4 tests: evaluates when enabled, skips when disabled, skips null context, throttle 30s
+
+---
+
+## [1.9.0] - 2026-02-08
+
+### Añadido
+- **Exportación PDF y CSV** en las vistas principales:
+  - **`lib/exportUtils.ts`** — Utilidades de exportación: `exportToCSV` (formato español con separador `;` y BOM UTF-8) y `exportToPDF` (tablas con branding NÜA, colores corporativos, header/footer con paginación)
+  - **`components/ui/ExportButton.tsx`** — Componente dropdown reutilizable con opciones CSV y PDF, estados de carga, y diseño consistente con el sistema de diseño existente
+  - **DashboardPage** — Exporta KPIs financieros, facturación en vivo y costes laborales
+  - **TreasuryPage** — Exporta movimientos bancarios (tab Movimientos) o resumen general con cuentas y categorías
+  - **ExpensesPage** — Exporta detalle de facturas por categoría o resumen por proveedor según la tab activa
+  - **ReservationsPage** — Exporta métricas de reservas/ocupación y comparativa anual
+- **Dependencias nuevas:** `jspdf`, `jspdf-autotable`, `file-saver`, `@types/file-saver`
+
+---
+
+## [1.8.0] - 2026-02-08
+
+### Añadido
+- **TanStack React Query (`@tanstack/react-query` v5):** Sistema de caching y gestión de estado del servidor
+  - **`components/providers/QueryProvider.tsx`** — Proveedor global de QueryClient con configuración adaptada al restaurante: staleTime 5 min, gcTime 30 min, refetch on window focus, retry inteligente (sin retry en errores 401)
+  - **`app/layout.tsx`** — QueryProvider integrado envolviendo los children del layout
+  - **`hooks/queries/`** — 8 módulos de hooks con 37 hooks reutilizables:
+    - `useDashboardData.ts` — 6 hooks: useRealTimeData, useWeekReservations, useFinancialKPIs, useLaborCostAnalysis, useWeekRevenue, useOcupacionSemanal
+    - `useReservationsData.ts` — 3 hooks: useReservationsFromDB, useYearlyComparison, usePeriodComparison
+    - `useIncomeData.ts` — 2 hooks: useIncomeFromDB, useTableBillingFromDB
+    - `useExpensesData.ts` — 5 hooks: useExpenseTags, useExpensesByTags, useExpensesByDueDate, useExpenseSummaryByTags, useExpenseSummaryByProvider
+    - `useTreasuryData.ts` — 13 hooks: useTreasuryKPIs, useTreasuryAccounts, useTreasuryTransactions, useTreasuryTransactionsSummary, useTreasuryCategories, useTreasuryByCategory, useTreasuryMonthlySummary, usePoolBancarioResumen, usePoolBancarioPrestamos, usePoolBancarioVencimientos, usePoolBancarioPorBanco, usePoolBancarioCalendario
+    - `useOperationsData.ts` — 7 hooks: useOperationsRealTime, useOperativaKPIs, useOperativaProductos, useOperativaCliente, useOperativaPorHora, useOperativaItems, useOperativaCategorias
+    - `useProductsData.ts` — 4 hooks: useProductMix, useCategoryMix, useOptionMix, useFoodCostProducts
+    - `useForecastingData.ts` — 3 hooks: useForecastData, useForecastCalendar, useBenchmarks
+    - `index.ts` — Barrel export de todos los hooks
+- **staleTime por tipo de dato:** Datos en tiempo real (2 min), reservas (10 min), financieros/gastos (15 min), históricos/benchmarks (30 min)
+- **enabled condicional:** Hooks con parámetros obligatorios solo ejecutan la query cuando los parámetros son válidos
+
+### Notas técnicas
+- Los hooks son wrappers sobre las funciones existentes en `lib/dataService.ts`, `lib/treasuryService.ts` y `lib/operativaService.ts`
+- Las vistas pueden adoptar progresivamente estos hooks reemplazando los patrones manuales de `useState` + `useEffect` + `useCallback`
+- Los queryKeys incluyen todos los parámetros relevantes para invalidación automática del cache al cambiar filtros
+
+---
+
+## [1.7.0] - 2026-02-08
+
+### Añadido
+- **Sistema unificado de alertas y notificaciones:**
+  - **`lib/alertEngine.ts`** — Motor de alertas con reglas predefinidas, cooldowns por alerta, disparo de toasts via Sonner, y sistema de listeners para el NotificationCenter. 7 reglas incluidas: baja ocupación, food cost elevado, coste laboral elevado, facturas vencidas, ticket medio bajo, ingresos diarios bajo objetivo, cancelaciones elevadas
+  - **`hooks/useAlerts.ts`** — Hook que evalúa alertas cuando cambian los datos del dashboard (throttle de 30s)
+  - **`components/features/NotificationCenter.tsx`** — Centro de notificaciones con icono de campana, contador de no leídas, lista desplegable con severidad visual (info/warning/critical), marcar leídas y limpiar. Máximo 50 notificaciones
+  - **Sonner Toaster en `layout.tsx`** — Proveedor global de toasts (`position="top-right"`, `richColors`, `closeButton`)
+- **Integración de alertas en DashboardPage:** El dashboard evalúa automáticamente las reglas de alertas cuando se cargan datos financieros, laborales y de ocupación
+- **NotificationCenter flotante en `app/page.tsx`:** Icono de campana visible en la esquina superior derecha del área principal
+
+### Notas técnicas
+- Sonner es ahora el sistema de toasts estándar. El hook `use-toast.ts` (Radix) se mantiene por compatibilidad pero el código nuevo debe usar `sonner`
+- El AlertEngine usa un patrón pub/sub para comunicar alertas al NotificationCenter sin acoplamiento directo
+
+---
+
 ## [1.6.0] - 2026-02-08
 
 ### Añadido

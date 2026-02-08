@@ -1,6 +1,6 @@
 # Servicios de Datos — NÜA Smart App
 
-Documentación de los 12 servicios/módulos en `lib/`. Cada servicio encapsula las queries a Supabase y la lógica de acceso a datos.
+Documentación de los 17 servicios/módulos en `lib/`. Cada servicio encapsula las queries a Supabase y la lógica de acceso a datos.
 
 ---
 
@@ -18,6 +18,11 @@ Documentación de los 12 servicios/módulos en `lib/`. Cada servicio encapsula l
 10. [env.ts — Variables de Entorno](#10-envts)
 11. [errorLogger.ts — Logging de Errores](#11-errorloggerts)
 12. [supabase.ts — Cliente Supabase](#12-supabasets)
+13. [alertEngine.ts — Motor de Alertas](#13-alertenginets)
+14. [exportUtils.ts — Exportación PDF/CSV](#14-exportutilsts)
+15. [kpiTargets.ts — Objetivos KPI](#15-kpitargetsts)
+16. [rateLimit.ts — Rate Limiting](#16-ratelimitts)
+17. [apiAuth.ts — Autenticación API](#17-apiauthts)
 
 ---
 
@@ -399,33 +404,32 @@ Los códigos AEMET se convierten internamente a formato WMO para usar un conjunt
 
 ## 10. env.ts
 
-**Archivo:** `lib/env.ts` (~17 líneas)
-**Consumido por:** `supabase.ts`, `gemini.ts`
+**Archivo:** `lib/env.ts` (~25 líneas)
+**Consumido por:** `supabase.ts`, `gemini.ts`, `apiAuth.ts`, `sentry.*.config.ts`
 
-Módulo centralizado de variables de entorno con validación en tiempo de ejecución.
-
-### Función interna
-
-| Función | Parámetros | Retorna | Descripción |
-|---------|-----------|---------|-------------|
-| `getRequiredEnv(name)` | `name: string` | `string` | Lee `process.env[name]`. Lanza `Error` descriptivo si no está definida |
+Módulo centralizado de variables de entorno con validación en tiempo de ejecución. Las variables `NEXT_PUBLIC_*` se acceden directamente (estáticas en Next.js), las demás usan acceso dinámico.
 
 ### Exports
 
-| Export | Tipo | Variable de entorno | Requerida |
-|--------|------|-------------------|-----------|
-| `SUPABASE_URL` | `string` | `NEXT_PUBLIC_SUPABASE_URL` | Sí |
-| `SUPABASE_ANON_KEY` | `string` | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Sí |
-| `AI_API_KEY` | `string \| null` | `IA_ASSISTANT_SMART_APP` | No |
+| Export | Tipo | Variable de entorno | Requerida | Descripción |
+|--------|------|-------------------|-----------|-------------|
+| `SUPABASE_URL` | `string` | `NEXT_PUBLIC_SUPABASE_URL` | Sí | URL del backend Supabase |
+| `SUPABASE_ANON_KEY` | `string` | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Sí | Clave anónima de Supabase |
+| `AI_API_KEY` | `string \| null` | `IA_ASSISTANT_SMART_APP` | No | API key de Google Gemini para insights |
+| `N8N_WEBHOOK_URL` | `string \| null` | `N8N_WEBHOOK_URL` | No | URL del webhook n8n para Smart Assistant |
+| `SENTRY_DSN` | `string \| null` | `NEXT_PUBLIC_SENTRY_DSN` | No | DSN de Sentry para monitoreo de errores |
+
+> **Nota técnica:** Las variables `NEXT_PUBLIC_*` se acceden con `process.env.NEXT_PUBLIC_X` (acceso estático) porque Next.js las reemplaza en tiempo de build. Las demás usan `process.env[name]` (acceso dinámico) y se resuelven en runtime.
 
 ---
 
 ## 11. errorLogger.ts
 
-**Archivo:** `lib/errorLogger.ts` (~38 líneas)
-**Consumido por:** `ErrorBoundary` (componente)
+**Archivo:** `lib/errorLogger.ts` (~55 líneas)
+**Consumido por:** `ErrorBoundary` (componente), servicios de datos
+**Dependencia:** `@sentry/nextjs`
 
-Sistema de logging estructurado con severidades.
+Sistema de logging estructurado con severidades, integrado con Sentry para monitoreo en producción.
 
 ### Tipos
 
@@ -436,8 +440,14 @@ Sistema de logging estructurado con severidades.
 
 | Función | Parámetros | Retorna | Descripción |
 |---------|-----------|---------|-------------|
-| `logError(source, error, context?, severity?)` | `source: string, error: unknown, context?: Record<string, unknown>, severity?: ErrorSeverity` | `void` | Loguea error con `console.error` (error/critical) o `console.warn` (warning). Preparado para envío a servicio externo |
+| `logError(source, error, context?, severity?)` | `source: string, error: unknown, context?: Record<string, unknown>, severity?: ErrorSeverity` | `void` | Loguea con `console.error` (error/critical) o `console.warn` (warning). Envía a Sentry: errores error/critical van a `Sentry.captureException()`, warnings a `Sentry.captureMessage()` con tags de source y severity |
 | `logWarning(source, message, context?)` | `source: string, message: string, context?: Record<string, unknown>` | `void` | Shortcut para `logError` con severity `'warning'` |
+
+### Integración con Sentry
+
+- **error / critical:** → `Sentry.captureException()` con tags `{source, severity}` y extra context
+- **warning:** → `Sentry.captureMessage()` con level `'warning'`, tags `{source}`, y extra context
+- **info:** Solo console.log, no se envía a Sentry
 
 ---
 
@@ -454,3 +464,217 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 ```
 
 Cliente singleton compartido por todos los servicios. Usa `env.ts` para validación de variables de entorno.
+
+---
+
+## 13. alertEngine.ts
+
+**Archivo:** `lib/alertEngine.ts` (~160 líneas)
+**Consumido por:** DashboardPage (via hook `useAlerts`), NotificationCenter (via listener `onAlertFired`)
+
+Motor de alertas basado en reglas que evalúa métricas del negocio y dispara notificaciones toast (Sonner) cuando se cumplen condiciones predefinidas. Incluye sistema de cooldown para evitar spam y patrón pub/sub para comunicar alertas al NotificationCenter.
+
+### Tipos
+
+| Tipo | Descripción |
+|------|-------------|
+| `AlertSeverity` | `"info" \| "warning" \| "critical"` |
+| `AlertCategory` | `"financial" \| "operations" \| "inventory" \| "reservations" \| "system"` |
+| `AlertRule` | Regla con id, nombre, categoría, severidad, condición, mensaje y cooldown |
+| `AlertContext` | Datos de métricas para evaluación (financieros, reservas, operaciones, inventario, revenue) |
+
+### Reglas predefinidas (7)
+
+| ID | Categoría | Severidad | Condición | Cooldown |
+|----|-----------|-----------|-----------|----------|
+| `low-occupancy` | reservations | warning | Ocupación < 40% | 60 min |
+| `high-food-cost` | financial | critical | Food cost > objetivo (32%) | 120 min |
+| `high-labor-cost` | financial | warning | Coste laboral > objetivo (35%) | 120 min |
+| `overdue-invoices` | financial | critical | Facturas vencidas > 0 | 240 min |
+| `low-ticket` | financial | info | Ticket medio < 85% del objetivo | 60 min |
+| `daily-revenue-below-target` | financial | warning | Ingresos diarios < 80% del objetivo | 120 min |
+| `high-cancellations` | reservations | warning | Cancelaciones > 5 | 180 min |
+
+### Funciones
+
+| Función | Parámetros | Retorna | Descripción |
+|---------|-----------|---------|-------------|
+| `evaluateAlerts(context, rules?)` | `AlertContext, AlertRule[]` | `void` | Evalúa todas las reglas contra el contexto. Dispara toasts (Sonner) y notifica listeners. Respeta cooldowns |
+| `onAlertFired(listener)` | `(message, severity) => void` | `() => void` | Suscribe un listener a alertas disparadas. Retorna función de unsuscribe |
+| `resetAlertCooldowns()` | — | `void` | Limpia todos los cooldowns (para testing) |
+
+### Hook asociado: `hooks/useAlerts.ts`
+
+| Hook | Parámetros | Descripción |
+|------|-----------|-------------|
+| `useAlerts(context, enabled?)` | `AlertContext \| null, boolean` | Evalúa alertas cuando cambian los datos. Throttle de 30 segundos entre evaluaciones |
+
+---
+
+## 14. Query Hooks (`hooks/queries/`)
+
+**Directorio:** `hooks/queries/` (8 módulos + barrel index)
+**Dependencia:** `@tanstack/react-query` v5
+**Proveedor:** `components/providers/QueryProvider.tsx` (integrado en `app/layout.tsx`)
+
+Hooks reutilizables que envuelven las funciones de fetching existentes con TanStack React Query. Proporcionan caching automático, deduplicación de requests, invalidación por queryKey, y refetch on window focus.
+
+### Configuración global del QueryClient
+
+| Opción | Valor | Descripción |
+|--------|-------|-------------|
+| `staleTime` | 5 min | Tiempo antes de considerar datos obsoletos |
+| `gcTime` | 30 min | Tiempo que se mantiene el cache en memoria |
+| `refetchOnWindowFocus` | `true` | Refresca al volver a la pestaña |
+| `retry` | 2 reintentos (0 en 401) | No reintenta errores de autenticación |
+
+### staleTime por tipo de dato
+
+| Categoría de datos | staleTime | Ejemplos |
+|-------------------|-----------|----------|
+| Tiempo real | 1-2 min | Ventas live, operaciones |
+| Reservas | 10 min | Ocupación semanal |
+| Financieros / Gastos | 15 min | KPIs, gastos, tesorería |
+| Históricos | 30 min | Benchmarks, comparativas anuales, food cost |
+
+### Módulos de hooks
+
+| Módulo | Hooks | Fuente de datos |
+|--------|-------|----------------|
+| `useDashboardData.ts` | 6 | `lib/dataService.ts` |
+| `useReservationsData.ts` | 3 | `lib/dataService.ts` |
+| `useIncomeData.ts` | 2 | `lib/dataService.ts` |
+| `useExpensesData.ts` | 5 | `lib/dataService.ts` |
+| `useTreasuryData.ts` | 13 | `lib/treasuryService.ts` |
+| `useOperationsData.ts` | 7 | `lib/dataService.ts` + `lib/operativaService.ts` |
+| `useProductsData.ts` | 4 | `lib/dataService.ts` |
+| `useForecastingData.ts` | 3 | `lib/dataService.ts` |
+| **Total** | **43** | |
+
+### Hooks del Dashboard
+
+| Hook | Parámetros | queryKey | staleTime | refetchInterval |
+|------|-----------|----------|-----------|-----------------|
+| `useRealTimeData()` | — | `["realTimeData"]` | 1 min | 2 min |
+| `useWeekReservations(offset?)` | `offsetWeeks: number` | `["weekReservations", offset]` | 10 min | — |
+| `useFinancialKPIs()` | — | `["financialKPIs"]` | 15 min | — |
+| `useLaborCostAnalysis(start, end)` | `startDate, endDate: string` | `["laborCost", start, end]` | 15 min | — |
+| `useWeekRevenue(offset?)` | `weekOffset: number` | `["weekRevenue", offset]` | 5 min | — |
+| `useOcupacionSemanal()` | — | `["ocupacionSemanal"]` | 10 min | — |
+
+### Hooks de Reservas
+
+| Hook | Parámetros | queryKey |
+|------|-----------|----------|
+| `useReservationsFromDB(start, end)` | `Date \| null, Date \| null` | `["reservationsDB", start, end]` |
+| `useYearlyComparison()` | — | `["yearlyComparison"]` |
+| `usePeriodComparison(...)` | `startDay, startMonth, endDay, endMonth, yearA, yearB, enabled` | `["periodComparison", ...]` |
+
+### Hooks de Ingresos
+
+| Hook | Parámetros | queryKey |
+|------|-----------|----------|
+| `useIncomeFromDB(start, end)` | `Date \| null, Date \| null` | `["incomeDB", start, end]` |
+| `useTableBillingFromDB(start, end)` | `Date \| null, Date \| null` | `["tableBillingDB", start, end]` |
+
+### Hooks de Gastos
+
+| Hook | Parámetros | queryKey |
+|------|-----------|----------|
+| `useExpenseTags()` | — | `["expenseTags"]` |
+| `useExpensesByTags(tags?, start?, end?, status?)` | opcionales | `["expensesByTags", ...]` |
+| `useExpensesByDueDate(start, end, status?)` | fechas + estado | `["expensesByDueDate", ...]` |
+| `useExpenseSummaryByTags(tags?, start?, end?)` | opcionales | `["expenseSummaryByTags", ...]` |
+| `useExpenseSummaryByProvider(start?, end?)` | opcionales | `["expenseSummaryByProvider", ...]` |
+
+### Hooks de Tesorería
+
+| Hook | Parámetros | queryKey |
+|------|-----------|----------|
+| `useTreasuryKPIs(start?, end?)` | fechas opcionales | `["treasuryKPIs", ...]` |
+| `useTreasuryAccounts()` | — | `["treasuryAccounts"]` |
+| `useTreasuryTransactions(...)` | 8 parámetros con paginación | `["treasuryTransactions", ...]` |
+| `useTreasuryTransactionsSummary(...)` | 6 parámetros de filtro | `["treasuryTransactionsSummary", ...]` |
+| `useTreasuryCategories()` | — | `["treasuryCategories"]` |
+| `useTreasuryByCategory(start?, end?)` | fechas opcionales | `["treasuryByCategory", ...]` |
+| `useTreasuryMonthlySummary(start?, end?)` | fechas opcionales | `["treasuryMonthlySummary", ...]` |
+| `usePoolBancarioResumen()` | — | `["poolBancarioResumen"]` |
+| `usePoolBancarioPrestamos()` | — | `["poolBancarioPrestamos"]` |
+| `usePoolBancarioVencimientos(limit?)` | `limit: number` | `["poolBancarioVencimientos", limit]` |
+| `usePoolBancarioPorBanco()` | — | `["poolBancarioPorBanco"]` |
+| `usePoolBancarioCalendario(meses?)` | `meses: number` | `["poolBancarioCalendario", meses]` |
+
+### Hooks de Operaciones
+
+| Hook | Parámetros | queryKey |
+|------|-----------|----------|
+| `useOperationsRealTime()` | — | `["operationsRealTime"]` |
+| `useOperativaKPIs(start, end, tipo?, cat?)` | `Date` + filtros | `["operativaKPIs", ...]` |
+| `useOperativaProductos(start, end, tipo?, cat?)` | `Date` + filtros | `["operativaProductos", ...]` |
+| `useOperativaCliente(start, end)` | `Date \| null` | `["operativaCliente", ...]` |
+| `useOperativaPorHora(start, end)` | `Date \| null` | `["operativaPorHora", ...]` |
+| `useOperativaItems(start, end, tipo?, cat?)` | `Date` + filtros | `["operativaItems", ...]` |
+| `useOperativaCategorias(start, end)` | `Date \| null` | `["operativaCategorias", ...]` |
+
+### Hooks de Productos
+
+| Hook | Parámetros | queryKey |
+|------|-----------|----------|
+| `useProductMix(start, end, turno?, cat?)` | fechas string + filtros | `["productMix", ...]` |
+| `useCategoryMix(start, end, turno?)` | fechas string + turno | `["categoryMix", ...]` |
+| `useOptionMix(start, end, turno?, extraPago?)` | fechas string + filtros | `["optionMix", ...]` |
+| `useFoodCostProducts()` | — | `["foodCostProducts"]` |
+
+### Hooks de Forecasting
+
+| Hook | Parámetros | queryKey |
+|------|-----------|----------|
+| `useForecastData()` | — | `["forecastData"]` |
+| `useForecastCalendar(year, month)` | `year, month: number` | `["forecastCalendar", year, month]` |
+| `useBenchmarks(inicio, fin)` | `fechaInicio, fechaFin: string` | `["benchmarks", inicio, fin]` |
+
+### Uso típico
+
+```typescript
+// Antes (patrón manual)
+const [data, setData] = useState<Type[]>([])
+const [loading, setLoading] = useState(true)
+const loadData = useCallback(async () => {
+  setLoading(true)
+  const result = await fetchData(params)
+  setData(result)
+  setLoading(false)
+}, [params])
+useEffect(() => { loadData() }, [loadData])
+
+// Después (con React Query hook)
+const { data, isLoading, error } = useFinancialKPIs()
+```
+
+---
+
+## 14. exportUtils.ts
+
+**Archivo:** `lib/exportUtils.ts` (~140 líneas)
+**Consumido por:** DashboardPage, TreasuryPage, ExpensesPage, ReservationsPage (vía `ExportButton`)
+**Dependencias externas:** `jspdf`, `jspdf-autotable`, `file-saver`
+
+Utilidades de exportación de datos a CSV y PDF con formato español y branding NÜA.
+
+### Funciones
+
+| Función | Parámetros | Retorna | Descripción |
+|---------|-----------|---------|-------------|
+| `exportToCSV(options)` | `CSVExportOptions` | `void` | Genera archivo CSV con separador `;` (compatibilidad Excel español), BOM UTF-8, y separador decimal coma |
+| `exportToPDF(options)` | `PDFExportOptions` | `Promise<void>` | Genera PDF con tabla autoTable, colores NÜA (#02b1c4), header/footer con paginación, y resumen de KPIs opcional. Import dinámico de jsPDF |
+
+### Interfaces
+
+| Tipo | Campos principales |
+|------|-------------------|
+| `CSVExportOptions` | `filename`, `headers`, `rows`, `decimalSeparator?` |
+| `PDFExportOptions` | `filename`, `title`, `subtitle?`, `headers`, `rows`, `orientation?`, `summary?` |
+
+### Componente asociado: `components/ui/ExportButton.tsx`
+
+Botón dropdown reutilizable con opciones "Exportar CSV" y "Exportar PDF". Recibe callbacks `onExportCSV` y `onExportPDF`. Soporta tamaños `sm` y `md`.
