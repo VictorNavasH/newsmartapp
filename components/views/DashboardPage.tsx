@@ -137,6 +137,27 @@ export function DashboardPage() {
     })
   }, [laborCostData])
 
+  // Media ponderada del coste laboral del mes (total costes / total ventas)
+  const laborCostMonthlyAvg = useMemo(() => {
+    const now = new Date()
+    const currentMonth = now.getMonth()
+    const currentYear = now.getFullYear()
+
+    let totalCost = 0
+    let totalRevenue = 0
+
+    for (const d of laborCostData) {
+      const date = new Date(d.fecha)
+      if (date.getMonth() !== currentMonth || date.getFullYear() !== currentYear) continue
+      if (!d.porcentaje_laboral || d.porcentaje_laboral <= 0) continue
+      totalCost += d.coste_laboral || 0
+      totalRevenue += d.ventas_netas || 0
+    }
+
+    if (totalRevenue <= 0) return 0
+    return Math.round((totalCost / totalRevenue) * 1000) / 10
+  }, [laborCostData])
+
   const weekRevenueChartData = useMemo(() => {
     return weekRevenueData.map((d) => ({
       ...d,
@@ -169,11 +190,6 @@ export function DashboardPage() {
   const alertContext = useMemo((): AlertContext | null => {
     if (!liveData && !currentKPIs) return null
 
-    // Calcular porcentaje laboral promedio reciente
-    const recentLaborCost = laborCostData.length > 0
-      ? laborCostData[laborCostData.length - 1]?.porcentaje_laboral
-      : undefined
-
     return {
       // Financieros
       ticketMedio: currentKPIs?.ticket_medio,
@@ -181,13 +197,13 @@ export function DashboardPage() {
       dailyRevenue: liveData?.total?.revenue,
       dailyRevenueTarget: liveData?.prevision?.prevision_facturacion,
       monthlyRevenue: currentKPIs?.ingresos,
-      // Costes laborales
-      laborCostPercentage: recentLaborCost,
+      // Costes laborales (media ponderada del mes)
+      laborCostPercentage: laborCostMonthlyAvg > 0 ? laborCostMonthlyAvg : undefined,
       laborCostTarget: 35,
       // Ocupación (previsión alcanzada como proxy)
       occupancyRate: liveData?.prevision?.porcentaje_prevision_alcanzado,
     }
-  }, [liveData, currentKPIs, laborCostData])
+  }, [liveData, currentKPIs, laborCostMonthlyAvg])
 
   useAlerts(alertContext, !loading)
 
@@ -979,11 +995,7 @@ export function DashboardPage() {
                 />
                 <KPIProgressBar
                   label="Coste Laboral"
-                  progress={calculateProgress(
-                    laborCostData.length > 0 ? laborCostData[laborCostData.length - 1]?.porcentaje_laboral || 0 : 0,
-                    kpiTargets.laborCostTarget,
-                    true
-                  )}
+                  progress={calculateProgress(laborCostMonthlyAvg, kpiTargets.laborCostTarget, true)}
                   suffix="%"
                   isLowerBetter
                   icon={<Users className="w-4 h-4" />}

@@ -28,6 +28,14 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
   - Migración SQL necesaria: `ALTER TABLE kpi_targets ADD COLUMN ...` (fallback a defaults si no ejecutada)
   - `types/kpiTargets.ts` y `lib/kpiTargets.ts` actualizados con nuevos campos y mapeo Supabase
 
+### Corregido
+- **Coste Laboral KPI — media ponderada del mes:**
+  - Antes: cogía el último día con datos (muy volátil, ej: 27% un viernes vs 90% un martes)
+  - Ahora: calcula la **media ponderada mensual** = total costes laborales / total ventas netas del mes
+  - Valor más representativo para un KPI operativo (ej: 36.1% en feb-2026 con 6 días de datos)
+  - Nuevo `useMemo` `laborCostMonthlyAvg` en DashboardPage — filtra solo mes actual y días con datos reales
+  - Alertas también usan la media mensual en vez del último día
+
 ### Mejorado
 - **Rediseño sección "Progreso vs Objetivos" del Dashboard:**
   - `KPIProgressBar.tsx` reescrito: eliminado sistema dual (compact/full), diseño premium unificado
