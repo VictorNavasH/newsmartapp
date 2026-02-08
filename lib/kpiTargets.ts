@@ -14,10 +14,13 @@ interface SupabaseKPIRow {
   id: string
   restaurant_id: string
   daily_revenue_target: number
+  weekly_revenue_target?: number
   monthly_revenue_target: number
   ticket_medio_target: number
+  ticket_comensal_target?: number
   food_cost_target: number
   labor_cost_target: number
+  break_even_target?: number
   lunch_occupancy_target: number
   dinner_occupancy_target: number
   average_rating_target: number
@@ -30,10 +33,13 @@ interface SupabaseKPIRow {
 function rowToKPITargets(row: SupabaseKPIRow): KPITargets {
   return {
     dailyRevenueTarget: Number(row.daily_revenue_target),
+    weeklyRevenueTarget: Number(row.weekly_revenue_target ?? DEFAULT_KPI_TARGETS.weeklyRevenueTarget),
     monthlyRevenueTarget: Number(row.monthly_revenue_target),
     ticketMedioTarget: Number(row.ticket_medio_target),
+    ticketComensalTarget: Number(row.ticket_comensal_target ?? DEFAULT_KPI_TARGETS.ticketComensalTarget),
     foodCostTarget: Number(row.food_cost_target),
     laborCostTarget: Number(row.labor_cost_target),
+    breakEvenTarget: Number(row.break_even_target ?? DEFAULT_KPI_TARGETS.breakEvenTarget),
     lunchOccupancyTarget: Number(row.lunch_occupancy_target),
     dinnerOccupancyTarget: Number(row.dinner_occupancy_target),
     averageRatingTarget: Number(row.average_rating_target),
@@ -44,10 +50,13 @@ function rowToKPITargets(row: SupabaseKPIRow): KPITargets {
 function kpiTargetsToRow(targets: KPITargets) {
   return {
     daily_revenue_target: targets.dailyRevenueTarget,
+    weekly_revenue_target: targets.weeklyRevenueTarget,
     monthly_revenue_target: targets.monthlyRevenueTarget,
     ticket_medio_target: targets.ticketMedioTarget,
+    ticket_comensal_target: targets.ticketComensalTarget,
     food_cost_target: targets.foodCostTarget,
     labor_cost_target: targets.laborCostTarget,
+    break_even_target: targets.breakEvenTarget,
     lunch_occupancy_target: targets.lunchOccupancyTarget,
     dinner_occupancy_target: targets.dinnerOccupancyTarget,
     average_rating_target: targets.averageRatingTarget,

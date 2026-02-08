@@ -24,6 +24,8 @@ import {
   ChevronRight,
   Target,
   UtensilsCrossed,
+  ShieldCheck,
+  CalendarDays,
 } from "lucide-react"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { PageContent } from "@/components/layout/PageContent"
@@ -109,6 +111,14 @@ export function DashboardPage() {
   const currentShift = liveData?.total
   const topProducts = currentShift?.sales_data?.top_products || []
   const vfMetrics = currentShift?.verifactu_metrics || { success: 0, error: 0, pending: 0 }
+
+  // Facturación semanal acumulada (suma de días con ventas de la semana actual)
+  const weeklyRevenue = useMemo(() => {
+    return weekRevenueData.reduce((sum, d) => sum + (d.facturadoReal || 0), 0)
+  }, [weekRevenueData])
+
+  // Ticket medio comensal (últimos 30 días, ya viene de la vista)
+  const ticketComensal30d = liveData?.prevision?.ticket_comensal_30d || 0
 
   const trimestreLabel = useMemo(() => {
     const trimestre = financialKPIs.find((k) => k.periodo !== "mes")
@@ -933,14 +943,14 @@ export function DashboardPage() {
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Ingresos</p>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 <KPIProgressBar
-                  label="Facturación Hoy"
-                  progress={calculateProgress(currentShift?.revenue || 0, kpiTargets.dailyRevenueTarget)}
+                  label="Facturación Semanal"
+                  progress={calculateProgress(weeklyRevenue, kpiTargets.weeklyRevenueTarget)}
                   suffix="€"
-                  icon={<Banknote className="w-4 h-4" />}
+                  icon={<CalendarDays className="w-4 h-4" />}
                 />
                 <KPIProgressBar
-                  label="Ticket Medio"
-                  progress={calculateProgress(currentShift?.avg_ticket_transaction || 0, kpiTargets.ticketMedioTarget)}
+                  label="Ticket Comensal"
+                  progress={calculateProgress(ticketComensal30d, kpiTargets.ticketComensalTarget)}
                   suffix="€"
                   icon={<Receipt className="w-4 h-4" />}
                 />
@@ -956,10 +966,10 @@ export function DashboardPage() {
             {/* Separador */}
             <div className="border-t border-slate-100 my-4" />
 
-            {/* Sección 2: Costes y Ocupación (4 columnas) */}
+            {/* Sección 2: Costes y Rentabilidad (3 columnas) */}
             <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Costes y Ocupación</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Costes y Rentabilidad</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 <KPIProgressBar
                   label="Food Cost"
                   progress={calculateProgress(foodCostAvg, kpiTargets.foodCostTarget, true)}
@@ -979,16 +989,10 @@ export function DashboardPage() {
                   icon={<Users className="w-4 h-4" />}
                 />
                 <KPIProgressBar
-                  label="Ocupación Comida"
-                  progress={calculateProgress(liveData?.lunch_percentage || 0, kpiTargets.lunchOccupancyTarget)}
-                  suffix="%"
-                  icon={<SunIcon className="w-4 h-4" />}
-                />
-                <KPIProgressBar
-                  label="Ocupación Cena"
-                  progress={calculateProgress(liveData?.dinner_percentage || 0, kpiTargets.dinnerOccupancyTarget)}
-                  suffix="%"
-                  icon={<MoonIcon className="w-4 h-4" />}
+                  label="Break-even Mensual"
+                  progress={calculateProgress(currentKPIs?.ingresos || 0, kpiTargets.breakEvenTarget)}
+                  suffix="€"
+                  icon={<ShieldCheck className="w-4 h-4" />}
                 />
               </div>
             </div>

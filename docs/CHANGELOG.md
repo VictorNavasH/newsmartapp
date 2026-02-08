@@ -15,6 +15,19 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
   - KPI "Food Cost" muestra el valor real (~20.4%) en vez del `0` hardcodeado
   - Se carga en paralelo con los demás datos del dashboard (sin impacto en rendimiento)
 
+- **Nuevos KPIs operativos en Dashboard:**
+  - **Facturación Semanal** reemplaza Facturación Diaria — suma ventas de la semana en curso vs target semanal (refleja estacionalidad finde vs entre semana)
+  - **Ticket Medio Comensal** reemplaza Ticket Medio Mesa — usa `ticket_comensal_30d` real de la vista (indicador de upselling)
+  - **Break-even Mensual** (nuevo) — ingresos mensuales vs costes fijos configurables (~33.500€) para saber si se cubren gastos
+  - Ocupación Comida/Cena eliminadas de la sección KPI (ya visible en tarjetas de reservas)
+  - Layout final: 3 KPIs Ingresos + 3 KPIs Costes y Rentabilidad (simétrico)
+- **Nuevos targets configurables en Ajustes → Objetivos KPI:**
+  - `weeklyRevenueTarget` (default: 25.000€)
+  - `ticketComensalTarget` (default: 27€)
+  - `breakEvenTarget` (default: 33.500€)
+  - Migración SQL necesaria: `ALTER TABLE kpi_targets ADD COLUMN ...` (fallback a defaults si no ejecutada)
+  - `types/kpiTargets.ts` y `lib/kpiTargets.ts` actualizados con nuevos campos y mapeo Supabase
+
 ### Mejorado
 - **Rediseño sección "Progreso vs Objetivos" del Dashboard:**
   - `KPIProgressBar.tsx` reescrito: eliminado sistema dual (compact/full), diseño premium unificado
@@ -23,8 +36,8 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
   - Barra de progreso más gruesa (`h-2.5`, antes `h-1.5`/`h-2`) sobre `bg-slate-100`
   - Tarjetas individuales con `bg-white border-slate-200 rounded-xl` (antes fondo pastel lavado)
   - Badge de estado: `uppercase tracking-wider` (patrón consistente con el resto de la app)
-  - Layout reorganizado: sección "Ingresos" (3 cols) + separador + sección "Costes y Ocupación" (4 cols)
-  - Los 7 KPIs tienen idéntico tratamiento visual (antes los 4 inferiores eran segunda clase)
+  - Layout reorganizado: sección "Ingresos" (3 cols) + separador + sección "Costes y Rentabilidad" (3 cols)
+  - Los 6 KPIs tienen idéntico tratamiento visual (antes los 4 inferiores eran segunda clase)
   - Header mejorado con subtítulo descriptivo (patrón WeatherCard)
   - Animación suavizada a `duration-700 ease-out`
 
