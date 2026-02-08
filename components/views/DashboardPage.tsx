@@ -94,7 +94,7 @@ export function DashboardPage() {
 
   useEffect(() => {
     loadData()
-    setKpiTargets(loadKPITargets())
+    loadKPITargets().then(setKpiTargets)
   }, [loadData])
 
   const currentKPIs = useMemo(() => {

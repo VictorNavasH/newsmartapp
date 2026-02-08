@@ -35,9 +35,9 @@ Documentación de los 17 servicios/módulos en `lib/`. Cada servicio encapsula l
 | `vw_` | `vw_dashboard_ventas_facturas_live`, `vw_dashboard_financiero`, `vw_dashboard_ocupacion`, `vw_metricas_diarias_base`, `vw_facturacion_mesas`, `vw_operaciones_tiempo_real`, `vw_mix_productos`, `vw_mix_categorias`, `vw_mix_opciones`, `vw_forecasting_analysis`, `vw_labor_cost_analysis`, `vw_food_cost`, `vw_operativa_items`, `vw_compras_pedidos`, `vw_compras_conciliacion`, `vw_compras_albaranes_para_vincular`, `vw_compras_proveedores`, `vw_compras_resumen` |
 | `v_` | `v_facturacion_resumen_global`, `v_facturas_listado`, `v_facturas_cuadre_diario`, `v_ingresos_por_categoria`, `v_facturas_alertas`, `v_facturacion_mensual`, `v_pool_bancario_resumen`, `v_pool_bancario_prestamos`, `v_pool_bancario_proximos_vencimientos`, `v_pool_bancario_por_banco`, `v_pool_bancario_calendario_mensual` |
 
-### Tablas directas (11)
+### Tablas directas (12)
 
-`reservas_agregadas_diarias`, `forecasting_weather_history`, `gstock_product_formats`, `facturacion_alertas`, `tables`, `turnos`, `gstock_sync_logs`, `gocardless_sync_logs`, `cuentica_logs`, `billin_logs`, `business_views_refresh_log`
+`reservas_agregadas_diarias`, `forecasting_weather_history`, `gstock_product_formats`, `facturacion_alertas`, `tables`, `turnos`, `gstock_sync_logs`, `gocardless_sync_logs`, `cuentica_logs`, `billin_logs`, `business_views_refresh_log`, `kpi_targets`
 
 ### RPCs (43)
 

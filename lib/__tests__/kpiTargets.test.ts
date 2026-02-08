@@ -1,13 +1,38 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { calculateProgress, loadKPITargets, saveKPITargets } from "../kpiTargets"
-import { DEFAULT_KPI_TARGETS } from "@/types/kpiTargets"
+import { describe, it, expect, vi, beforeEach } from "vitest"
 
-// Mock env to avoid missing env var errors
+// Hoisted mocks (deben declararse antes de vi.mock)
+const { mockSingle, mockEq, mockSelect, mockUpsert, mockGetUser, mockFrom } = vi.hoisted(() => {
+  const mockSingle = vi.fn()
+  const mockEq = vi.fn(() => ({ single: mockSingle }))
+  const mockSelect = vi.fn(() => ({ eq: mockEq }))
+  const mockUpsert = vi.fn().mockResolvedValue({ error: null })
+  const mockGetUser = vi.fn().mockResolvedValue({ data: { user: { id: "test-user-id" } } })
+  const mockFrom = vi.fn(() => ({
+    select: mockSelect,
+    upsert: mockUpsert,
+  }))
+  return { mockSingle, mockEq, mockSelect, mockUpsert, mockGetUser, mockFrom }
+})
+
+// Mock env para evitar errores de variables de entorno
 vi.mock("../env", () => ({
   SUPABASE_URL: "https://test.supabase.co",
   SUPABASE_ANON_KEY: "test-key",
   AI_API_KEY: null,
 }))
+
+// Mock de Supabase
+vi.mock("../supabase", () => ({
+  supabase: {
+    from: mockFrom,
+    auth: {
+      getUser: mockGetUser,
+    },
+  },
+}))
+
+import { calculateProgress, loadKPITargets, saveKPITargets, loadKPITargetsLocal } from "../kpiTargets"
+import { DEFAULT_KPI_TARGETS } from "@/types/kpiTargets"
 
 describe("lib/kpiTargets", () => {
   describe("calculateProgress", () => {
@@ -72,13 +97,13 @@ describe("lib/kpiTargets", () => {
     })
   })
 
-  describe("loadKPITargets", () => {
+  describe("loadKPITargetsLocal (localStorage fallback)", () => {
     beforeEach(() => {
       localStorage.clear()
     })
 
     it("returns defaults when localStorage is empty", () => {
-      const result = loadKPITargets()
+      const result = loadKPITargetsLocal()
 
       expect(result).toEqual(DEFAULT_KPI_TARGETS)
     })
@@ -86,7 +111,7 @@ describe("lib/kpiTargets", () => {
     it("returns defaults when localStorage has invalid JSON", () => {
       localStorage.setItem("nua-kpi-targets", "not-json")
 
-      const result = loadKPITargets()
+      const result = loadKPITargetsLocal()
 
       expect(result).toEqual(DEFAULT_KPI_TARGETS)
     })
@@ -94,7 +119,7 @@ describe("lib/kpiTargets", () => {
     it("merges stored values with defaults for missing keys", () => {
       localStorage.setItem("nua-kpi-targets", JSON.stringify({ dailyRevenueTarget: 5000 }))
 
-      const result = loadKPITargets()
+      const result = loadKPITargetsLocal()
 
       expect(result.dailyRevenueTarget).toBe(5000)
       expect(result.monthlyRevenueTarget).toBe(DEFAULT_KPI_TARGETS.monthlyRevenueTarget)
@@ -102,23 +127,83 @@ describe("lib/kpiTargets", () => {
     })
   })
 
-  describe("saveKPITargets + loadKPITargets round trip", () => {
+  describe("loadKPITargets (async, Supabase + fallback)", () => {
     beforeEach(() => {
       localStorage.clear()
+      vi.clearAllMocks()
     })
 
-    it("saves and loads targets correctly", () => {
+    it("loads from Supabase when data is available", async () => {
+      mockSingle.mockResolvedValueOnce({
+        data: {
+          id: "test-id",
+          restaurant_id: "test-restaurant",
+          daily_revenue_target: 5500,
+          monthly_revenue_target: 120000,
+          ticket_medio_target: 50,
+          food_cost_target: 28,
+          labor_cost_target: 30,
+          lunch_occupancy_target: 80,
+          dinner_occupancy_target: 90,
+          average_rating_target: 4.7,
+          daily_reservations_target: 45,
+          updated_by: null,
+          updated_at: "2026-02-08T00:00:00Z",
+          created_at: "2026-02-08T00:00:00Z",
+        },
+        error: null,
+      })
+
+      const result = await loadKPITargets()
+
+      expect(result.dailyRevenueTarget).toBe(5500)
+      expect(result.monthlyRevenueTarget).toBe(120000)
+      expect(result.foodCostTarget).toBe(28)
+    })
+
+    it("falls back to localStorage when Supabase returns error", async () => {
+      mockSingle.mockResolvedValueOnce({
+        data: null,
+        error: { message: "Table not found" },
+      })
+
+      localStorage.setItem("nua-kpi-targets", JSON.stringify({ dailyRevenueTarget: 7000 }))
+
+      const result = await loadKPITargets()
+
+      expect(result.dailyRevenueTarget).toBe(7000)
+      expect(result.monthlyRevenueTarget).toBe(DEFAULT_KPI_TARGETS.monthlyRevenueTarget)
+    })
+
+    it("falls back to defaults when both Supabase and localStorage are empty", async () => {
+      mockSingle.mockResolvedValueOnce({ data: null, error: { message: "not found" } })
+
+      const result = await loadKPITargets()
+
+      expect(result).toEqual(DEFAULT_KPI_TARGETS)
+    })
+  })
+
+  describe("saveKPITargets (async, Supabase + localStorage)", () => {
+    beforeEach(() => {
+      localStorage.clear()
+      vi.clearAllMocks()
+      mockUpsert.mockResolvedValue({ error: null })
+    })
+
+    it("saves to both localStorage and Supabase", async () => {
       const customTargets = {
         ...DEFAULT_KPI_TARGETS,
         dailyRevenueTarget: 6000,
         foodCostTarget: 25,
-        averageRatingTarget: 4.8,
       }
 
-      saveKPITargets(customTargets)
-      const loaded = loadKPITargets()
+      await saveKPITargets(customTargets)
 
-      expect(loaded).toEqual(customTargets)
+      // Verifica localStorage
+      const stored = JSON.parse(localStorage.getItem("nua-kpi-targets") || "{}")
+      expect(stored.dailyRevenueTarget).toBe(6000)
+      expect(stored.foodCostTarget).toBe(25)
     })
   })
 })

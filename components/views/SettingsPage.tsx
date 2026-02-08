@@ -223,8 +223,8 @@ export default function SettingsPage({ userName, userEmail }: SettingsPageProps)
     const savedTheme = localStorage.getItem("nua-theme") as "light" | "dark" | "system" | null
     if (savedTheme) setTheme(savedTheme)
 
-    // Cargar objetivos KPI
-    setKpiTargets(loadKPITargets())
+    // Cargar objetivos KPI desde Supabase (con fallback a localStorage)
+    loadKPITargets().then(setKpiTargets)
 
     loadData().then(() => setLoading(false))
   }, [loadData])
@@ -260,15 +260,15 @@ export default function SettingsPage({ userName, userEmail }: SettingsPageProps)
     setKpiSaved(false)
   }
 
-  const handleKpiSave = () => {
-    saveKPITargets(kpiTargets)
+  const handleKpiSave = async () => {
+    await saveKPITargets(kpiTargets)
     setKpiSaved(true)
     setTimeout(() => setKpiSaved(false), 3000)
   }
 
-  const handleKpiReset = () => {
+  const handleKpiReset = async () => {
     setKpiTargets(DEFAULT_KPI_TARGETS)
-    saveKPITargets(DEFAULT_KPI_TARGETS)
+    await saveKPITargets(DEFAULT_KPI_TARGETS)
     setKpiSaved(true)
     setTimeout(() => setKpiSaved(false), 3000)
   }

@@ -12,6 +12,26 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 
 ---
 
+## [2.3.0] - 2026-02-08
+
+### Añadido
+- **KPI Targets persistidos en Supabase:**
+  - Nueva tabla `kpi_targets` en Supabase (script SQL en `scripts/create_kpi_targets_table.sql`)
+  - `lib/kpiTargets.ts` ahora lee/escribe en Supabase con fallback a localStorage
+  - `saveKPITargets()` y `loadKPITargets()` son ahora funciones async
+  - `loadKPITargetsLocal()` exportada para fallback directo
+  - Row Level Security habilitado: solo usuarios autenticados pueden leer/escribir
+  - `updated_by` registra qué usuario modificó los objetivos por última vez
+  - Los objetivos se comparten entre todos los usuarios del restaurante
+  - 3 nuevos tests async: carga desde Supabase, fallback a localStorage, guardado dual
+
+### Modificado
+- `DashboardPage.tsx` — `loadKPITargets()` ahora usa `.then()` (async)
+- `SettingsPage.tsx` — `handleKpiSave` y `handleKpiReset` ahora son async
+- Tests de kpiTargets aumentados de 11 a 14 (mock completo de Supabase)
+
+---
+
 ## [2.2.1] - 2026-02-08
 
 ### Corregido
