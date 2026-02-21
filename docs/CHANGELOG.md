@@ -8,6 +8,16 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 
 ## [Unreleased]
 
+### Corregido
+- **Fix: JOINs de PostgREST fallaban sin FKs definidas en Supabase:**
+  - Las tablas `gocardless_accounts`, `gocardless_transactions` y `gocardless_requisitions` no tienen foreign keys hacia `gocardless_institutions`
+  - Los JOINs implícitos de PostgREST (`gocardless_institutions(name, logo_url)`) requieren FKs — sin ellas retornaban error silencioso y las funciones devolvían arrays vacíos
+  - Refactorizadas 3 funciones en `bankConnectionsService.ts` para usar queries paralelas + JOINs manuales en JavaScript:
+    - `fetchBankAccounts()` — query accounts + institutions por separado, lookup por `institution_id`
+    - `fetchBankTransactions()` — query transactions + accounts + institutions, lookup por `account_gocardless_id` → `institution_id`
+    - `fetchConsentStatus()` — query requisitions + institutions, lookup por `institution_id`
+  - Resultado: cuentas con saldos reales, nombres e instituciones con logos ahora se muestran correctamente
+
 ### Añadido
 - **Conexiones Bancarias como tab en Tesorería:**
   - La funcionalidad de Conexiones Bancarias ya no es una página independiente (`/bank-connections`) — ahora es la tab **"Conexiones"** dentro de Tesorería (`/treasury`)

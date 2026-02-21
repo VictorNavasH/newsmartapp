@@ -41,43 +41,46 @@ const parseCurrency = (raw: unknown, fallback = "EUR"): string => {
 
 export const fetchBankAccounts = async (): Promise<BankAccount[]> => {
   try {
-    const { data, error } = await supabase
-      .from("gocardless_accounts")
-      .select(`
-        id,
-        gocardless_id,
-        name,
-        display_name,
-        iban,
-        current_balance,
-        currency,
-        status,
-        last_sync_at,
-        institution_id,
-        gocardless_institutions(name, logo_url)
-      `)
-      .in("status", ["ACTIVE", "READY"])
-      .order("created_at", { ascending: false })
+    // Query accounts and institutions separately (no FK defined, PostgREST JOINs fail)
+    const [accountsResult, institutionsResult] = await Promise.all([
+      supabase
+        .from("gocardless_accounts")
+        .select("id, gocardless_id, name, display_name, iban, current_balance, currency, status, last_sync_at, institution_id")
+        .in("status", ["ACTIVE", "READY"])
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("gocardless_institutions")
+        .select("id, name, logo_url"),
+    ])
 
-    if (error) {
-      console.error("[BankConnections] Error fetching accounts:", error)
+    if (accountsResult.error) {
+      console.error("[BankConnections] Error fetching accounts:", accountsResult.error)
       return []
     }
 
-    return (data || []).map((acc: any) => ({
-      id: acc.id,
-      gocardless_id: acc.gocardless_id,
-      name: acc.display_name || acc.name || `Cuenta ${acc.gocardless_id?.substring(0, 8)}`,
-      iban: acc.iban,
-      balance: parseBalance(acc.current_balance),
-      currency: acc.currency || "EUR",
-      status: acc.status,
-      last_sync: acc.last_sync_at,
-      institution: {
-        name: acc.gocardless_institutions?.name || "Banco desconocido",
-        logo: acc.gocardless_institutions?.logo_url || null,
-      },
-    }))
+    // Build institution lookup map by uuid id
+    const institutionMap = new Map<string, { name: string; logo_url: string | null }>()
+    for (const inst of institutionsResult.data || []) {
+      institutionMap.set(inst.id, { name: inst.name, logo_url: inst.logo_url })
+    }
+
+    return (accountsResult.data || []).map((acc: any) => {
+      const inst = institutionMap.get(acc.institution_id)
+      return {
+        id: acc.id,
+        gocardless_id: acc.gocardless_id,
+        name: acc.display_name || acc.name || `Cuenta ${acc.gocardless_id?.substring(0, 8)}`,
+        iban: acc.iban,
+        balance: parseBalance(acc.current_balance),
+        currency: acc.currency || "EUR",
+        status: acc.status,
+        last_sync: acc.last_sync_at,
+        institution: {
+          name: inst?.name || "Banco desconocido",
+          logo: inst?.logo_url || null,
+        },
+      }
+    })
   } catch (err) {
     console.error("[BankConnections] Error in fetchBankAccounts:", err)
     return []
@@ -119,20 +122,10 @@ export const fetchBankTransactions = async (
 
     const offset = (page - 1) * limit
 
+    // Query transactions sin JOINs implícitos (no hay FKs definidas en Supabase)
     let query = supabase
       .from("gocardless_transactions")
-      .select(
-        `
-        *,
-        gocardless_accounts!inner(
-          id,
-          display_name,
-          institution_id,
-          gocardless_institutions!inner(name, logo_url)
-        )
-      `,
-        { count: "exact" }
-      )
+      .select("*", { count: "exact" })
       .order("booking_date", { ascending: false })
 
     if (search) {
@@ -169,10 +162,32 @@ export const fetchBankTransactions = async (
       return { transactions: [], totalCount: 0, periodStats: { totalIncome: 0, totalExpenses: 0, netBalance: 0, transactionCount: 0 } }
     }
 
-    // Transformar datos
+    // Obtener cuentas e instituciones para resolver nombres (JOIN manual)
+    const [accountsResult, institutionsResult] = await Promise.all([
+      supabase
+        .from("gocardless_accounts")
+        .select("id, gocardless_id, display_name, institution_id"),
+      supabase
+        .from("gocardless_institutions")
+        .select("id, name, logo_url"),
+    ])
+
+    // Maps para lookup rápido
+    const accountByGocardlessId = new Map<string, any>()
+    for (const acc of accountsResult.data || []) {
+      accountByGocardlessId.set(acc.gocardless_id, acc)
+    }
+    const institutionById = new Map<string, { name: string; logo_url: string | null }>()
+    for (const inst of institutionsResult.data || []) {
+      institutionById.set(inst.id, { name: inst.name, logo_url: inst.logo_url })
+    }
+
+    // Transformar datos con JOINs manuales
     let transformed: BankTransaction[] = (transactions || []).map((tx: any) => {
       const amount = parseAmount(tx.amount)
       const balanceAfter = parseBalance(tx.balance_after_transaction)
+      const account = accountByGocardlessId.get(tx.account_gocardless_id)
+      const institution = account ? institutionById.get(account.institution_id) : null
 
       return {
         id: tx.id,
@@ -181,9 +196,9 @@ export const fetchBankTransactions = async (
         description: tx.remittance_information_unstructured || tx.creditor_name || "Transaccion",
         date: tx.booking_date,
         type: amount >= 0 ? ("credit" as const) : ("debit" as const),
-        account_name: tx.gocardless_accounts?.display_name || "Cuenta",
-        institution_name: tx.gocardless_accounts?.gocardless_institutions?.name || "Banco",
-        institution_logo: tx.gocardless_accounts?.gocardless_institutions?.logo_url || null,
+        account_name: account?.display_name || "Cuenta",
+        institution_name: institution?.name || "Banco",
+        institution_logo: institution?.logo_url || null,
         creditor_name: tx.creditor_name,
         debtor_name: tx.debtor_name,
         balance_after: balanceAfter,
@@ -223,17 +238,30 @@ export const fetchBankTransactions = async (
 
 export const fetchConsentStatus = async (): Promise<BankConsentInfo> => {
   try {
-    const { data: requisitions, error } = await supabase
-      .from("gocardless_requisitions")
-      .select("id, expires_at, created_at, status, institution_id, gocardless_institutions(name)")
-      .eq("status", "LN")
-      .order("created_at", { ascending: false })
+    // Queries separadas (no hay FKs definidas para JOINs de PostgREST)
+    const [reqResult, instResult] = await Promise.all([
+      supabase
+        .from("gocardless_requisitions")
+        .select("id, expires_at, created_at, status, institution_id")
+        .eq("status", "LN")
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("gocardless_institutions")
+        .select("id, name"),
+    ])
 
-    if (error || !requisitions || requisitions.length === 0) {
+    const requisitions = reqResult.data
+    if (reqResult.error || !requisitions || requisitions.length === 0) {
       return { daysUntilRenewal: 90, nextRenewalBank: null, institutionId: null }
     }
 
-    let earliestRenewal: { date: Date; institutionName: string; institutionId: string | null } | null = null
+    // Map de instituciones para lookup
+    const institutionMap = new Map<string, string>()
+    for (const inst of instResult.data || []) {
+      institutionMap.set(inst.id, inst.name)
+    }
+
+    let earliestRenewal: { date: Date; institutionName: string | null; institutionId: string | null } | null = null
 
     for (const req of requisitions) {
       let renewalDate: Date
@@ -247,7 +275,7 @@ export const fetchConsentStatus = async (): Promise<BankConsentInfo> => {
       if (!earliestRenewal || renewalDate < earliestRenewal.date) {
         earliestRenewal = {
           date: renewalDate,
-          institutionName: (req as any).gocardless_institutions?.name || null,
+          institutionName: institutionMap.get(req.institution_id) || null,
           institutionId: req.institution_id,
         }
       }
