@@ -276,9 +276,21 @@ export const fetchConsentStatus = async (): Promise<BankConsentInfo> => {
       institutionMap.set(inst.id, inst.name)
     }
 
+    const now = new Date()
+
+    // Agrupar por institución y quedarse con la requisition más reciente de cada una
+    const latestByInstitution = new Map<string, typeof requisitions[0]>()
+    for (const req of requisitions) {
+      const existing = latestByInstitution.get(req.institution_id)
+      if (!existing || new Date(req.created_at) > new Date(existing.created_at)) {
+        latestByInstitution.set(req.institution_id, req)
+      }
+    }
+
+    // De las más recientes por institución, buscar la que expire más pronto (pero que aún no haya expirado)
     let earliestRenewal: { date: Date; institutionName: string | null; institutionId: string | null } | null = null
 
-    for (const req of requisitions) {
+    for (const req of latestByInstitution.values()) {
       let renewalDate: Date
       if (req.expires_at) {
         renewalDate = new Date(req.expires_at)
@@ -287,6 +299,7 @@ export const fetchConsentStatus = async (): Promise<BankConsentInfo> => {
         renewalDate = new Date(createdDate.getTime() + 90 * 24 * 60 * 60 * 1000)
       }
 
+      // Solo considerar las que aún no han expirado, o las más recientes si todas expiraron
       if (!earliestRenewal || renewalDate < earliestRenewal.date) {
         earliestRenewal = {
           date: renewalDate,
@@ -300,7 +313,6 @@ export const fetchConsentStatus = async (): Promise<BankConsentInfo> => {
       return { daysUntilRenewal: 90, nextRenewalBank: null, institutionId: null }
     }
 
-    const now = new Date()
     const timeDiff = earliestRenewal.date.getTime() - now.getTime()
     const daysUntilRenewal = Math.max(0, Math.ceil(timeDiff / (24 * 60 * 60 * 1000)))
 
