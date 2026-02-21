@@ -8,7 +8,26 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 
 ## [Unreleased]
 
+### Cambiado
+- **Migración GoCardless: de subapp externa a API routes internas:**
+  - Todo el backend de GoCardless ahora vive dentro de la Smart App en `app/api/gocardless/*` — ya no se necesita ejecutar la subapp `go-cardlessapp (1)/` por separado
+  - 6 API routes internas: `institutions`, `requisitions/create`, `requisitions/[id]/status`, `requisitions/[id]/accounts`, `accounts/[id]/full-sync`, `sync/initial`
+  - Nuevo cliente GoCardless (`lib/gocardless.ts`): token management con auto-refresh, retry en 401, singleton
+  - Nuevo rate limiter (`lib/gocardlessRateLimit.ts`): 4 req/día por cuenta por scope, cache en memoria 5 min, tabla `gocardless_rate_limits`
+  - `bankConnectionsService.ts` actualizado: todas las funciones llaman a `/api/gocardless/*` (ya no usa `NEXT_PUBLIC_GOCARDLESS_APP_URL`)
+  - Variables de entorno: `GOCARDLESS_SECRET_ID` + `GOCARDLESS_SECRET_KEY` (server-only). Eliminada `NEXT_PUBLIC_GOCARDLESS_APP_URL`
+
 ### Corregido
+- **Fix crítico: mismatch UUID vs gocardless_id en sincronización de cuentas:**
+  - La RPC `get_treasury_accounts` devuelve `a.id` (UUID de Supabase) como campo `id` en `TreasuryAccount`
+  - La ruta `full-sync` buscaba solo por `.eq("gocardless_id", accountId)` — pero recibía el UUID → siempre 404
+  - Fix: la ruta ahora busca primero por `gocardless_id`, luego por `id` (UUID) como fallback
+  - Usa `account.gocardless_id` para todas las llamadas a la API de GoCardless
+- **Fix: botón "Sincronizar Todo" enviaba literal "all" como ID de cuenta → 404:**
+  - `handleSyncAccount` en TreasuryPage ahora detecta `accountId === "all"` y sincroniza todas las cuentas secuencialmente
+  - Muestra toast con resultado agregado (cuentas sincronizadas, transacciones, errores)
+- **Fix: tipo `consentInfo: any` en TreasuryDashboardTabProps:**
+  - Cambiado a `BankConsentInfo | null` con import correcto desde `@/types`
 - **Fix: `parseBalance`/`parseAmount`/`parseCurrency` no parseaban JSON strings:**
   - La columna `current_balance` en `gocardless_accounts` es tipo `text` en PostgreSQL — almacena JSON como `{"amount":"726.02","currency":"EUR",...}`
   - Supabase devuelve columnas `text` como strings, no como objetos JSON parseados
@@ -25,6 +44,12 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
   - Resultado: cuentas con saldos reales, nombres e instituciones con logos ahora se muestran correctamente
 
 ### Añadido
+- **Rediseño de Tesorería:** Integración de conexiones bancarias (GoCardless) directamente en el Dashboard.
+- **Acciones Rápidas:** Botón de "Actualizar" global y botones de "Sincronizar"/"Conectar" en tarjetas de cuenta.
+- **Estado de Consentimiento:** Visualización de días restantes para renovación de autorización bancaria en el Dashboard.
+
+### Eliminado
+- **Tab de Conexiones:** Se elimina la pestaña independiente de conexiones bancarias dentro de Tesorería para reducir redundancia.
 - **Conexiones Bancarias como tab en Tesorería:**
   - La funcionalidad de Conexiones Bancarias ya no es una página independiente (`/bank-connections`) — ahora es la tab **"Conexiones"** dentro de Tesorería (`/treasury`)
   - Nuevo componente `TreasuryConexionesTab.tsx` — wrapper auto-contenido que encapsula toda la lógica de BankConnectionsPage (estado, data loading, flujo de conexión GoCardless, polling, sync) sin recibir props del padre

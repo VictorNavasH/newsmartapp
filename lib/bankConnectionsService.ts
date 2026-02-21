@@ -316,16 +316,8 @@ export const fetchConsentStatus = async (): Promise<BankConsentInfo> => {
 }
 
 export const triggerAccountSync = async (accountId: string): Promise<BankSyncResult> => {
-  const baseUrl = process.env.NEXT_PUBLIC_GOCARDLESS_APP_URL
-  if (!baseUrl) {
-    return {
-      success: false,
-      message: "URL de la app GoCardless no configurada. Configura NEXT_PUBLIC_GOCARDLESS_APP_URL.",
-    }
-  }
-
   try {
-    const response = await fetch(`${baseUrl}/api/accounts/${accountId}/full-sync`, {
+    const response = await fetch(`/api/gocardless/accounts/${accountId}/full-sync`, {
       method: "POST",
     })
 
@@ -347,13 +339,13 @@ export const triggerAccountSync = async (accountId: string): Promise<BankSyncRes
     console.error("[BankConnections] Error in triggerAccountSync:", err)
     return {
       success: false,
-      message: "Error de conexion al sincronizar. Verifica que la app GoCardless esta activa.",
+      message: "Error de conexion al sincronizar.",
     }
   }
 }
 
 export const getGoCardlessAppUrl = (): string | null => {
-  return process.env.NEXT_PUBLIC_GOCARDLESS_APP_URL || null
+  return "/api/gocardless"
 }
 
 // --- CONNECT / RENEW FLOW ---
@@ -369,7 +361,7 @@ export const fetchInstitutions = async (
 
   try {
     const response = await fetch(
-      `${baseUrl}/api/institutions?country=${encodeURIComponent(country)}`
+      `/api/gocardless/institutions?country=${encodeURIComponent(country)}`
     )
 
     if (!response.ok) {
@@ -407,7 +399,7 @@ export const createRequisition = async (
   }
 
   try {
-    const response = await fetch(`${baseUrl}/api/requisitions/create`, {
+    const response = await fetch(`/api/gocardless/requisitions/create`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -453,7 +445,7 @@ export const pollRequisitionStatus = async (
 
   try {
     const response = await fetch(
-      `${baseUrl}/api/requisitions/status/${encodeURIComponent(reference)}`
+      `/api/gocardless/requisitions/${encodeURIComponent(reference)}/status`
     )
 
     if (!response.ok) {
@@ -479,7 +471,7 @@ export const fetchRequisitionAccounts = async (
 
   try {
     const response = await fetch(
-      `${baseUrl}/api/requisitions/accounts/${encodeURIComponent(reference)}`
+      `/api/gocardless/requisitions/${encodeURIComponent(reference)}/accounts`
     )
 
     if (!response.ok) {
@@ -511,7 +503,7 @@ export const triggerInitialSync = async (
   if (!baseUrl) return null
 
   try {
-    const response = await fetch(`${baseUrl}/api/sync/initial`, {
+    const response = await fetch(`/api/gocardless/sync/initial`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

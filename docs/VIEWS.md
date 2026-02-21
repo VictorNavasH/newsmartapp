@@ -439,12 +439,17 @@ Sala:   bueno ≤ 8min, advertencia ≤ 15min, alerta > 15min
 | Campo | Valor |
 |-------|-------|
 | **Ruta** | `/treasury` |
-| **Componente** | `TreasuryPage` |
+| **Componente** | `TreasuryPage.tsx` |
 | **Archivo** | `components/views/TreasuryPage.tsx` |
-| **Sub-componentes** | `treasury/TreasuryDashboardTab.tsx`, `treasury/TreasuryMovimientosTab.tsx`, `treasury/TreasuryCategoriaTab.tsx`, `treasury/TreasuryPoolBancarioTab.tsx`, `treasury/TreasuryCuentaTab.tsx`, `treasury/TreasuryConexionesTab.tsx`, `treasury/constants.ts` |
-| **Servicio(s)** | `treasuryService.ts`, `exportUtils.ts` |
-| **Export** | Default export |
-| **Exportación** | CSV/PDF de movimientos bancarios (tab Movimientos) o resumen general con cuentas y categorías vía `ExportButton` |
+| **Pestañas (Tabs)** | Dashboard, Movimientos, Por Categoría, Pool Bancario |
+| **Servicio(s)** | `treasuryService.ts`, `bankConnectionsService.ts` |
+
+### Funcionalidades
+- **Dashboard:** Resumen de KPIs financieros y estado de cuentas bancarias.
+  - **Integración GoCardless:** Botones para sincronizar cuentas y conectar nuevos bancos directamente desde el dashboard.
+- **Movimientos:** Listado detallado de transacciones con filtros avanzados y categorización.
+- **Por Categoría:** Desglose de ingresos y gastos por categoría y subcategoría.
+- **Pool Bancario:** Gestión de préstamos, pólizas y vencimientos financieros.
 
 ### Datos que consume
 
@@ -608,25 +613,23 @@ Usuario escribe mensaje
 
 ---
 
-## 14. Conexiones Bancarias (Tab dentro de Tesorería)
+## 14. Conexiones Bancarias (Integrado en Dashboard de Tesorería)
 
-> **Nota:** Ya no existe como ruta independiente (`/bank-connections`). Toda la funcionalidad de conexiones bancarias está embebida como la tab **"Conexiones"** dentro de Tesorería (`/treasury`). El componente wrapper es `TreasuryConexionesTab.tsx`.
+> **Nota:** Ya no existe como pestaña independiente. Toda la funcionalidad está integrada en el **Dashboard** de Tesorería (`/treasury`).
 
 | Campo | Valor |
 |-------|-------|
-| **Ruta** | `/treasury` → Tab "Conexiones" |
-| **Componente wrapper** | `TreasuryConexionesTab.tsx` |
-| **Archivo** | `components/views/treasury/TreasuryConexionesTab.tsx` |
-| **Componente original** | `BankConnectionsPage.tsx` (conservado como referencia, sin ruta activa) |
+| **Ruta** | `/treasury` → Tab "Dashboard" |
+| **Componente** | `BankConnectSheet.tsx` (flujo de conexión) |
 | **Servicio(s)** | `bankConnectionsService.ts` |
-| **Sub-componentes** | `views/bankConnections/BankResumenTab.tsx`, `BankMovimientosTab.tsx`, `BankConnectSheet.tsx`, `constants.ts` |
+| **Integración** | `TreasuryPage.tsx` maneja el estado y los handlers. |
 
 ### Arquitectura
 
-`TreasuryConexionesTab` es un componente **auto-contenido** que gestiona todo su estado internamente (no recibe props del padre TreasuryPage). Lee datos bancarios directamente de Supabase (misma DB que la subapp GoCardless). La subapp sigue funcionando como motor de sincronización y como backend API para el flujo de conexión. Todas las acciones (sincronizar, conectar, renovar) se realizan sin salir de la app.
+`TreasuryPage` es el componente principal que ahora integra la funcionalidad de conexiones bancarias. Lee datos bancarios directamente de Supabase (misma DB que la subapp GoCardless). La subapp sigue funcionando como motor de sincronización y como backend API para el flujo de conexión. Todas las acciones (sincronizar, conectar, renovar) se realizan sin salir de la app.
 
 ```
-Smart App (TreasuryConexionesTab)  Subapp GoCardless             GoCardless
+Smart App (TreasuryPage)           Subapp GoCardless             GoCardless
 ────────────────────────────────   ─────────────────             ──────────
 1. Lee datos    ──→ Supabase ←──── Sincroniza periódicamente
 2. "Conectar"   ──→ POST /api/requisitions/create ──→ GoCardless API

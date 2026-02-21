@@ -9,6 +9,7 @@ interface TremorCardProps {
   icon?: React.ReactNode
   style?: React.CSSProperties
   onClick?: () => void
+  actions?: React.ReactNode
 }
 
 export const TremorCard: React.FC<TremorCardProps> = ({
@@ -20,6 +21,7 @@ export const TremorCard: React.FC<TremorCardProps> = ({
   icon,
   style,
   onClick,
+  actions,
 }) => {
   return (
     <div
@@ -28,10 +30,13 @@ export const TremorCard: React.FC<TremorCardProps> = ({
       onClick={onClick}
     >
       {decoration && <div className={`absolute top-0 left-0 w-full h-1 bg-${decorationColor}`}></div>}
-      {(title || icon) && (
-        <div className="flex items-center gap-2 mb-3">
-          {icon}
-          {title && <h3 className="text-[#364f6b] text-base font-bold">{title}</h3>}
+      {(title || icon || actions) && (
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            {icon}
+            {title && <h3 className="text-[#364f6b] text-base font-bold">{title}</h3>}
+          </div>
+          {actions}
         </div>
       )}
       {children}

@@ -1,12 +1,14 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import {
   Landmark,
   TrendingUp,
   ArrowDownLeft,
   Wallet,
   Building2,
+  RefreshCw,
+  Plus,
 } from "lucide-react"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { DateRangePickerExpenses } from "@/components/ui/date-range-picker-expenses"
@@ -29,6 +31,16 @@ import {
   fetchPoolBancarioCalendario,
   fetchTreasuryMonthlySummary,
 } from "@/lib/treasuryService"
+import {
+  fetchConsentStatus,
+  triggerAccountSync,
+  getGoCardlessAppUrl,
+  fetchInstitutions,
+  createRequisition,
+  pollRequisitionStatus,
+  fetchRequisitionAccounts,
+  triggerInitialSync,
+} from "@/lib/bankConnectionsService"
 import { formatCurrency } from "@/lib/utils"
 import type {
   TreasuryKPIs,
@@ -44,6 +56,10 @@ import type {
   PoolBancarioPorBanco,
   PoolBancarioCalendarioMes,
   TreasuryMonthlySummary,
+  BankConsentInfo,
+  BankConnectState,
+  BankInstitution,
+  BankConnectedAccount,
 } from "@/types"
 import { format, subMonths } from "date-fns"
 import { PAGE_SIZE, calculateDelta, type TipoFilter } from "./treasury/constants"
@@ -52,22 +68,24 @@ import { TreasuryMovimientosTab } from "./treasury/TreasuryMovimientosTab"
 import { TreasuryCategoriaTab } from "./treasury/TreasuryCategoriaTab"
 import { TreasuryPoolBancarioTab } from "./treasury/TreasuryPoolBancarioTab"
 import { TreasuryCuentaTab } from "./treasury/TreasuryCuentaTab"
-import { TreasuryConexionesTab } from "./treasury/TreasuryConexionesTab"
+import { BankConnectSheet } from "./bankConnections/BankConnectSheet"
+
+// Estado inicial del flujo de conexion
+const INITIAL_CONNECT_STATE: BankConnectState = {
+  step: "idle",
+  institutions: [],
+  selectedInstitution: null,
+  reference: null,
+  authLink: null,
+  error: null,
+  connectedAccounts: [],
+}
 
 export default function TreasuryPage() {
   const { toast } = useToast()
 
   const [activeTab, setActiveTab] = useState("Dashboard")
 
-  // Detectar si venimos de un callback de GoCardless y activar la tab Conexiones
-  useEffect(() => {
-    if (typeof window === "undefined") return
-    const activateTab = sessionStorage.getItem("gocardless_activate_tab")
-    if (activateTab === "Conexiones") {
-      sessionStorage.removeItem("gocardless_activate_tab")
-      setActiveTab("Conexiones")
-    }
-  }, [])
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null)
 
   // State
@@ -108,6 +126,43 @@ export default function TreasuryPage() {
     return result
   }, [categories])
 
+  // GoCardless / Bank Connections State
+  const [consentInfo, setConsentInfo] = useState<BankConsentInfo | null>(null)
+  const [syncingAccountId, setSyncingAccountId] = useState<string | null>(null)
+  const [connectSheetOpen, setConnectSheetOpen] = useState(false)
+  const [connectState, setConnectState] = useState<BankConnectState>(INITIAL_CONNECT_STATE)
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const goCardlessAppUrl = getGoCardlessAppUrl()
+
+  // Detectar si venimos de un callback de GoCardless
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    // Caso 1: Signal de activacion de tab (desde app/page.tsx)
+    const activateTab = sessionStorage.getItem("gocardless_activate_tab")
+    if (activateTab === "Conexiones") {
+      sessionStorage.removeItem("gocardless_activate_tab")
+      setActiveTab("Dashboard") // Ahora mostramos en Dashboard
+    }
+
+    // Caso 2: Referencia guardada para reanudar polling
+    const savedRef = sessionStorage.getItem("gocardless_ref")
+    if (savedRef) {
+      setConnectState({
+        ...INITIAL_CONNECT_STATE,
+        step: "processing",
+        reference: savedRef,
+      })
+      setConnectSheetOpen(true)
+      startPolling(savedRef)
+    }
+
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current)
+    }
+  }, [])
+
   // Filters
   const [dateRange, setDateRange] = useState<DateRange>({
     from: subMonths(new Date(), 3),
@@ -128,13 +183,15 @@ export default function TreasuryPage() {
       const startStr = dateRange.from ? format(dateRange.from, "yyyy-MM-dd") : undefined
       const endStr = dateRange.to ? format(dateRange.to, "yyyy-MM-dd") : undefined
 
-      const [kpisData, accountsData, categoriesData, byCategData, monthlySummaryData] = await Promise.all([
-        fetchTreasuryKPIs(startStr, endStr),
-        fetchTreasuryAccounts(),
-        fetchTreasuryCategories(),
-        fetchTreasuryByCategory(startStr, endStr),
-        fetchTreasuryMonthlySummary(startStr, endStr),
-      ])
+      const [kpisData, accountsData, categoriesData, byCategData, monthlySummaryData, consentData] =
+        await Promise.all([
+          fetchTreasuryKPIs(startStr, endStr),
+          fetchTreasuryAccounts(),
+          fetchTreasuryCategories(),
+          fetchTreasuryByCategory(startStr, endStr),
+          fetchTreasuryMonthlySummary(startStr, endStr),
+          fetchConsentStatus(),
+        ])
 
       // Pool Bancario - cargar por separado para no bloquear si las vistas no existen
       let poolResumenData = null
@@ -165,6 +222,7 @@ export default function TreasuryPage() {
       setCategories(categoriesData)
       setCategoryBreakdown(byCategData)
       setMonthlySummaries(monthlySummaryData || [])
+      setConsentInfo(consentData)
       // Pool Bancario
       setPoolResumen(poolResumenData)
       setPoolPrestamos(poolPrestamosData)
@@ -279,6 +337,287 @@ export default function TreasuryPage() {
       })
     }
   }
+
+  // --- SYNC / CONNECT HANDLERS ---
+
+  const handleSyncAccount = async (accountId: string) => {
+    // Si es "all", sincronizar todas las cuentas secuencialmente
+    if (accountId === "all") {
+      if (accounts.length === 0) return
+      setSyncingAccountId("all")
+      let totalTx = 0
+      let errors = 0
+      try {
+        for (const account of accounts) {
+          try {
+            const result = await triggerAccountSync(account.id)
+            if (result.success && result.synced?.transactions) {
+              totalTx += result.synced.transactions
+            }
+          } catch {
+            errors++
+          }
+        }
+        await loadData()
+        toast({
+          title: errors === 0 ? "Sincronización completada" : "Sincronización parcial",
+          description: errors === 0
+            ? `${accounts.length} cuentas sincronizadas, ${totalTx} transacciones`
+            : `${accounts.length - errors}/${accounts.length} cuentas sincronizadas`,
+          variant: errors > 0 ? "destructive" : "default",
+        })
+      } catch {
+        toast({
+          title: "Error de conexión",
+          description: "No se pudo conectar con el servicio de sincronización",
+          variant: "destructive",
+        })
+      } finally {
+        setSyncingAccountId(null)
+      }
+      return
+    }
+
+    // Sincronizar una cuenta individual
+    setSyncingAccountId(accountId)
+    try {
+      const result = await triggerAccountSync(accountId)
+      if (result.success) {
+        toast({
+          title: "Sincronización completada",
+          description: result.synced
+            ? `${result.synced.transactions} transacciones nuevas`
+            : result.message,
+        })
+        await loadData()
+      } else {
+        toast({
+          title: "Error al sincronizar",
+          description: result.message,
+          variant: "destructive",
+        })
+      }
+    } catch (err) {
+      toast({
+        title: "Error de conexión",
+        description: "No se pudo conectar con el servicio de sincronización",
+        variant: "destructive",
+      })
+    } finally {
+      setSyncingAccountId(null)
+    }
+  }
+
+  const handleConnectBank = useCallback(async () => {
+    setConnectState({
+      ...INITIAL_CONNECT_STATE,
+      step: "selecting",
+    })
+    setConnectSheetOpen(true)
+
+    const institutions = await fetchInstitutions("ES")
+    setConnectState((prev) => ({
+      ...prev,
+      institutions,
+    }))
+  }, [])
+
+  const handleRenewConsent = useCallback(
+    async (institutionId: string) => {
+      if (!institutionId) {
+        handleConnectBank()
+        return
+      }
+
+      setConnectState({
+        ...INITIAL_CONNECT_STATE,
+        step: "selecting",
+      })
+      setConnectSheetOpen(true)
+
+      const institutions = await fetchInstitutions("ES")
+      setConnectState((prev) => ({
+        ...prev,
+        institutions,
+      }))
+
+      const targetInst = institutions.find(
+        (inst) => inst.id === institutionId || inst.gocardless_id === institutionId,
+      )
+      if (targetInst) {
+        handleSelectInstitution(targetInst)
+      }
+    },
+    [handleConnectBank],
+  )
+
+  const handleSelectInstitution = async (institution: BankInstitution) => {
+    setConnectState((prev) => ({
+      ...prev,
+      step: "creating",
+      selectedInstitution: institution,
+    }))
+
+    const reference = `ref_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
+    const origin = typeof window !== "undefined" ? window.location.origin : ""
+    const redirectUrl = `${origin}/?gocardless_callback=true`
+
+    const result = await createRequisition(
+      institution.gocardless_id || institution.id,
+      redirectUrl,
+      reference,
+    )
+
+    if (!result.success || !result.link) {
+      setConnectState((prev) => ({
+        ...prev,
+        step: "error",
+        error: result.error || "No se pudo crear la solicitud de conexion",
+      }))
+      return
+    }
+
+    setConnectState((prev) => ({
+      ...prev,
+      step: "redirecting",
+      reference: result.reference || reference,
+      authLink: result.link || null,
+    }))
+
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("gocardless_ref", result.reference || reference)
+    }
+
+    try {
+      window.open(result.link, "_blank")
+    } catch {
+      console.warn("[TreasuryPage] No se pudo abrir ventana emergente")
+    }
+  }
+
+  const handleManualComplete = useCallback(() => {
+    const reference = connectState.reference
+    if (!reference) return
+    startPolling(reference)
+  }, [connectState.reference])
+
+  const startPolling = useCallback(async (reference: string) => {
+    setConnectState((prev) => ({ ...prev, step: "processing" }))
+
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current)
+      pollingRef.current = null
+    }
+
+    let attempts = 0
+    const maxAttempts = 30
+
+    const poll = async () => {
+      attempts++
+      const status = await pollRequisitionStatus(reference)
+
+      if (!status) {
+        if (attempts >= maxAttempts) {
+          if (pollingRef.current) clearInterval(pollingRef.current)
+          pollingRef.current = null
+          setConnectState((prev) => ({
+            ...prev,
+            step: "error",
+            error: "Tiempo de espera agotado. Intenta de nuevo.",
+          }))
+        }
+        return
+      }
+
+      if (status.status === "LN" || status.status === "GC") {
+        if (pollingRef.current) clearInterval(pollingRef.current)
+        pollingRef.current = null
+
+        setConnectState((prev) => ({ ...prev, step: "fetching" }))
+        const accounts = await fetchRequisitionAccounts(reference)
+
+        if (accounts.length === 0) {
+          setConnectState((prev) => ({
+            ...prev,
+            step: "error",
+            error: "No se encontraron cuentas asociadas a la autorizacion",
+          }))
+          return
+        }
+
+        setConnectState((prev) => ({
+          ...prev,
+          step: "syncing",
+          connectedAccounts: accounts,
+        }))
+
+        await triggerInitialSync(accounts)
+        setConnectState((prev) => ({ ...prev, step: "success" }))
+
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem("gocardless_ref")
+        }
+      } else if (status.status === "RJ" || status.status === "EX") {
+        if (pollingRef.current) clearInterval(pollingRef.current)
+        pollingRef.current = null
+        setConnectState((prev) => ({
+          ...prev,
+          step: "error",
+          error:
+            status.status === "RJ"
+              ? "La autorizacion fue rechazada por el banco"
+              : "La solicitud de autorizacion ha expirado",
+        }))
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem("gocardless_ref")
+        }
+      } else if (attempts >= maxAttempts) {
+        if (pollingRef.current) clearInterval(pollingRef.current)
+        pollingRef.current = null
+        setConnectState((prev) => ({
+          ...prev,
+          step: "error",
+          error: "Tiempo de espera agotado.",
+        }))
+      }
+    }
+
+    await poll()
+    if (connectState.step !== "success" && connectState.step !== "error" && !pollingRef.current) {
+      pollingRef.current = setInterval(poll, 2000)
+    }
+  }, [])
+
+  const handleRetry = useCallback(() => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current)
+      pollingRef.current = null
+    }
+    setConnectState({
+      ...INITIAL_CONNECT_STATE,
+      step: "selecting",
+      institutions: connectState.institutions,
+    })
+  }, [connectState.institutions])
+
+  const handleCloseConnect = useCallback(async () => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current)
+      pollingRef.current = null
+    }
+
+    const wasSuccess = connectState.step === "success"
+    setConnectSheetOpen(false)
+    setConnectState(INITIAL_CONNECT_STATE)
+
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("gocardless_ref")
+    }
+
+    if (wasSuccess) {
+      await loadData()
+    }
+  }, [connectState.step])
 
   const clearFilters = () => {
     setAccountFilter("all")
@@ -406,13 +745,6 @@ export default function TreasuryPage() {
       gradient: "radial-gradient(circle, rgba(255,203,119,0.15) 0%, rgba(255,203,119,0) 70%)",
       iconColor: "text-[#ffcb77]",
     },
-    {
-      icon: Building2,
-      label: "Conexiones",
-      href: "#",
-      gradient: "radial-gradient(circle, rgba(2,177,196,0.15) 0%, rgba(2,177,196,0) 70%)",
-      iconColor: "text-[#02b1c4]",
-    },
   ]
 
   // --- Exportación de datos ---
@@ -486,10 +818,10 @@ export default function TreasuryPage() {
         orientation: "landscape",
         summary: kpis
           ? [
-              { label: "Saldo Total", value: formatCurrency(kpis.saldo_total) },
-              { label: "Ingresos", value: formatCurrency(kpis.ingresos_periodo) },
-              { label: "Gastos", value: formatCurrency(kpis.gastos_periodo) },
-            ]
+            { label: "Saldo Total", value: formatCurrency(kpis.saldo_total) },
+            { label: "Ingresos", value: formatCurrency(kpis.ingresos_periodo) },
+            { label: "Gastos", value: formatCurrency(kpis.gastos_periodo) },
+          ]
           : [],
       })
     } else {
@@ -517,9 +849,9 @@ export default function TreasuryPage() {
         orientation: "portrait",
         summary: kpis
           ? [
-              { label: "Saldo Total", value: formatCurrency(kpis.saldo_total) },
-              { label: "Num. Cuentas", value: String(kpis.num_cuentas) },
-            ]
+            { label: "Saldo Total", value: formatCurrency(kpis.saldo_total) },
+            { label: "Num. Cuentas", value: String(kpis.num_cuentas) },
+          ]
           : [],
       })
     }
@@ -564,6 +896,13 @@ export default function TreasuryPage() {
           topCategoriesWithPercentage={topCategoriesWithPercentage}
           uncategorizedData={uncategorizedData}
           onViewUncategorized={handleViewUncategorized}
+          // GoCardless Props
+          consentInfo={consentInfo}
+          syncingAccountId={syncingAccountId}
+          onSyncAccount={handleSyncAccount}
+          onConnectBank={handleConnectBank}
+          onRenewConsent={handleRenewConsent}
+          goCardlessAppUrl={goCardlessAppUrl}
         />
       )}
 
@@ -631,10 +970,17 @@ export default function TreasuryPage() {
         />
       )}
 
-      {/* TAB 6: Conexiones Bancarias (Open Banking via GoCardless) */}
-      {activeTab === "Conexiones" && (
-        <TreasuryConexionesTab />
-      )}
+
+      {/* Sheet de conexion bancaria */}
+      <BankConnectSheet
+        open={connectSheetOpen}
+        onOpenChange={setConnectSheetOpen}
+        state={connectState}
+        onSelectInstitution={handleSelectInstitution}
+        onManualComplete={handleManualComplete}
+        onRetry={handleRetry}
+        onClose={handleCloseConnect}
+      />
     </div>
   )
 }

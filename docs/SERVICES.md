@@ -687,33 +687,34 @@ Botón dropdown reutilizable con opciones "Exportar CSV" y "Exportar PDF". Recib
 ## 18. bankConnectionsService.ts
 
 **Archivo:** `lib/bankConnectionsService.ts`
-**Consumido por:** `BankConnectionsPage`, `BankResumenTab`, `BankMovimientosTab`
+**Consumido por:** `TreasuryPage`, `TreasuryDashboardTab`, `TreasuryConexionesTab`
 
-Lee datos bancarios directamente de las tablas GoCardless en Supabase y delega acciones (sync, renovación) a la subapp GoCardless vía API.
+Lee datos bancarios directamente de Supabase y delega acciones (sync, conexión, renovación) a las **API routes internas** (`/api/gocardless/*`). Ya no depende de una subapp externa.
 
 ### Funciones
 
 | Función | Retorna | Descripción |
 |---------|---------|-------------|
-| `fetchBankAccounts()` | `BankAccount[]` | Cuentas activas con saldo, IBAN, institución (logo+nombre). Join `gocardless_accounts` + `gocardless_institutions` |
+| `fetchBankAccounts()` | `BankAccount[]` | Cuentas activas con saldo, IBAN, institución (logo+nombre). Queries paralelas a `gocardless_accounts` + `gocardless_institutions` con JOIN manual vía Map |
 | `fetchConsolidatedBalance()` | `BankConsolidatedBalance` | Saldo total agregado, nº cuentas, nº bancos, lista de cuentas |
 | `fetchBankTransactions(filters)` | `BankTransactionsResult` | Transacciones con filtros (búsqueda, cuenta, fechas, tipo), paginación server-side, stats del período |
 | `fetchConsentStatus()` | `BankConsentInfo` | Días hasta renovación del consentimiento más próximo a expirar |
-| `triggerAccountSync(accountId)` | `BankSyncResult` | Llama `POST /api/accounts/{id}/full-sync` en la subapp GoCardless |
-| `getGoCardlessAppUrl()` | `string \| null` | Devuelve `NEXT_PUBLIC_GOCARDLESS_APP_URL` o null |
-| `fetchInstitutions(country?)` | `BankInstitution[]` | GET `/api/institutions?country=ES` — Lista de instituciones bancarias disponibles (logo, nombre, países) |
-| `createRequisition(institutionId, redirectUrl, reference)` | `BankRequisitionCreateResult` | POST `/api/requisitions/create` — Crea solicitud de conexión, devuelve `{link, reference}` |
-| `pollRequisitionStatus(reference)` | `BankRequisitionStatus \| null` | GET `/api/requisitions/status/[ref]` — Estado de la requisición (CR/GC/LN/RJ/EX) |
-| `fetchRequisitionAccounts(reference)` | `BankConnectedAccount[]` | GET `/api/requisitions/accounts/[ref]` — Cuentas conectadas tras autorización |
-| `triggerInitialSync(accounts[])` | `BankInitialSyncResult \| null` | POST `/api/sync/initial` — Sincronización inicial de cuentas recién conectadas |
+| `triggerAccountSync(accountId)` | `BankSyncResult` | Llama `POST /api/gocardless/accounts/{id}/full-sync` — acepta UUID o gocardless_id |
+| `getGoCardlessAppUrl()` | `string` | Devuelve `/api/gocardless` (hardcoded, ya no usa env var) |
+| `fetchInstitutions(country?)` | `BankInstitution[]` | GET `/api/gocardless/institutions?country=ES` — Lee de Supabase `gocardless_institutions` filtrado por país |
+| `createRequisition(institutionId, redirectUrl, reference)` | `BankRequisitionCreateResult` | POST `/api/gocardless/requisitions/create` — Crea requisition en GoCardless API y guarda en Supabase |
+| `pollRequisitionStatus(reference)` | `BankRequisitionStatus \| null` | GET `/api/gocardless/requisitions/{id}/status` — Consulta estado en GoCardless API |
+| `fetchRequisitionAccounts(reference)` | `BankConnectedAccount[]` | GET `/api/gocardless/requisitions/{id}/accounts` — Cuentas conectadas tras autorización |
+| `triggerInitialSync(accounts[])` | `BankInitialSyncResult \| null` | POST `/api/gocardless/sync/initial` — Sincronización inicial de cuentas recién conectadas |
 
 ### Helpers internos
 
 | Helper | Descripción |
 |--------|-------------|
-| `parseBalance(raw)` | Parsea saldos que pueden ser JSON `{amount, currency}` o número directo |
-| `parseAmount(raw)` | Parsea amounts de transacciones (JSON o string) |
-| `parseCurrency(raw)` | Extrae currency de JSON o devuelve fallback "EUR" |
+| `tryParseJson(raw)` | Intenta `JSON.parse` sobre strings — necesario porque Supabase devuelve columnas `text` como strings aunque contengan JSON |
+| `parseBalance(raw)` | Parsea saldos que pueden ser JSON `{amount, currency}` o número directo. Usa `tryParseJson` |
+| `parseAmount(raw)` | Parsea amounts de transacciones (JSON o string). Usa `tryParseJson` |
+| `parseCurrency(raw)` | Extrae currency de JSON o devuelve fallback "EUR". Usa `tryParseJson` |
 
 ### Tablas consultadas
 
@@ -723,3 +724,60 @@ Lee datos bancarios directamente de las tablas GoCardless en Supabase y delega a
 | `gocardless_institutions` | `name`, `logo_url` |
 | `gocardless_transactions` | `amount`, `booking_date`, `remittance_information_unstructured`, `creditor_name`, `debtor_name`, `balance_after_transaction` |
 | `gocardless_requisitions` | `expires_at`, `created_at`, `status`, `institution_id` |
+
+---
+
+## 19. gocardless.ts (GoCardless API Client)
+
+**Archivo:** `lib/gocardless.ts`
+**Consumido por:** API routes en `app/api/gocardless/*`
+
+Cliente singleton para la API de GoCardless Open Banking (`https://bankaccountdata.gocardless.com/api/v2/`). Solo se ejecuta en el servidor (API routes).
+
+### Credenciales
+
+| Variable de entorno | Descripción |
+|---------------------|-------------|
+| `GOCARDLESS_SECRET_ID` | ID del secreto GoCardless |
+| `GOCARDLESS_SECRET_KEY` | Clave del secreto GoCardless |
+
+### Clase `GoCardlessClient`
+
+| Método | Descripción |
+|--------|-------------|
+| `getAccessToken()` | Obtiene token de acceso. Auto-refresh si el token actual ha expirado. Lanza error descriptivo si faltan credenciales |
+| `makeRequest(endpoint, options)` | Ejecuta request autenticada contra la API. Retry automático en 401 (re-obtiene token) |
+| `getInstitutions(country)` | Lista instituciones bancarias por país |
+| `createRequisition(institutionId, redirectUrl, options)` | Crea solicitud de conexión bancaria (OAuth) |
+| `getRequisition(requisitionId)` | Consulta estado de una requisición |
+| `getAccountBalances(accountId)` | Obtiene saldos de una cuenta (usa `gocardless_id`) |
+| `getAccountTransactions(accountId)` | Obtiene transacciones booked + pending (usa `gocardless_id`) |
+| `getAccountDetails(accountId)` | Obtiene detalles de una cuenta |
+| `getRateLimitInfo()` | Devuelve info de rate limits de la última respuesta |
+
+**Exportado como singleton:** `export const gocardless = new GoCardlessClient()`
+
+---
+
+## 20. gocardlessRateLimit.ts
+
+**Archivo:** `lib/gocardlessRateLimit.ts`
+**Consumido por:** `app/api/gocardless/accounts/[id]/full-sync/route.ts`
+
+Gestiona rate limits de la API de GoCardless: máximo 4 requests/día por cuenta por scope (balances, transactions, details).
+
+### Clase `GoCardlessRateLimitManager`
+
+| Método | Descripción |
+|--------|-------------|
+| `canMakeRequest(accountId, scope)` | Verifica si se puede hacer una request para un scope dado |
+| `checkMultipleScopes(accountId, scopes[])` | Verifica múltiples scopes en paralelo |
+| `updateRateLimit(accountId, scope, remaining)` | Actualiza el contador de rate limit tras una request exitosa |
+
+### Características
+
+- **4 requests/día** por cuenta por scope (balances, transactions, details)
+- **Cache en memoria** de 5 minutos (`Map<string, { canRequest, cachedAt }>`)
+- **Tabla Supabase:** `gocardless_rate_limits` (`account_id`, `scope`, `remaining_requests`, `last_request_at`, `reset_at`)
+
+**Exportado como singleton:** `export const gocardlessRateLimit = new GoCardlessRateLimitManager()`

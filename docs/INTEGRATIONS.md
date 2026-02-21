@@ -206,68 +206,89 @@ Cuentica (API REST)
 | Campo | Valor |
 |-------|-------|
 | **Tipo** | Open Banking |
-| **Protocolo** | REST API vía n8n |
-| **Dirección** | GoCardless → n8n → Supabase |
-| **Frecuencia** | Periódica (varias veces al día) |
+| **Protocolo** | REST API — rutas internas `/api/gocardless/*` |
+| **Dirección** | Smart App → GoCardless API → Supabase |
+| **Frecuencia** | Bajo demanda (botones de sync en Dashboard) |
+| **Credenciales** | `GOCARDLESS_SECRET_ID` + `GOCARDLESS_SECRET_KEY` (server-side) |
+
+### Arquitectura (migración feb 2026)
+
+La lógica de GoCardless está integrada directamente en la Smart App mediante:
+- **Cliente API:** `lib/gocardless.ts` — Gestión de tokens (auto-refresh), retry en 401
+- **Rate Limiting:** `lib/gocardlessRateLimit.ts` — 4 requests/día por cuenta por scope
+- **6 API Routes:** `app/api/gocardless/*` — Server-side, usan las credenciales del `.env.local`
+
+> **Nota:** La subapp externa `go-cardlessapp` ya NO se usa. Todo funciona desde la Smart App.
 
 ### Flujo de datos
 
 ```
-GoCardless (Open Banking API)
+Smart App (API Routes)
   │
-  ├── Conecta con cuentas bancarias del restaurante
-  │   ├── CaixaBank (cuenta principal)
-  │   └── BBVA (cuenta proveedores)
+  ├── lib/gocardless.ts → GoCardless Open Banking API
+  │   ├── Token management (access + refresh)
+  │   ├── GET /api/v2/accounts/{id}/balances
+  │   ├── GET /api/v2/accounts/{id}/transactions
+  │   └── GET /api/v2/institutions/?country=ES
   │
-  └──► n8n (flujo periódico)
-        ├── GET /accounts → listado de cuentas
-        ├── GET /transactions → movimientos bancarios
-        └── Log resultado → gocardless_sync_logs
+  ├── lib/gocardlessRateLimit.ts → Supabase (gocardless_rate_limits)
+  │   └── 4 calls/day per account per scope (balances, transactions, details)
+  │
+  └── Resultados → Supabase (gocardless_accounts, gocardless_transactions)
 ```
+
+### API Routes internas
+
+| Ruta | Método | Descripción |
+|------|--------|-------------|
+| `/api/gocardless/institutions` | GET | Lista instituciones desde Supabase (filtro por país) |
+| `/api/gocardless/requisitions/create` | POST | Crea requisition en GoCardless API + guarda en Supabase |
+| `/api/gocardless/requisitions/[id]/status` | GET | Consulta estado en GoCardless API + actualiza Supabase |
+| `/api/gocardless/requisitions/[id]/accounts` | GET | Obtiene cuentas vinculadas, upsert en Supabase |
+| `/api/gocardless/accounts/[id]/full-sync` | POST | Sincroniza saldos y transacciones (acepta UUID o gocardless_id) |
+| `/api/gocardless/sync/initial` | POST | Importación inicial de transacciones |
 
 ### Tablas afectadas
 
 | Tabla/Vista | Descripción |
 |-------------|-------------|
-| `gocardless_accounts` | Cuentas bancarias con saldo, IBAN, estado, `institution_id` (FK) |
+| `gocardless_accounts` | Cuentas bancarias con saldo, IBAN, estado, `institution_id` |
 | `gocardless_institutions` | Datos del banco (nombre, logo_url) |
-| `gocardless_transactions` | Movimientos bancarios con `amount` (JSON o string), `booking_date`, `creditor_name`, `debtor_name` |
+| `gocardless_transactions` | Movimientos bancarios con `amount`, `booking_date`, `creditor_name`, `debtor_name` |
 | `gocardless_requisitions` | Consentimientos bancarios con `status`, `expires_at`, `institution_id` |
-| `gocardless_sync_logs` | Logs de sincronización con `total_accounts`, `successful_accounts`, `failed_accounts` |
+| `gocardless_rate_limits` | Control de rate limiting por cuenta/scope/día |
+| `gocardless_sync_logs` | Logs de sincronización |
 
-### Flujo de conexión embebido (Smart App → Subapp → GoCardless)
+### Flujo de conexión embebido (Smart App → GoCardless)
 
 ```
-Smart App                          Subapp GoCardless             GoCardless
-────────────                       ─────────────────             ──────────
+Smart App (Frontend)                Smart App (API Routes)           GoCardless
+────────────────────                ──────────────────────           ──────────
 1. User clicks "Conectar"
-2. Sheet → Lista de bancos      → GET /api/institutions
+2. Sheet → Lista de bancos      → GET /api/gocardless/institutions (Supabase)
 3. User selects bank
-4. Create requisition           → POST /api/requisitions/create → GoCardless API
-5. window.open(authLink)        ──────────────────────────────→ Banco auth page
+4. Create requisition           → POST /api/gocardless/requisitions/create → GoCardless API
+5. window.open(authLink)        ─────────────────────────────────────────→ Banco auth page
 6. User completes auth          ← Redirect ?gocardless_callback=true&ref=xxx
-7. Detect callback → polling    → GET /api/requisitions/status/[ref]
-8. Fetch accounts               → GET /api/requisitions/accounts/[ref]
-9. Initial sync                 → POST /api/sync/initial
+7. Detect callback → polling    → GET /api/gocardless/requisitions/[ref]/status
+8. Fetch accounts               → GET /api/gocardless/requisitions/[ref]/accounts
+9. Initial sync                 → POST /api/gocardless/sync/initial
 10. Success → reload data
 ```
 
 **Componente:** `BankConnectSheet.tsx` (Sheet lateral multi-paso)
 **Estados del flujo:** `idle → selecting → creating → redirecting → processing → fetching → syncing → success | error`
 **Callback URL:** `https://domain.com/?gocardless_callback=true&ref=req_xxx`
-**Detección:** `app/page.tsx` detecta params → `sessionStorage` → `BankConnectionsPage` resume polling
+**Detección:** `app/page.tsx` detecta params → `sessionStorage` → TreasuryPage resume polling
 **Renovación:** Mismo flujo con institución pre-seleccionada (`onRenewConsent(institutionId)`)
-**CORS:** Subapp tiene headers CORS en `next.config.mjs` para permitir requests cross-origin
 
 ### En la webapp
 
-- `BankConnectionsPage` — Vista principal de conexiones bancarias (datos reales de Supabase)
-  - Servicio: `lib/bankConnectionsService.ts`
-  - Lee cuentas, transacciones y consentimientos directamente de Supabase
-  - Sincronización manual vía API de la subapp (`NEXT_PUBLIC_GOCARDLESS_APP_URL`)
+- `TreasuryPage` — Dashboard con saldos, sync buttons, conexión bancaria integrada
+  - Servicio: `lib/bankConnectionsService.ts` (llama a rutas internas `/api/gocardless/*`)
+  - Sync individual por cuenta o "Sync All" (secuencial)
   - Alerta de renovación de consentimiento (≤15 días)
   - **Conexión/renovación embebida** vía `BankConnectSheet` (Sheet lateral multi-paso)
-- `TreasuryPage` — Muestra saldos, transacciones, categorización (vía RPCs)
 - `SettingsPage` — Estado de sincronización GoCardless
 
 ---

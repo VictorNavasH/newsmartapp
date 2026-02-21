@@ -18,9 +18,15 @@ import type {
   TreasuryAccount,
   TreasuryCategoryBreakdown,
   TreasuryMonthlySummary,
+  BankConsentInfo,
 } from "@/types"
 import { format, parseISO } from "date-fns"
 import { es } from "date-fns/locale"
+import {
+  RefreshCw,
+  Plus,
+  Calendar,
+} from "lucide-react"
 import {
   LineChart,
   Line,
@@ -46,6 +52,13 @@ interface TreasuryDashboardTabProps {
   topCategoriesWithPercentage: { name: string; value: number; percentage: number }[]
   uncategorizedData: { totalGastos: number; totalIngresos: number; numTransacciones: number }
   onViewUncategorized: () => void
+  // GoCardless Props
+  consentInfo: BankConsentInfo | null
+  syncingAccountId: string | null
+  onSyncAccount: (id: string) => void
+  onConnectBank: () => void
+  onRenewConsent: (id: string) => void
+  goCardlessAppUrl: string | null
 }
 
 export function TreasuryDashboardTab({
@@ -59,6 +72,12 @@ export function TreasuryDashboardTab({
   topCategoriesWithPercentage,
   uncategorizedData,
   onViewUncategorized,
+  consentInfo,
+  syncingAccountId,
+  onSyncAccount,
+  onConnectBank,
+  onRenewConsent,
+  goCardlessAppUrl,
 }: TreasuryDashboardTabProps) {
   return (
     <div className="space-y-6">
@@ -72,9 +91,23 @@ export function TreasuryDashboardTab({
               <p className="text-2xl font-bold text-[#364f6b]">
                 {loading ? "..." : formatCurrency(kpis?.saldo_total || 0)}
               </p>
-              <p className="text-xs text-slate-400 mt-1">
-                {accounts?.length || 0} cuenta{(accounts?.length || 0) !== 1 ? "s" : ""}
-              </p>
+              <div className="flex items-center gap-2 mt-1">
+                <p className="text-xs text-slate-400">
+                  {accounts?.length || 0} cuenta{(accounts?.length || 0) !== 1 ? "s" : ""}
+                </p>
+                {goCardlessAppUrl && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-4 w-4 text-slate-400 hover:text-[#17c3b2]"
+                    title="Sincronizar todas las cuentas"
+                    onClick={() => onSyncAccount("all")}
+                    disabled={!!syncingAccountId}
+                  >
+                    <RefreshCw className={`h-3 w-3 ${syncingAccountId === "all" ? "animate-spin" : ""}`} />
+                  </Button>
+                )}
+              </div>
             </div>
             <div className="p-2 rounded-lg" style={{ backgroundColor: `${BRAND_COLORS.primary}15` }}>
               <Landmark className="h-5 w-5" style={{ color: BRAND_COLORS.primary }} />
@@ -156,42 +189,118 @@ export function TreasuryDashboardTab({
       </div>
 
       {/* Cuentas Bancarias */}
-      <TremorCard title="Cuentas Bancarias" icon={<Building2 className="h-5 w-5" />}>
+      <TremorCard
+        title="Cuentas Bancarias"
+        icon={<Building2 className="h-5 w-5" />}
+        actions={
+          goCardlessAppUrl && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs gap-1.5 border-[#17c3b2] text-[#17c3b2] hover:bg-[#17c3b2]/10"
+              onClick={onConnectBank}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Conectar banco
+            </Button>
+          )
+        }
+      >
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-4">
           {loading ? (
             <p className="text-slate-400 col-span-full text-center py-8">Cargando cuentas...</p>
           ) : (accounts?.length || 0) === 0 ? (
-            <p className="text-slate-400 col-span-full text-center py-8">No hay cuentas configuradas</p>
+            <div className="col-span-full flex flex-col items-center justify-center py-12 border-2 border-dashed border-slate-100 rounded-xl bg-slate-50/50">
+              <Building2 className="h-10 w-10 text-slate-300 mb-3" />
+              <p className="text-slate-500 font-medium text-center">No hay cuentas configuradas</p>
+              {goCardlessAppUrl && (
+                <Button variant="link" className="text-[#17c3b2] mt-1" onClick={onConnectBank}>
+                  Conectar tu primer banco
+                </Button>
+              )}
+            </div>
           ) : (
-            accounts.map((account) => (
-              <div key={account.id} className="p-4 border border-slate-200 rounded-lg bg-white">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    {account.bank_logo ? (
-                      <img
-                        src={account.bank_logo || "/placeholder.svg"}
-                        alt={account.bank_name}
-                        className="h-8 w-8 object-contain rounded"
-                      />
-                    ) : (
-                      <Building2 className="h-8 w-8 text-slate-400" />
+            <>
+              {accounts.map((account) => (
+                <div key={account.id} className="p-4 border border-slate-200 rounded-lg bg-white hover:border-[#17c3b2]/30 transition-colors relative group">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      {account.bank_logo ? (
+                        <img
+                          src={account.bank_logo || "/placeholder.svg"}
+                          alt={account.bank_name}
+                          className="h-8 w-8 object-contain rounded"
+                        />
+                      ) : (
+                        <Building2 className="h-6 w-6 text-slate-400" />
+                      )}
+                      <div>
+                        <p className="font-medium text-slate-900 text-sm">{account.bank_name}</p>
+                        <p className="text-[10px] text-slate-500 font-mono">{formatIBAN(account.iban)}</p>
+                      </div>
+                    </div>
+
+                    {goCardlessAppUrl && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={`h-7 w-7 text-slate-400 hover:text-[#17c3b2] hover:bg-[#17c3b2]/10 ${syncingAccountId === account.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                          } transition-opacity`}
+                        onClick={() => onSyncAccount(account.id)}
+                        disabled={!!syncingAccountId}
+                        title="Sincronizar cuenta"
+                      >
+                        <RefreshCw className={`h-3.5 w-3.5 ${syncingAccountId === account.id ? "animate-spin" : ""}`} />
+                      </Button>
                     )}
-                    <div>
-                      <p className="font-medium text-slate-900">{account.bank_name}</p>
-                      <p className="text-xs text-slate-500">{formatIBAN(account.iban)}</p>
+                  </div>
+
+                  <div className="mt-4">
+                    <p className="text-lg font-bold text-slate-800">{formatCurrency(account.balance)}</p>
+
+                    <div className="flex items-center justify-between mt-1">
+                      {account.last_sync ? (
+                        <p className="text-[10px] text-slate-400">
+                          Sync: {format(new Date(account.last_sync), "dd MMM HH:mm", { locale: es })}
+                        </p>
+                      ) : (
+                        <p className="text-[10px] text-amber-500">Pendiente sync</p>
+                      )}
+
+                      {consentInfo?.daysUntilRenewal !== undefined && (
+                        <div
+                          className="flex items-center gap-1 cursor-help"
+                          title="Días restantes de autorización bancaria"
+                          onClick={() => consentInfo.daysUntilRenewal <= 7 && consentInfo.institutionId && onRenewConsent(consentInfo.institutionId)}
+                        >
+                          <Calendar className={`h-3 w-3 ${consentInfo.daysUntilRenewal <= 7 ? "text-red-500" :
+                              consentInfo.daysUntilRenewal <= 15 ? "text-amber-500" : "text-slate-400"
+                            }`} />
+                          <span className={`text-[10px] font-medium ${consentInfo.daysUntilRenewal <= 7 ? "text-red-600" :
+                              consentInfo.daysUntilRenewal <= 15 ? "text-amber-600" : "text-slate-500"
+                            }`}>
+                            {consentInfo.daysUntilRenewal}d
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
-                <div className="mt-3">
-                  <p className="text-xl font-bold text-slate-800">{formatCurrency(account.balance)}</p>
-                  {account.last_sync && (
-                    <p className="text-xs text-slate-400 mt-1">
-                      Sync: {format(new Date(account.last_sync), "dd MMM HH:mm", { locale: es })}
-                    </p>
-                  )}
-                </div>
-              </div>
-            ))
+              ))}
+
+              {/* Card rapida para conectar otro */}
+              {goCardlessAppUrl && (
+                <button
+                  onClick={onConnectBank}
+                  className="p-4 border border-dashed border-slate-200 rounded-lg bg-slate-50/30 hover:bg-[#17c3b2]/5 hover:border-[#17c3b2]/30 transition-all flex flex-col items-center justify-center gap-2 group"
+                >
+                  <div className="p-1.5 rounded-full bg-slate-100 group-hover:bg-[#17c3b2]/10 transition-colors">
+                    <Plus className="h-4 w-4 text-slate-400 group-hover:text-[#17c3b2]" />
+                  </div>
+                  <span className="text-[11px] font-medium text-slate-500 group-hover:text-[#17c3b2]">Añadir banco</span>
+                </button>
+              )}
+            </>
           )}
         </div>
       </TremorCard>
