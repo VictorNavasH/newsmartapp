@@ -229,13 +229,20 @@ GoCardless (Open Banking API)
 
 | Tabla/Vista | Descripción |
 |-------------|-------------|
+| `gocardless_accounts` | Cuentas bancarias con saldo, IBAN, estado, `institution_id` (FK) |
+| `gocardless_institutions` | Datos del banco (nombre, logo_url) |
+| `gocardless_transactions` | Movimientos bancarios con `amount` (JSON o string), `booking_date`, `creditor_name`, `debtor_name` |
+| `gocardless_requisitions` | Consentimientos bancarios con `status`, `expires_at`, `institution_id` |
 | `gocardless_sync_logs` | Logs de sincronización con `total_accounts`, `successful_accounts`, `failed_accounts` |
-| Tablas de transacciones | Movimientos bancarios (consultados por `TreasuryPage` vía RPCs) |
 
 ### En la webapp
 
-- `TreasuryPage` — Muestra saldos, transacciones, categorización
-- `BankConnectionsPage` — Interfaz de gestión de conexiones (actualmente mock)
+- `BankConnectionsPage` — Vista principal de conexiones bancarias (datos reales de Supabase)
+  - Servicio: `lib/bankConnectionsService.ts`
+  - Lee cuentas, transacciones y consentimientos directamente de Supabase
+  - Sincronización manual vía API de la subapp (`NEXT_PUBLIC_GOCARDLESS_APP_URL`)
+  - Alerta de renovación de consentimiento (≤15 días)
+- `TreasuryPage` — Muestra saldos, transacciones, categorización (vía RPCs)
 - `SettingsPage` — Estado de sincronización GoCardless
 
 ---

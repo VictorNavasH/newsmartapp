@@ -23,7 +23,8 @@ types/
 ├── food-cost.ts           # FoodCostProduct, FoodCostSummary
 ├── purchases.ts           # CompraPedido, CompraKPIs, CompraFacturaConciliacion, etc.
 ├── recharts.ts            # RechartsPayloadEntry, RechartsTooltipProps
-└── kpiTargets.ts          # KPITargets, DEFAULT_KPI_TARGETS, KPIProgress
+├── kpiTargets.ts          # KPITargets, DEFAULT_KPI_TARGETS, KPIProgress
+└── bankConnections.ts     # BankAccount, BankTransaction, BankConsolidatedBalance, etc.
 ```
 
 ### Dependencias entre módulos

@@ -9,6 +9,17 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 ## [Unreleased]
 
 ### Añadido
+- **Conexiones Bancarias con datos reales (GoCardless Open Banking):**
+  - Reemplaza vista mock por datos reales de Supabase (tablas `gocardless_accounts`, `gocardless_transactions`, `gocardless_requisitions`)
+  - Nuevo servicio `lib/bankConnectionsService.ts` con 6 funciones: `fetchBankAccounts`, `fetchConsolidatedBalance`, `fetchBankTransactions`, `fetchConsentStatus`, `triggerAccountSync`, `getGoCardlessAppUrl`
+  - Nuevos tipos en `types/bankConnections.ts`: `BankAccount`, `BankTransaction`, `BankConsolidatedBalance`, `BankConsentInfo`, `BankTransactionFilters`, `BankTransactionsResult`, `BankSyncResult`
+  - Tab **Resumen**: 4 KPIs (Saldo Total, Ingresos del Mes, Gastos del Mes, Balance Neto) + lista cuentas con logos bancarios + alerta renovación consentimiento (amber ≤15d, rojo ≤7d)
+  - Tab **Movimientos**: tabla transacciones con filtros (búsqueda, cuenta, tipo ingreso/gasto) + paginación server-side (50/página)
+  - Botón "Sincronizar" por cuenta → llama API subapp GoCardless (`/api/accounts/{id}/full-sync`)
+  - Botón "Renovar ahora" → abre la subapp GoCardless en nueva pestaña con parámetro institución
+  - Variable de entorno `NEXT_PUBLIC_GOCARDLESS_APP_URL` para configurar URL de la subapp
+  - Sub-componentes: `BankResumenTab.tsx`, `BankMovimientosTab.tsx`, `constants.ts` (patrón TreasuryPage)
+
 - **Food Cost real en Dashboard KPI:**
   - Nueva función `fetchFoodCostAverage()` en `lib/dataService.ts` — consulta ligera a `vw_food_cost` que devuelve el % promedio global
   - `DashboardPage.tsx` ahora llama a `fetchFoodCostAverage()` en el `Promise.all` de carga de datos

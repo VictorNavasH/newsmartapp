@@ -1,164 +1,229 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
+import {
+  Building2,
+  TrendingUp,
+  ArrowDownLeft,
+} from "lucide-react"
 import { PageHeader } from "@/components/layout/PageHeader"
-import { TremorCard } from "@/components/ui/TremorCard"
-import { Button } from "@/components/ui/button"
-import { Building2, Plus, Check, AlertCircle, RefreshCw, ExternalLink } from "lucide-react"
-
-interface BankConnection {
-  id: string
-  bank_name: string
-  account_name: string
-  account_number: string
-  status: "connected" | "pending" | "error"
-  last_sync: string
-}
-
-const BRAND_COLORS = {
-  primary: "#02b1c4",
-  secondary: "#364f6b",
-}
+import { MenuBar } from "@/components/ui/menu-bar"
+import { useToast } from "@/hooks/use-toast"
+import {
+  fetchConsolidatedBalance,
+  fetchBankTransactions,
+  fetchConsentStatus,
+  triggerAccountSync,
+  getGoCardlessAppUrl,
+} from "@/lib/bankConnectionsService"
+import type {
+  BankConsolidatedBalance,
+  BankTransaction,
+  BankTransactionsResult,
+  BankConsentInfo,
+  BankAccount,
+} from "@/types"
+import { PAGE_SIZE, type TransactionTypeFilter } from "./bankConnections/constants"
+import { BankResumenTab } from "./bankConnections/BankResumenTab"
+import { BankMovimientosTab } from "./bankConnections/BankMovimientosTab"
 
 export default function BankConnectionsPage() {
-  const [connections, setConnections] = useState<BankConnection[]>([
-    {
-      id: "1",
-      bank_name: "CaixaBank",
-      account_name: "Cuenta Principal",
-      account_number: "ES12 **** **** **** 4567",
-      status: "connected",
-      last_sync: "Hace 2 horas",
-    },
-    {
-      id: "2",
-      bank_name: "BBVA",
-      account_name: "Cuenta Proveedores",
-      account_number: "ES98 **** **** **** 1234",
-      status: "connected",
-      last_sync: "Hace 1 hora",
-    },
-  ])
-  const [isConnecting, setIsConnecting] = useState(false)
+  const { toast } = useToast()
 
-  const handleConnect = () => {
-    setIsConnecting(true)
-    // Aqui iria la integracion con GoCardless
-    setTimeout(() => setIsConnecting(false), 2000)
+  const [activeTab, setActiveTab] = useState("Resumen")
+
+  // Data state
+  const [consolidated, setConsolidated] = useState<BankConsolidatedBalance | null>(null)
+  const [consentInfo, setConsentInfo] = useState<BankConsentInfo | null>(null)
+  const [transactions, setTransactions] = useState<BankTransaction[]>([])
+  const [periodStats, setPeriodStats] = useState<BankTransactionsResult["periodStats"] | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [loadingTransactions, setLoadingTransactions] = useState(false)
+  const [syncingAccountId, setSyncingAccountId] = useState<string | null>(null)
+
+  // Filters
+  const [searchTerm, setSearchTerm] = useState("")
+  const [accountFilter, setAccountFilter] = useState("all")
+  const [typeFilter, setTypeFilter] = useState<TransactionTypeFilter>("all")
+  const [page, setPage] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
+
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE)
+  const goCardlessAppUrl = getGoCardlessAppUrl()
+  const accounts: BankAccount[] = consolidated?.accounts ?? []
+
+  const hasActiveFilters = accountFilter !== "all" || typeFilter !== "all" || searchTerm !== ""
+
+  const clearFilters = () => {
+    setSearchTerm("")
+    setAccountFilter("all")
+    setTypeFilter("all")
+    setPage(1)
   }
 
-  const getStatusBadge = (status: BankConnection["status"]) => {
-    switch (status) {
-      case "connected":
-        return (
-          <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
-            <Check className="h-3 w-3" />
-            Conectado
-          </span>
-        )
-      case "pending":
-        return (
-          <span className="flex items-center gap-1 text-xs font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
-            <RefreshCw className="h-3 w-3 animate-spin" />
-            Sincronizando
-          </span>
-        )
-      case "error":
-        return (
-          <span className="flex items-center gap-1 text-xs font-medium text-red-600 bg-red-50 px-2 py-1 rounded-full">
-            <AlertCircle className="h-3 w-3" />
-            Error
-          </span>
-        )
+  // Load initial data (resumen + consent)
+  const loadResumenData = useCallback(async () => {
+    setLoading(true)
+    try {
+      const [consolidatedData, consentData] = await Promise.all([
+        fetchConsolidatedBalance(),
+        fetchConsentStatus(),
+      ])
+      setConsolidated(consolidatedData)
+      setConsentInfo(consentData)
+    } catch (err) {
+      console.error("[BankConnectionsPage] Error loading resumen:", err)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  // Load transactions (with filters)
+  const loadTransactions = useCallback(async () => {
+    setLoadingTransactions(true)
+    try {
+      const result = await fetchBankTransactions({
+        page,
+        limit: PAGE_SIZE,
+        search: searchTerm || "",
+        accountId: accountFilter !== "all" ? accountFilter : null,
+        type: typeFilter,
+      })
+      setTransactions(result.transactions)
+      setTotalCount(result.totalCount)
+      setPeriodStats(result.periodStats)
+    } catch (err) {
+      console.error("[BankConnectionsPage] Error loading transactions:", err)
+    } finally {
+      setLoadingTransactions(false)
+    }
+  }, [page, searchTerm, accountFilter, typeFilter])
+
+  // Initial load
+  useEffect(() => {
+    loadResumenData()
+  }, [loadResumenData])
+
+  // Load transactions on tab switch or filter change
+  useEffect(() => {
+    if (activeTab === "Movimientos") {
+      loadTransactions()
+    }
+  }, [activeTab, loadTransactions])
+
+  // Reset page on filter change
+  useEffect(() => {
+    setPage(1)
+  }, [searchTerm, accountFilter, typeFilter])
+
+  // Also load periodStats for resumen tab (all transactions, no filters)
+  useEffect(() => {
+    if (activeTab === "Resumen" && !periodStats) {
+      fetchBankTransactions({ page: 1, limit: 1 }).then((result) => {
+        setPeriodStats(result.periodStats)
+      })
+    }
+  }, [activeTab, periodStats])
+
+  // Sync account
+  const handleSyncAccount = async (accountId: string) => {
+    setSyncingAccountId(accountId)
+    try {
+      const result = await triggerAccountSync(accountId)
+      if (result.success) {
+        toast({
+          title: "Sincronizacion completada",
+          description: result.synced
+            ? `${result.synced.transactions} transacciones nuevas`
+            : result.message,
+        })
+        // Recargar datos
+        await loadResumenData()
+        if (activeTab === "Movimientos") {
+          await loadTransactions()
+        }
+      } else {
+        toast({
+          title: "Error al sincronizar",
+          description: result.message,
+          variant: "destructive",
+        })
+      }
+    } catch (err) {
+      toast({
+        title: "Error de conexion",
+        description: "No se pudo conectar con el servicio de sincronizacion",
+        variant: "destructive",
+      })
+    } finally {
+      setSyncingAccountId(null)
     }
   }
 
+  // Menu items
+  const bankMenuItems = [
+    {
+      icon: TrendingUp,
+      label: "Resumen",
+      href: "#",
+      gradient: "radial-gradient(circle, rgba(23,195,178,0.15) 0%, rgba(23,195,178,0) 70%)",
+      iconColor: "text-[#17c3b2]",
+    },
+    {
+      icon: ArrowDownLeft,
+      label: "Movimientos",
+      href: "#",
+      gradient: "radial-gradient(circle, rgba(34,124,157,0.15) 0%, rgba(34,124,157,0) 70%)",
+      iconColor: "text-[#227c9d]",
+    },
+  ]
+
   return (
-    <div className="p-6 space-y-6">
-      <PageHeader icon={Building2} title="Conexiones Bancarias" subtitle="Gestiona tus cuentas bancarias conectadas via Open Banking" />
+    <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
+      <PageHeader
+        icon={Building2}
+        title="Conexiones Bancarias"
+        subtitle="Cuentas bancarias y movimientos via Open Banking"
+      />
 
-      {/* Boton para conectar nuevo banco */}
-      <TremorCard className="p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-xl" style={{ backgroundColor: `${BRAND_COLORS.primary}15` }}>
-              <Building2 className="h-6 w-6" style={{ color: BRAND_COLORS.primary }} />
-            </div>
-            <div>
-              <h3 className="font-semibold text-slate-800">Conectar nueva cuenta bancaria</h3>
-              <p className="text-sm text-slate-500">
-                Usa Open Banking para sincronizar tus movimientos automaticamente
-              </p>
-            </div>
-          </div>
-          <Button
-            onClick={handleConnect}
-            disabled={isConnecting}
-            style={{ backgroundColor: BRAND_COLORS.primary }}
-            className="text-white hover:opacity-90"
-          >
-            {isConnecting ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
-            {isConnecting ? "Conectando..." : "Conectar banco"}
-          </Button>
-        </div>
-      </TremorCard>
-
-      {/* Lista de conexiones */}
-      <div className="space-y-4">
-        <h3 className="font-semibold text-slate-800">Cuentas conectadas ({connections.length})</h3>
-
-        {connections.map((conn) => (
-          <TremorCard key={conn.id} className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="p-2 bg-slate-100 rounded-lg">
-                  <Building2 className="h-5 w-5 text-slate-600" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-slate-800">{conn.bank_name}</span>
-                    {getStatusBadge(conn.status)}
-                  </div>
-                  <p className="text-sm text-slate-500">{conn.account_name}</p>
-                  <p className="text-xs text-slate-400 font-mono">{conn.account_number}</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-slate-400">Ultima sincronizacion</p>
-                <p className="text-sm text-slate-600">{conn.last_sync}</p>
-                <Button variant="ghost" size="sm" className="mt-1 text-xs">
-                  <RefreshCw className="h-3 w-3 mr-1" />
-                  Sincronizar
-                </Button>
-              </div>
-            </div>
-          </TremorCard>
-        ))}
+      <div className="flex justify-center mb-6">
+        <MenuBar items={bankMenuItems} activeItem={activeTab} onItemClick={(label) => setActiveTab(label)} />
       </div>
 
-      {/* Info sobre GoCardless */}
-      <TremorCard className="p-4 bg-slate-50 border-dashed">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 text-slate-400 mt-0.5" />
-          <div className="text-sm text-slate-600">
-            <p className="font-medium mb-1">Conexion segura via GoCardless</p>
-            <p className="text-slate-500">
-              Tus credenciales bancarias nunca se almacenan en nuestros servidores. Usamos Open Banking a traves de
-              GoCardless para acceder a tus movimientos de forma segura.
-            </p>
-            <a
-              href="https://gocardless.com/bank-account-data/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 mt-2 text-xs hover:underline"
-              style={{ color: BRAND_COLORS.primary }}
-            >
-              Mas informacion sobre Open Banking
-              <ExternalLink className="h-3 w-3" />
-            </a>
-          </div>
-        </div>
-      </TremorCard>
+      {/* TAB 1: Resumen */}
+      {activeTab === "Resumen" && (
+        <BankResumenTab
+          consolidated={consolidated}
+          consentInfo={consentInfo}
+          periodStats={periodStats}
+          loading={loading}
+          syncingAccountId={syncingAccountId}
+          onSyncAccount={handleSyncAccount}
+          goCardlessAppUrl={goCardlessAppUrl}
+        />
+      )}
+
+      {/* TAB 2: Movimientos */}
+      {activeTab === "Movimientos" && (
+        <BankMovimientosTab
+          transactions={transactions}
+          accounts={accounts}
+          periodStats={periodStats}
+          loading={loadingTransactions}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          accountFilter={accountFilter}
+          setAccountFilter={setAccountFilter}
+          typeFilter={typeFilter}
+          setTypeFilter={setTypeFilter}
+          hasActiveFilters={hasActiveFilters}
+          clearFilters={clearFilters}
+          page={page}
+          setPage={setPage}
+          totalPages={totalPages}
+          totalCount={totalCount}
+        />
+      )}
     </div>
   )
 }

@@ -614,23 +614,43 @@ Usuario escribe mensaje
 | **Ruta** | `/bank-connections` |
 | **Componente** | `BankConnectionsPage` |
 | **Archivo** | `components/views/BankConnectionsPage.tsx` |
-| **Servicio(s)** | — (datos estáticos/mock) |
+| **Servicio(s)** | `bankConnectionsService.ts` |
 | **Export** | Default export |
+| **Sub-componentes** | `views/bankConnections/BankResumenTab.tsx`, `BankMovimientosTab.tsx`, `constants.ts` |
 
-### Estado actual
+### Arquitectura
 
-Esta vista usa **datos estáticos hardcodeados** (no conectada a Supabase aún). Muestra dos cuentas de ejemplo:
-- CaixaBank — Cuenta Principal
-- BBVA — Cuenta Proveedores
+La Smart App lee datos bancarios directamente de Supabase (misma DB que la subapp GoCardless). La subapp sigue funcionando como motor de sincronización. Para acciones (sincronizar, renovar), la Smart App llama a las APIs de la subapp vía `NEXT_PUBLIC_GOCARDLESS_APP_URL`.
 
-### Secciones
+```
+Smart App (lee datos) ──→ Supabase ←── GoCardless subapp (sincroniza)
+       │                                        ↑
+       └─── Botón "Sincronizar" ────────────────┘
+       └─── Botón "Renovar" ────────────────────┘
+```
 
-1. **Botón conectar** — Simula conexión con GoCardless (timeout 2s)
-2. **Lista de cuentas** — Tarjetas con nombre banco, cuenta, estado (connected/pending/error), última sincronización
+### Tabs (MenuBar)
 
-### Futuro
+#### Tab 1: Resumen (`BankResumenTab.tsx`)
+- **Alerta renovación** — Aparece si consentimiento bancario expira en ≤15 días (amber) o ≤7 días (rojo), con botón "Renovar ahora"
+- **4 KPIs** — Saldo Total, Ingresos del Mes, Gastos del Mes, Balance Neto
+- **Lista de cuentas** — Cada cuenta muestra: logo banco, nombre, IBAN (últimos 4), saldo, última sincronización, botón sincronizar
+- **Info GoCardless** — Card informativo sobre la conexión segura via Open Banking
 
-Preparada para integración real con GoCardless Open Banking API.
+#### Tab 2: Movimientos (`BankMovimientosTab.tsx`)
+- **Filtros** — Búsqueda texto, selector cuenta, selector tipo (Todos/Ingresos/Gastos), botón limpiar filtros
+- **Resumen período** — Transacciones count, total ingresos, total gastos, balance neto
+- **Tabla transacciones** — Fecha, Cuenta (con logo), Descripción (con icono ingreso/gasto + creditor/debtor), Importe, Saldo
+- **Paginación** — Server-side, 50 por página, botones Anterior/Siguiente
+
+### Tablas Supabase consultadas
+
+| Tabla | Uso |
+|-------|-----|
+| `gocardless_accounts` | Cuentas bancarias (saldo, IBAN, estado) |
+| `gocardless_institutions` | Datos del banco (nombre, logo) |
+| `gocardless_transactions` | Movimientos bancarios |
+| `gocardless_requisitions` | Estado del consentimiento (expiración) |
 
 ---
 

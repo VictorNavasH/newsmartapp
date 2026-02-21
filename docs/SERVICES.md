@@ -1,6 +1,6 @@
 # Servicios de Datos — NÜA Smart App
 
-Documentación de los 17 servicios/módulos en `lib/`. Cada servicio encapsula las queries a Supabase y la lógica de acceso a datos.
+Documentación de los 18 servicios/módulos en `lib/`. Cada servicio encapsula las queries a Supabase y la lógica de acceso a datos.
 
 ---
 
@@ -23,6 +23,7 @@ Documentación de los 17 servicios/módulos en `lib/`. Cada servicio encapsula l
 15. [kpiTargets.ts — Objetivos KPI](#15-kpitargetsts)
 16. [rateLimit.ts — Rate Limiting](#16-ratelimitts)
 17. [apiAuth.ts — Autenticación API](#17-apiauthts)
+18. [bankConnectionsService.ts — Conexiones Bancarias](#18-bankconnectionsservicets)
 
 ---
 
@@ -37,7 +38,7 @@ Documentación de los 17 servicios/módulos en `lib/`. Cada servicio encapsula l
 
 ### Tablas directas (12)
 
-`reservas_agregadas_diarias`, `forecasting_weather_history`, `gstock_product_formats`, `facturacion_alertas`, `tables`, `turnos`, `gstock_sync_logs`, `gocardless_sync_logs`, `cuentica_logs`, `billin_logs`, `business_views_refresh_log`, `kpi_targets`
+`reservas_agregadas_diarias`, `forecasting_weather_history`, `gstock_product_formats`, `facturacion_alertas`, `tables`, `turnos`, `gstock_sync_logs`, `gocardless_sync_logs`, `gocardless_accounts`, `gocardless_institutions`, `gocardless_transactions`, `gocardless_requisitions`, `cuentica_logs`, `billin_logs`, `business_views_refresh_log`, `kpi_targets`
 
 ### RPCs (43)
 
@@ -680,3 +681,40 @@ Utilidades de exportación de datos a CSV y PDF con formato español y branding 
 ### Componente asociado: `components/ui/ExportButton.tsx`
 
 Botón dropdown reutilizable con opciones "Exportar CSV" y "Exportar PDF". Recibe callbacks `onExportCSV` y `onExportPDF`. Soporta tamaños `sm` y `md`.
+
+---
+
+## 18. bankConnectionsService.ts
+
+**Archivo:** `lib/bankConnectionsService.ts`
+**Consumido por:** `BankConnectionsPage`, `BankResumenTab`, `BankMovimientosTab`
+
+Lee datos bancarios directamente de las tablas GoCardless en Supabase y delega acciones (sync, renovación) a la subapp GoCardless vía API.
+
+### Funciones
+
+| Función | Retorna | Descripción |
+|---------|---------|-------------|
+| `fetchBankAccounts()` | `BankAccount[]` | Cuentas activas con saldo, IBAN, institución (logo+nombre). Join `gocardless_accounts` + `gocardless_institutions` |
+| `fetchConsolidatedBalance()` | `BankConsolidatedBalance` | Saldo total agregado, nº cuentas, nº bancos, lista de cuentas |
+| `fetchBankTransactions(filters)` | `BankTransactionsResult` | Transacciones con filtros (búsqueda, cuenta, fechas, tipo), paginación server-side, stats del período |
+| `fetchConsentStatus()` | `BankConsentInfo` | Días hasta renovación del consentimiento más próximo a expirar |
+| `triggerAccountSync(accountId)` | `BankSyncResult` | Llama `POST /api/accounts/{id}/full-sync` en la subapp GoCardless |
+| `getGoCardlessAppUrl()` | `string \| null` | Devuelve `NEXT_PUBLIC_GOCARDLESS_APP_URL` o null |
+
+### Helpers internos
+
+| Helper | Descripción |
+|--------|-------------|
+| `parseBalance(raw)` | Parsea saldos que pueden ser JSON `{amount, currency}` o número directo |
+| `parseAmount(raw)` | Parsea amounts de transacciones (JSON o string) |
+| `parseCurrency(raw)` | Extrae currency de JSON o devuelve fallback "EUR" |
+
+### Tablas consultadas
+
+| Tabla | Campos principales |
+|-------|-------------------|
+| `gocardless_accounts` | `id`, `gocardless_id`, `name`, `display_name`, `iban`, `current_balance`, `currency`, `status`, `last_sync_at` |
+| `gocardless_institutions` | `name`, `logo_url` |
+| `gocardless_transactions` | `amount`, `booking_date`, `remittance_information_unstructured`, `creditor_name`, `debtor_name`, `balance_after_transaction` |
+| `gocardless_requisitions` | `expires_at`, `created_at`, `status`, `institution_id` |
