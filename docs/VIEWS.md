@@ -446,7 +446,8 @@ Sala:   bueno ≤ 8min, advertencia ≤ 15min, alerta > 15min
 
 ### Funcionalidades
 - **Dashboard:** Resumen de KPIs financieros y estado de cuentas bancarias.
-  - **Integración GoCardless:** Botones para sincronizar cuentas y conectar nuevos bancos directamente desde el dashboard.
+  - **Integración GoCardless:** Panel centralizado de sincronización y conexión de nuevos bancos.
+  - **Panel de Sync:** Banner horizontal sobre las tarjetas de cuentas que muestra última sincronización, requests restantes (X/4 con colores), días de consentimiento, y botón "Sincronizar todo". Se desactiva cuando no quedan requests diarios. Incluye avisos de rate limit del plan gratuito de GoCardless.
 - **Movimientos:** Listado detallado de transacciones con filtros avanzados y categorización.
 - **Por Categoría:** Desglose de ingresos y gastos por categoría y subcategoría.
 - **Pool Bancario:** Gestión de préstamos, pólizas y vencimientos financieros.
@@ -467,6 +468,7 @@ Sala:   bueno ≤ 8min, advertencia ≤ 15min, alerta > 15min
 | `fetchPoolBancarioVencimientos(limit)` | Vista `v_pool_bancario_proximos_vencimientos` | `PoolBancarioVencimiento[]` |
 | `fetchPoolBancarioPorBanco()` | Vista `v_pool_bancario_por_banco` | `PoolBancarioPorBanco[]` |
 | `fetchPoolBancarioCalendario(meses)` | Vista `v_pool_bancario_calendario_mensual` | `PoolBancarioCalendarioMes[]` |
+| `fetchSyncStatus()` | API route `/api/gocardless/sync/status` → `gocardless_rate_limits` + `gocardless_accounts` + `gocardless_requisitions` | `SyncStatus \| null` |
 
 ### Acciones (escritura)
 
@@ -477,7 +479,7 @@ Sala:   bueno ≤ 8min, advertencia ≤ 15min, alerta > 15min
 ### Secciones (MenuBar)
 
 1. **Resumen** — KPIs: saldo total, ingresos, gastos, balance neto
-2. **Cuentas** — Tarjetas por cuenta bancaria con saldo y última sincronización
+2. **Cuentas** — Panel de estado de sync (rate limits, consentimiento, botón centralizado) + tarjetas por cuenta bancaria con saldo y última sincronización
 3. **Movimientos** — Tabla de transacciones con categorización inline
 4. **Categorías** — Distribución de gastos/ingresos por categoría
 5. **Evolución mensual** — Gráfico de ingresos vs gastos por mes

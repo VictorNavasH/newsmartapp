@@ -40,6 +40,7 @@ import {
   pollRequisitionStatus,
   fetchRequisitionAccounts,
   triggerInitialSync,
+  fetchSyncStatus,
 } from "@/lib/bankConnectionsService"
 import { formatCurrency } from "@/lib/utils"
 import type {
@@ -60,6 +61,7 @@ import type {
   BankConnectState,
   BankInstitution,
   BankConnectedAccount,
+  SyncStatus,
 } from "@/types"
 import { format, subMonths } from "date-fns"
 import { PAGE_SIZE, calculateDelta, type TipoFilter } from "./treasury/constants"
@@ -128,6 +130,7 @@ export default function TreasuryPage() {
 
   // GoCardless / Bank Connections State
   const [consentInfo, setConsentInfo] = useState<BankConsentInfo | null>(null)
+  const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null)
   const [syncingAccountId, setSyncingAccountId] = useState<string | null>(null)
   const [connectSheetOpen, setConnectSheetOpen] = useState(false)
   const [connectState, setConnectState] = useState<BankConnectState>(INITIAL_CONNECT_STATE)
@@ -183,7 +186,7 @@ export default function TreasuryPage() {
       const startStr = dateRange.from ? format(dateRange.from, "yyyy-MM-dd") : undefined
       const endStr = dateRange.to ? format(dateRange.to, "yyyy-MM-dd") : undefined
 
-      const [kpisData, accountsData, categoriesData, byCategData, monthlySummaryData, consentData] =
+      const [kpisData, accountsData, categoriesData, byCategData, monthlySummaryData, consentData, syncStatusData] =
         await Promise.all([
           fetchTreasuryKPIs(startStr, endStr),
           fetchTreasuryAccounts(),
@@ -191,6 +194,7 @@ export default function TreasuryPage() {
           fetchTreasuryByCategory(startStr, endStr),
           fetchTreasuryMonthlySummary(startStr, endStr),
           fetchConsentStatus(),
+          fetchSyncStatus(),
         ])
 
       // Pool Bancario - cargar por separado para no bloquear si las vistas no existen
@@ -223,6 +227,7 @@ export default function TreasuryPage() {
       setCategoryBreakdown(byCategData)
       setMonthlySummaries(monthlySummaryData || [])
       setConsentInfo(consentData)
+      setSyncStatus(syncStatusData)
       // Pool Bancario
       setPoolResumen(poolResumenData)
       setPoolPrestamos(poolPrestamosData)
@@ -898,6 +903,7 @@ export default function TreasuryPage() {
           onViewUncategorized={handleViewUncategorized}
           // GoCardless Props
           consentInfo={consentInfo}
+          syncStatus={syncStatus}
           syncingAccountId={syncingAccountId}
           onSyncAccount={handleSyncAccount}
           onConnectBank={handleConnectBank}

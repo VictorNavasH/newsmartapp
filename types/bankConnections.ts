@@ -116,6 +116,18 @@ export interface BankConnectState {
   connectedAccounts: BankConnectedAccount[]
 }
 
+// --- SYNC STATUS ---
+
+export interface SyncStatus {
+  lastSyncAt: string | null
+  rateLimits: {
+    transactions: { remaining: number; limit: number }
+    balances: { remaining: number; limit: number }
+  }
+  consentDaysRemaining: number | null
+  consentInstitutionId: string | null
+}
+
 export interface BankCallbackParams {
   reference: string
   error?: string

@@ -706,6 +706,7 @@ Lee datos bancarios directamente de Supabase y delega acciones (sync, conexión,
 | `pollRequisitionStatus(reference)` | `BankRequisitionStatus \| null` | GET `/api/gocardless/requisitions/{id}/status` — Consulta estado en GoCardless API |
 | `fetchRequisitionAccounts(reference)` | `BankConnectedAccount[]` | GET `/api/gocardless/requisitions/{id}/accounts` — Cuentas conectadas tras autorización |
 | `triggerInitialSync(accounts[])` | `BankInitialSyncResult \| null` | POST `/api/gocardless/sync/initial` — Sincronización inicial de cuentas recién conectadas |
+| `fetchSyncStatus()` | `SyncStatus \| null` | GET `/api/gocardless/sync/status` — Estado centralizado de sync: rate limits del día, último sync, días de consentimiento |
 
 ### Helpers internos
 
@@ -781,3 +782,30 @@ Gestiona rate limits de la API de GoCardless: máximo 4 requests/día por cuenta
 - **Tabla Supabase:** `gocardless_rate_limits` (`account_id`, `scope`, `remaining_requests`, `last_request_at`, `reset_at`)
 
 **Exportado como singleton:** `export const gocardlessRateLimit = new GoCardlessRateLimitManager()`
+
+---
+
+## 21. API Route: sync/status
+
+**Archivo:** `app/api/gocardless/sync/status/route.ts`
+**Consumido por:** `bankConnectionsService.ts` → `fetchSyncStatus()`
+
+Endpoint `GET` que agrega el estado actual de sincronización desde 3 tablas de Supabase. Diseñado para alimentar el panel centralizado de sync en el Dashboard de Treasury.
+
+### Respuesta (`SyncStatus`)
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `lastSyncAt` | `string \| null` | Timestamp del sync más reciente de todas las cuentas |
+| `rateLimits.transactions` | `{ remaining, limit }` | Requests restantes para scope "transactions" (mínimo entre todas las cuentas) |
+| `rateLimits.balances` | `{ remaining, limit }` | Requests restantes para scope "balances" (mínimo entre todas las cuentas) |
+| `consentDaysRemaining` | `number \| null` | Días restantes del consentimiento (90 días desde creación de requisition "LN") |
+| `consentInstitutionId` | `string \| null` | ID de la institución del consentimiento más reciente |
+
+### Tablas consultadas
+
+| Tabla | Datos extraídos |
+|-------|----------------|
+| `gocardless_rate_limits` | `remaining_calls` y `limit_per_day` por scope para el día actual |
+| `gocardless_accounts` | `last_sync_at` más reciente |
+| `gocardless_requisitions` | `created_at` y `institution_id` de la requisition activa ("LN") más reciente |

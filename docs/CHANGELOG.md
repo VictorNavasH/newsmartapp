@@ -8,6 +8,20 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 
 ## [Unreleased]
 
+### Añadido
+- **Panel de Estado de Sincronización Bancaria en Treasury Dashboard:**
+  - Nuevo panel centralizado encima de las tarjetas de cuentas bancarias que muestra:
+    - Última sincronización (fecha/hora del sync más reciente de todas las cuentas)
+    - Requests restantes hoy (`X/4`) con código de color (verde >2, ámbar 1-2, rojo 0)
+    - Días de consentimiento restantes con alerta y botón "Renovar" cuando ≤7 días
+    - Botón "Sincronizar todo" centralizado (deshabilitado si no quedan requests)
+    - Avisos de rate limit (ámbar cuando ≤2 restantes, rojo cuando 0)
+  - **Nueva API route** `GET /api/gocardless/sync/status` — agrega datos de 3 tablas: `gocardless_rate_limits`, `gocardless_accounts`, `gocardless_requisitions`
+  - **Nuevo tipo** `SyncStatus` en `types/bankConnections.ts`
+  - **Nueva función** `fetchSyncStatus()` en `bankConnectionsService.ts`
+  - Eliminados: botón sync del KPI "Saldo Total", botones individuales de sync en tarjetas de cuentas, info de consentimiento en tarjetas individuales
+  - El estado de sync se refresca automáticamente tras cada sincronización exitosa
+
 ### Cambiado
 - **Migración GoCardless: de subapp externa a API routes internas:**
   - Todo el backend de GoCardless ahora vive dentro de la Smart App en `app/api/gocardless/*` — ya no se necesita ejecutar la subapp `go-cardlessapp (1)/` por separado

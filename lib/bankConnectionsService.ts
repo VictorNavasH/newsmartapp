@@ -12,6 +12,7 @@ import type {
   BankRequisitionStatus,
   BankConnectedAccount,
   BankInitialSyncResult,
+  SyncStatus,
 } from "@/types"
 
 // Helper para parsear un valor que puede ser JSON string, objeto, o número directo
@@ -535,6 +536,22 @@ export const triggerInitialSync = async (
     return await response.json()
   } catch (err) {
     console.error("[BankConnections] Error in triggerInitialSync:", err)
+    return null
+  }
+}
+
+// --- SYNC STATUS ---
+
+export async function fetchSyncStatus(): Promise<SyncStatus | null> {
+  try {
+    const response = await fetch("/api/gocardless/sync/status")
+    if (!response.ok) {
+      console.error("[BankConnections] Error fetching sync status:", response.status)
+      return null
+    }
+    return await response.json()
+  } catch (err) {
+    console.error("[BankConnections] Error in fetchSyncStatus:", err)
     return null
   }
 }
