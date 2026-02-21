@@ -9,6 +9,12 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 ## [Unreleased]
 
 ### Corregido
+- **Fix: `parseBalance`/`parseAmount`/`parseCurrency` no parseaban JSON strings:**
+  - La columna `current_balance` en `gocardless_accounts` es tipo `text` en PostgreSQL — almacena JSON como `{"amount":"726.02","currency":"EUR",...}`
+  - Supabase devuelve columnas `text` como strings, no como objetos JSON parseados
+  - Los helpers solo verificaban `typeof raw === "object"` — las strings JSON caían al fallback `parseFloat(String(raw))` que retornaba `NaN` (mostrado como 0.00 EUR)
+  - Solución: nuevo helper `tryParseJson()` que intenta `JSON.parse` sobre strings antes de la lógica de extracción de campos
+  - Mismo fix aplicado a `parseAmount` y `parseCurrency` que tenían el mismo patrón
 - **Fix: JOINs de PostgREST fallaban sin FKs definidas en Supabase:**
   - Las tablas `gocardless_accounts`, `gocardless_transactions` y `gocardless_requisitions` no tienen foreign keys hacia `gocardless_institutions`
   - Los JOINs implícitos de PostgREST (`gocardless_institutions(name, logo_url)`) requieren FKs — sin ellas retornaban error silencioso y las funciones devolvían arrays vacíos

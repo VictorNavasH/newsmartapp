@@ -14,27 +14,42 @@ import type {
   BankInitialSyncResult,
 } from "@/types"
 
-// Helper para parsear balances (pueden ser JSON o número directo)
+// Helper para parsear un valor que puede ser JSON string, objeto, o número directo
+const tryParseJson = (raw: unknown): unknown => {
+  if (typeof raw === "string") {
+    try {
+      return JSON.parse(raw)
+    } catch {
+      return raw
+    }
+  }
+  return raw
+}
+
+// Helper para parsear balances (pueden ser JSON string, objeto JSON, o número directo)
 const parseBalance = (raw: unknown): number => {
   if (raw === null || raw === undefined) return 0
-  if (typeof raw === "object" && raw !== null) {
-    return parseFloat((raw as { amount?: string }).amount || "0")
+  const parsed = tryParseJson(raw)
+  if (typeof parsed === "object" && parsed !== null) {
+    return parseFloat((parsed as { amount?: string }).amount || "0")
   }
-  return parseFloat(String(raw))
+  return parseFloat(String(parsed))
 }
 
-// Helper para parsear amounts de transacciones (JSON o string)
+// Helper para parsear amounts de transacciones (JSON string, objeto, o string numérico)
 const parseAmount = (raw: unknown): number => {
-  if (typeof raw === "object" && raw !== null) {
-    return parseFloat((raw as { amount?: string }).amount || "0")
+  const parsed = tryParseJson(raw)
+  if (typeof parsed === "object" && parsed !== null) {
+    return parseFloat((parsed as { amount?: string }).amount || "0")
   }
-  return parseFloat(String(raw || "0"))
+  return parseFloat(String(parsed || "0"))
 }
 
-// Helper para extraer currency de amount JSON
+// Helper para extraer currency de amount JSON (soporta JSON string)
 const parseCurrency = (raw: unknown, fallback = "EUR"): string => {
-  if (typeof raw === "object" && raw !== null) {
-    return (raw as { currency?: string }).currency || fallback
+  const parsed = tryParseJson(raw)
+  if (typeof parsed === "object" && parsed !== null) {
+    return (parsed as { currency?: string }).currency || fallback
   }
   return fallback
 }
