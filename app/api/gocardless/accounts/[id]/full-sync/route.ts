@@ -49,9 +49,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
                     finalBalance = Number.parseFloat(mainBalance.balanceAmount.amount)
 
                     await supabase.from("gocardless_accounts").update({
-                        current_balance: finalBalance,
+                        current_balance: JSON.stringify({
+                            amount: String(finalBalance),
+                            currency: mainBalance.balanceAmount.currency
+                        }),
                         currency: mainBalance.balanceAmount.currency,
-                        last_sync_at: new Date().toISOString()
+                        last_sync_at: new Date().toISOString(),
+                        balance_last_updated_at: new Date().toISOString()
                     }).eq("gocardless_id", gcAccountId)
 
                     syncedBalances = true

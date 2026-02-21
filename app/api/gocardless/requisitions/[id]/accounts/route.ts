@@ -33,6 +33,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
                     const currentBalance = Number.parseFloat(balances?.[0]?.balanceAmount?.amount || "0")
 
+                    const balanceCurrency = balances?.[0]?.balanceAmount?.currency || accountDetails.currency || "EUR"
                     const accountData = {
                         gocardless_id: accountId,
                         requisition_id: requisitionData.id,
@@ -40,10 +41,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                         iban: accountDetails.iban || null,
                         name: accountDetails.name || `Cuenta ${accountId.slice(-4)}`,
                         display_name: accountDetails.name || `Cuenta ${accountId.slice(-4)}`,
-                        currency: accountDetails.currency || "EUR",
-                        current_balance: currentBalance,
+                        currency: balanceCurrency,
+                        current_balance: JSON.stringify({
+                            amount: String(currentBalance),
+                            currency: balanceCurrency
+                        }),
                         status: "ACTIVE",
                         last_sync_at: new Date().toISOString(),
+                        balance_last_updated_at: new Date().toISOString(),
                     }
 
                     await supabase.from("gocardless_accounts").upsert(accountData, { onConflict: 'gocardless_id' })
