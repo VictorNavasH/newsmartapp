@@ -32,6 +32,9 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
   - Variables de entorno: `GOCARDLESS_SECRET_ID` + `GOCARDLESS_SECRET_KEY` (server-only). Eliminada `NEXT_PUBLIC_GOCARDLESS_APP_URL`
 
 ### Corregido
+- **Fix: tarjeta GoCardless en Configuración mostraba datos obsoletos ("07 feb"):**
+  - `settingsService.ts` leía de `gocardless_sync_logs` (tabla de historial de la subapp antigua, ya no se actualiza)
+  - Cambiado a leer directamente de `gocardless_accounts` con `last_sync_at` y conteo real de cuentas sincronizadas
 - **Fix crítico: transacciones no se sincronizaban (faltaba `account_gocardless_id`):**
   - La columna `account_gocardless_id` en `gocardless_transactions` es NOT NULL sin default
   - Las rutas `full-sync` e `initial-sync` no incluían este campo en el upsert → violación de constraint → insert silenciosamente fallaba

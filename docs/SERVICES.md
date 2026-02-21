@@ -352,7 +352,7 @@ Módulo que contiene todos los datos mock, constantes de demo y generadores de d
 
 | Función | Parámetros | Retorna | Fuente Supabase |
 |---------|-----------|---------|----------------|
-| `fetchIntegrationStatuses()` | — | `Promise<IntegrationStatus[]>` | Tablas: `gstock_sync_logs` (último), `gocardless_sync_logs` (último), `cuentica_logs` (último), `billin_logs` (último) + Supabase siempre "ok" |
+| `fetchIntegrationStatuses()` | — | `Promise<IntegrationStatus[]>` | Tablas: `gstock_sync_logs` (último), `gocardless_accounts` (last_sync_at + conteo), `cuentica_logs` (último), `billin_logs` (último) + Supabase siempre "ok" |
 | `fetchViewRefreshLogs()` | — | `Promise<ViewRefreshLog[]>` | Tabla `business_views_refresh_log` → `.order("refresh_iniciado_at", desc).limit(30)` |
 | `fetchDatabaseInfo()` | — | `Promise<{totalSize, tables}>` | RPC `get_database_size` + RPC `get_tables_size` |
 | `fetchRestaurantCapacity()` | — | `Promise<RestaurantCapacity>` | Tablas `tables` (activas) + `turnos` (activos, excluyendo "Otros") → calcula totalMesas, totalPlazas, plazasPorDia |

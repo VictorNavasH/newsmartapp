@@ -53,23 +53,32 @@ export async function fetchIntegrationStatuses(): Promise<IntegrationStatus[]> {
     })
   }
 
-  // 3. GoCardless (Banco)
+  // 3. GoCardless (Banco) — lee directamente de gocardless_accounts (datos en tiempo real)
   try {
-    const { data } = await supabase
-      .from("gocardless_sync_logs")
-      .select("sync_type, executed_at, total_accounts, successful_accounts, failed_accounts")
-      .order("executed_at", { ascending: false })
-      .limit(1)
-      .single()
+    const { data: accounts } = await supabase
+      .from("gocardless_accounts")
+      .select("last_sync_at, status")
+      .order("last_sync_at", { ascending: false })
 
-    if (data) {
-      const hasErrors = data.failed_accounts > 0
+    const total = accounts?.length ?? 0
+    const synced = accounts?.filter(a => a.last_sync_at !== null).length ?? 0
+    const lastSync = accounts?.[0]?.last_sync_at ?? null
+
+    if (total > 0) {
       results.push({
         name: "GoCardless",
         description: "Conexión bancaria",
-        status: hasErrors ? "warning" : "ok",
-        lastSync: data.executed_at,
-        details: `${data.successful_accounts}/${data.total_accounts} cuentas sincronizadas`,
+        status: synced < total ? "warning" : "ok",
+        lastSync,
+        details: `${synced}/${total} cuentas sincronizadas`,
+      })
+    } else {
+      results.push({
+        name: "GoCardless",
+        description: "Conexión bancaria",
+        status: "unknown",
+        lastSync: null,
+        details: "Sin cuentas conectadas",
       })
     }
   } catch {
