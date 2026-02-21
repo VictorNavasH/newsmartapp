@@ -19,7 +19,6 @@ const ProductsPage = lazy(() => import("@/components/views/ProductsPage"))
 const ForecastingPage = lazy(() => import("@/components/views/ForecastingPage"))
 const TreasuryPage = lazy(() => import("@/components/views/TreasuryPage"))
 const WhatIfPage = lazy(() => import("@/components/views/WhatIfPage"))
-const BankConnectionsPage = lazy(() => import("@/components/views/BankConnectionsPage"))
 const FacturacionPage = lazy(() => import("@/components/views/FacturacionPage"))
 const TabletUsagePage = lazy(() => import("@/components/views/TabletUsagePage"))
 const SmartAssistantPage = lazy(() => import("@/components/views/SmartAssistantPage"))
@@ -51,16 +50,18 @@ export default function App() {
     const ref = params.get("ref")
 
     if (isCallback === "true" && ref) {
-      // Guardar referencia para que BankConnectionsPage la detecte
+      // Guardar referencia para que TreasuryConexionesTab la detecte
       sessionStorage.setItem("gocardless_ref", ref)
+      // Señal para que TreasuryPage active la tab Conexiones al montar
+      sessionStorage.setItem("gocardless_activate_tab", "Conexiones")
 
       // Limpiar la URL (quitar query params, mantener hash)
-      const cleanUrl = window.location.pathname + (window.location.hash || "#/bank-connections")
+      const cleanUrl = window.location.pathname + (window.location.hash || "#/treasury")
       window.history.replaceState({}, "", cleanUrl)
 
-      // Navegar a bank-connections si no estamos ya ahi
-      if (currentPath !== "/bank-connections") {
-        navigate("/bank-connections")
+      // Navegar a treasury si no estamos ya ahi
+      if (currentPath !== "/treasury") {
+        navigate("/treasury")
       }
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -89,8 +90,6 @@ export default function App() {
         return <TreasuryPage />
       case "/what-if":
         return <WhatIfPage />
-      case "/bank-connections":
-        return <BankConnectionsPage />
       case "/invoices":
         return <FacturacionPage />
       case "/tablet-usage":

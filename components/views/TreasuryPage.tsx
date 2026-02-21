@@ -6,6 +6,7 @@ import {
   TrendingUp,
   ArrowDownLeft,
   Wallet,
+  Building2,
 } from "lucide-react"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { DateRangePickerExpenses } from "@/components/ui/date-range-picker-expenses"
@@ -51,11 +52,22 @@ import { TreasuryMovimientosTab } from "./treasury/TreasuryMovimientosTab"
 import { TreasuryCategoriaTab } from "./treasury/TreasuryCategoriaTab"
 import { TreasuryPoolBancarioTab } from "./treasury/TreasuryPoolBancarioTab"
 import { TreasuryCuentaTab } from "./treasury/TreasuryCuentaTab"
+import { TreasuryConexionesTab } from "./treasury/TreasuryConexionesTab"
 
 export default function TreasuryPage() {
   const { toast } = useToast()
 
   const [activeTab, setActiveTab] = useState("Dashboard")
+
+  // Detectar si venimos de un callback de GoCardless y activar la tab Conexiones
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const activateTab = sessionStorage.getItem("gocardless_activate_tab")
+    if (activateTab === "Conexiones") {
+      sessionStorage.removeItem("gocardless_activate_tab")
+      setActiveTab("Conexiones")
+    }
+  }, [])
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null)
 
   // State
@@ -394,6 +406,13 @@ export default function TreasuryPage() {
       gradient: "radial-gradient(circle, rgba(255,203,119,0.15) 0%, rgba(255,203,119,0) 70%)",
       iconColor: "text-[#ffcb77]",
     },
+    {
+      icon: Building2,
+      label: "Conexiones",
+      href: "#",
+      gradient: "radial-gradient(circle, rgba(2,177,196,0.15) 0%, rgba(2,177,196,0) 70%)",
+      iconColor: "text-[#02b1c4]",
+    },
   ]
 
   // --- Exportación de datos ---
@@ -610,6 +629,11 @@ export default function TreasuryPage() {
             setActiveTab("Movimientos")
           }}
         />
+      )}
+
+      {/* TAB 6: Conexiones Bancarias (Open Banking via GoCardless) */}
+      {activeTab === "Conexiones" && (
+        <TreasuryConexionesTab />
       )}
     </div>
   )

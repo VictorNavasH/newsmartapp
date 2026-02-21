@@ -9,6 +9,13 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 ## [Unreleased]
 
 ### Añadido
+- **Conexiones Bancarias como tab en Tesorería:**
+  - La funcionalidad de Conexiones Bancarias ya no es una página independiente (`/bank-connections`) — ahora es la tab **"Conexiones"** dentro de Tesorería (`/treasury`)
+  - Nuevo componente `TreasuryConexionesTab.tsx` — wrapper auto-contenido que encapsula toda la lógica de BankConnectionsPage (estado, data loading, flujo de conexión GoCardless, polling, sync) sin recibir props del padre
+  - TreasuryPage tiene ahora 6 tabs visibles: Dashboard, Movimientos, Por Categoría, Pool Bancario, Conexiones (+ tab oculta Por Cuenta)
+  - Callback GoCardless actualizado: redirige a `/treasury` con señal `gocardless_activate_tab` en sessionStorage para auto-activar la tab Conexiones
+  - Ruta `/bank-connections` eliminada de `useAppRouter` VALID_PATHS y del switch en `app/page.tsx`
+
 - **Conexiones Bancarias con datos reales (GoCardless Open Banking):**
   - Reemplaza vista mock por datos reales de Supabase (tablas `gocardless_accounts`, `gocardless_transactions`, `gocardless_requisitions`)
   - Nuevo servicio `lib/bankConnectionsService.ts` con 6 funciones: `fetchBankAccounts`, `fetchConsolidatedBalance`, `fetchBankTransactions`, `fetchConsentStatus`, `triggerAccountSync`, `getGoCardlessAppUrl`

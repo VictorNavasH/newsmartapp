@@ -1,6 +1,6 @@
 # Vistas — NÜA Smart App
 
-Documentación detallada de las 16 vistas principales. Cada vista se carga con `React.lazy()` y se renderiza desde `app/page.tsx` mediante un `switch(currentPath)`. La navegación usa hash-based routing via el hook `useAppRouter`.
+Documentación detallada de las 15 vistas principales. Cada vista se carga con `React.lazy()` y se renderiza desde `app/page.tsx` mediante un `switch(currentPath)`. La navegación usa hash-based routing via el hook `useAppRouter`. Las Conexiones Bancarias están embebidas como tab dentro de Tesorería.
 
 ---
 
@@ -19,7 +19,7 @@ Documentación detallada de las 16 vistas principales. Cada vista se carga con `
 11. [Forecasting (`/forecasting`)](#11-forecasting)
 12. [What-If (`/what-if`)](#12-what-if)
 13. [Asistente IA (`/ai-assistant`)](#13-asistente-ia)
-14. [Conexiones Bancarias (`/bank-connections`)](#14-conexiones-bancarias)
+14. [Conexiones Bancarias (Tab en Tesorería)](#14-conexiones-bancarias-tab-dentro-de-tesorería)
 15. [Smart Tables (`/tablet-usage`)](#15-smart-tables)
 16. [Configuración (`/settings`)](#16-configuración)
 
@@ -441,7 +441,7 @@ Sala:   bueno ≤ 8min, advertencia ≤ 15min, alerta > 15min
 | **Ruta** | `/treasury` |
 | **Componente** | `TreasuryPage` |
 | **Archivo** | `components/views/TreasuryPage.tsx` |
-| **Sub-componentes** | `treasury/TreasuryDashboardTab.tsx`, `treasury/TreasuryMovimientosTab.tsx`, `treasury/TreasuryCategoriaTab.tsx`, `treasury/TreasuryPoolBancarioTab.tsx`, `treasury/TreasuryCuentaTab.tsx`, `treasury/constants.ts` |
+| **Sub-componentes** | `treasury/TreasuryDashboardTab.tsx`, `treasury/TreasuryMovimientosTab.tsx`, `treasury/TreasuryCategoriaTab.tsx`, `treasury/TreasuryPoolBancarioTab.tsx`, `treasury/TreasuryCuentaTab.tsx`, `treasury/TreasuryConexionesTab.tsx`, `treasury/constants.ts` |
 | **Servicio(s)** | `treasuryService.ts`, `exportUtils.ts` |
 | **Export** | Default export |
 | **Exportación** | CSV/PDF de movimientos bancarios (tab Movimientos) o resumen general con cuentas y categorías vía `ExportButton` |
@@ -477,6 +477,7 @@ Sala:   bueno ≤ 8min, advertencia ≤ 15min, alerta > 15min
 4. **Categorías** — Distribución de gastos/ingresos por categoría
 5. **Evolución mensual** — Gráfico de ingresos vs gastos por mes
 6. **Pool bancario** — Resumen de deuda, préstamos activos, próximos vencimientos, distribución por banco, calendario de amortización
+7. **Conexiones** — Cuentas bancarias Open Banking (GoCardless): saldos reales, movimientos, conectar/renovar bancos. Componente auto-contenido `TreasuryConexionesTab.tsx` que gestiona su propio estado y sub-tabs (Resumen / Movimientos)
 
 ### Filtros
 
@@ -607,24 +608,26 @@ Usuario escribe mensaje
 
 ---
 
-## 14. Conexiones Bancarias
+## 14. Conexiones Bancarias (Tab dentro de Tesorería)
+
+> **Nota:** Ya no existe como ruta independiente (`/bank-connections`). Toda la funcionalidad de conexiones bancarias está embebida como la tab **"Conexiones"** dentro de Tesorería (`/treasury`). El componente wrapper es `TreasuryConexionesTab.tsx`.
 
 | Campo | Valor |
 |-------|-------|
-| **Ruta** | `/bank-connections` |
-| **Componente** | `BankConnectionsPage` |
-| **Archivo** | `components/views/BankConnectionsPage.tsx` |
+| **Ruta** | `/treasury` → Tab "Conexiones" |
+| **Componente wrapper** | `TreasuryConexionesTab.tsx` |
+| **Archivo** | `components/views/treasury/TreasuryConexionesTab.tsx` |
+| **Componente original** | `BankConnectionsPage.tsx` (conservado como referencia, sin ruta activa) |
 | **Servicio(s)** | `bankConnectionsService.ts` |
-| **Export** | Default export |
 | **Sub-componentes** | `views/bankConnections/BankResumenTab.tsx`, `BankMovimientosTab.tsx`, `BankConnectSheet.tsx`, `constants.ts` |
 
 ### Arquitectura
 
-La Smart App lee datos bancarios directamente de Supabase (misma DB que la subapp GoCardless). La subapp sigue funcionando como motor de sincronización y como backend API para el flujo de conexión. Todas las acciones (sincronizar, conectar, renovar) se realizan sin salir de la app — la Smart App llama a las APIs de la subapp vía `NEXT_PUBLIC_GOCARDLESS_APP_URL`.
+`TreasuryConexionesTab` es un componente **auto-contenido** que gestiona todo su estado internamente (no recibe props del padre TreasuryPage). Lee datos bancarios directamente de Supabase (misma DB que la subapp GoCardless). La subapp sigue funcionando como motor de sincronización y como backend API para el flujo de conexión. Todas las acciones (sincronizar, conectar, renovar) se realizan sin salir de la app.
 
 ```
-Smart App                          Subapp GoCardless             GoCardless
-────────────                       ─────────────────             ──────────
+Smart App (TreasuryConexionesTab)  Subapp GoCardless             GoCardless
+────────────────────────────────   ─────────────────             ──────────
 1. Lee datos    ──→ Supabase ←──── Sincroniza periódicamente
 2. "Conectar"   ──→ POST /api/requisitions/create ──→ GoCardless API
 3. Abre ventana banco ──────────────────────────────→ Banco auth page
@@ -634,16 +637,16 @@ Smart App                          Subapp GoCardless             GoCardless
 7. Sync inicial ──→ POST /api/sync/initial
 ```
 
-### Tabs (MenuBar)
+### Sub-Tabs internas (MenuBar)
 
-#### Tab 1: Resumen (`BankResumenTab.tsx`)
+#### Sub-Tab 1: Resumen (`BankResumenTab.tsx`)
 - **Alerta renovación** — Aparece si consentimiento bancario expira en ≤15 días (amber) o ≤7 días (rojo), con botón "Renovar ahora" que abre el flujo de conexión embebido
 - **4 KPIs** — Saldo Total, Ingresos del Mes, Gastos del Mes, Balance Neto
 - **Lista de cuentas** — Cada cuenta muestra: logo banco, nombre, IBAN (últimos 4), saldo, última sincronización, botón sincronizar
 - **Info GoCardless** — Card informativo sobre la conexión segura via Open Banking
 - **Botón "Conectar banco"** — Aparece si no hay cuentas conectadas, abre el Sheet de conexión
 
-#### Tab 2: Movimientos (`BankMovimientosTab.tsx`)
+#### Sub-Tab 2: Movimientos (`BankMovimientosTab.tsx`)
 - **Filtros** — Búsqueda texto, selector cuenta, selector tipo (Todos/Ingresos/Gastos), botón limpiar filtros
 - **Resumen período** — Transacciones count, total ingresos, total gastos, balance neto
 - **Tabla transacciones** — Fecha, Cuenta (con logo), Descripción (con icono ingreso/gasto + creditor/debtor), Importe, Saldo
@@ -664,7 +667,7 @@ Panel lateral (Sheet de Radix) con flujo multi-paso para conectar bancos sin sal
 | 7 | `success` | Resumen de cuentas conectadas + botón cerrar |
 | — | `error` | Mensaje de error + botón reintentar / cerrar |
 
-**Callback GoCardless:** Cuando el usuario completa la autorización en el banco, GoCardless redirige a `?gocardless_callback=true&ref=xxx`. `app/page.tsx` detecta estos parámetros, guarda la referencia en `sessionStorage`, limpia la URL y navega a `/bank-connections`. El componente reanuda el polling automáticamente.
+**Callback GoCardless:** Cuando el usuario completa la autorización en el banco, GoCardless redirige a `?gocardless_callback=true&ref=xxx`. `app/page.tsx` detecta estos parámetros, guarda la referencia y señal de activación en `sessionStorage`, limpia la URL y navega a `/treasury`. TreasuryPage detecta `gocardless_activate_tab` y activa la tab "Conexiones". El componente TreasuryConexionesTab reanuda el polling automáticamente.
 
 **Renovar consentimiento:** El botón "Renovar ahora" abre el Sheet y pre-selecciona la institución bancaria cuyo consentimiento está expirando.
 

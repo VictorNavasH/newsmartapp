@@ -14,7 +14,6 @@ const VALID_PATHS = new Set([
   "/forecasting",
   "/treasury",
   "/what-if",
-  "/bank-connections",
   "/invoices",
   "/tablet-usage",
   "/ai-assistant",
