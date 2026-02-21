@@ -7,7 +7,7 @@ import {
   Building2,
   RefreshCw,
   AlertTriangle,
-  ExternalLink,
+  Link2,
   Wallet,
 } from "lucide-react"
 import { TremorCard, TremorTitle } from "@/components/ui/TremorCard"
@@ -25,6 +25,8 @@ interface BankResumenTabProps {
   syncingAccountId: string | null
   onSyncAccount: (accountId: string) => void
   goCardlessAppUrl: string | null
+  onConnectBank: () => void
+  onRenewConsent: (institutionId: string) => void
 }
 
 export function BankResumenTab({
@@ -35,6 +37,8 @@ export function BankResumenTab({
   syncingAccountId,
   onSyncAccount,
   goCardlessAppUrl,
+  onConnectBank,
+  onRenewConsent,
 }: BankResumenTabProps) {
   const totalBalance = consolidated?.totalBalance ?? 0
   const accountCount = consolidated?.accountCount ?? 0
@@ -81,27 +85,18 @@ export function BankResumenTab({
               )}
             </div>
           </div>
-          {goCardlessAppUrl && (
-            <a
-              href={`${goCardlessAppUrl}/connect${
-                consentInfo?.institutionId ? `?institution=${consentInfo.institutionId}` : ""
-              }`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Button
-                size="sm"
-                className={`text-white ${
-                  daysUntilRenewal <= 7
-                    ? "bg-red-600 hover:bg-red-700"
-                    : "bg-amber-600 hover:bg-amber-700"
-                }`}
-              >
-                <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-                Renovar ahora
-              </Button>
-            </a>
-          )}
+          <Button
+            size="sm"
+            className={`text-white ${
+              daysUntilRenewal <= 7
+                ? "bg-red-600 hover:bg-red-700"
+                : "bg-amber-600 hover:bg-amber-700"
+            }`}
+            onClick={() => onRenewConsent(consentInfo?.institutionId || "")}
+          >
+            <Link2 className="h-3.5 w-3.5 mr-1.5" />
+            Renovar ahora
+          </Button>
         </div>
       )}
 
@@ -269,14 +264,15 @@ export function BankResumenTab({
           <div className="text-center py-8">
             <Building2 className="h-10 w-10 text-slate-300 mx-auto mb-2" />
             <p className="text-sm text-slate-500">No hay cuentas conectadas</p>
-            {goCardlessAppUrl && (
-              <a href={goCardlessAppUrl} target="_blank" rel="noopener noreferrer">
-                <Button size="sm" className="mt-3 text-white" style={{ backgroundColor: BRAND_COLORS.primary }}>
-                  <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-                  Conectar banco
-                </Button>
-              </a>
-            )}
+            <Button
+              size="sm"
+              className="mt-3 text-white"
+              style={{ backgroundColor: BRAND_COLORS.primary }}
+              onClick={onConnectBank}
+            >
+              <Link2 className="h-3.5 w-3.5 mr-1.5" />
+              Conectar banco
+            </Button>
           </div>
         )}
       </TremorCard>

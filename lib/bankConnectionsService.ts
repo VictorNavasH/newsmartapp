@@ -7,6 +7,11 @@ import type {
   BankTransactionFilters,
   BankTransactionsResult,
   BankSyncResult,
+  BankInstitution,
+  BankRequisitionCreateResult,
+  BankRequisitionStatus,
+  BankConnectedAccount,
+  BankInitialSyncResult,
 } from "@/types"
 
 // Helper para parsear balances (pueden ser JSON o número directo)
@@ -306,4 +311,183 @@ export const triggerAccountSync = async (accountId: string): Promise<BankSyncRes
 
 export const getGoCardlessAppUrl = (): string | null => {
   return process.env.NEXT_PUBLIC_GOCARDLESS_APP_URL || null
+}
+
+// --- CONNECT / RENEW FLOW ---
+
+/**
+ * Obtiene la lista de instituciones bancarias disponibles
+ */
+export const fetchInstitutions = async (
+  country: string = "ES"
+): Promise<BankInstitution[]> => {
+  const baseUrl = getGoCardlessAppUrl()
+  if (!baseUrl) return []
+
+  try {
+    const response = await fetch(
+      `${baseUrl}/api/institutions?country=${encodeURIComponent(country)}`
+    )
+
+    if (!response.ok) {
+      console.error("[BankConnections] Error fetching institutions:", response.status)
+      return []
+    }
+
+    const data = await response.json()
+    return (Array.isArray(data) ? data : []).map((inst: any) => ({
+      id: inst.id,
+      gocardless_id: inst.gocardless_id,
+      name: inst.name,
+      bic: inst.bic || "",
+      countries: inst.countries || [],
+      logo_url: inst.logo_url || null,
+      is_active: inst.is_active !== false,
+    }))
+  } catch (err) {
+    console.error("[BankConnections] Error in fetchInstitutions:", err)
+    return []
+  }
+}
+
+/**
+ * Crea una requisition (solicitud de conexion bancaria)
+ */
+export const createRequisition = async (
+  institutionId: string,
+  redirectUrl: string,
+  reference: string
+): Promise<BankRequisitionCreateResult> => {
+  const baseUrl = getGoCardlessAppUrl()
+  if (!baseUrl) {
+    return { success: false, error: "URL de GoCardless no configurada" }
+  }
+
+  try {
+    const response = await fetch(`${baseUrl}/api/requisitions/create`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        institution_id: institutionId,
+        redirect_url: redirectUrl,
+        reference,
+      }),
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: data.error || `Error al crear requisition (${response.status})`,
+      }
+    }
+
+    return {
+      success: true,
+      requisition_id: data.requisition_id,
+      link: data.link,
+      reference: data.reference,
+      institution: data.institution,
+    }
+  } catch (err) {
+    console.error("[BankConnections] Error in createRequisition:", err)
+    return {
+      success: false,
+      error: "Error de conexion. Verifica que la app GoCardless esta activa.",
+    }
+  }
+}
+
+/**
+ * Consulta el estado de una requisition por referencia
+ */
+export const pollRequisitionStatus = async (
+  reference: string
+): Promise<BankRequisitionStatus | null> => {
+  const baseUrl = getGoCardlessAppUrl()
+  if (!baseUrl) return null
+
+  try {
+    const response = await fetch(
+      `${baseUrl}/api/requisitions/status/${encodeURIComponent(reference)}`
+    )
+
+    if (!response.ok) {
+      console.error("[BankConnections] Error polling status:", response.status)
+      return null
+    }
+
+    return await response.json()
+  } catch (err) {
+    console.error("[BankConnections] Error in pollRequisitionStatus:", err)
+    return null
+  }
+}
+
+/**
+ * Obtiene las cuentas vinculadas a una requisition completada
+ */
+export const fetchRequisitionAccounts = async (
+  reference: string
+): Promise<BankConnectedAccount[]> => {
+  const baseUrl = getGoCardlessAppUrl()
+  if (!baseUrl) return []
+
+  try {
+    const response = await fetch(
+      `${baseUrl}/api/requisitions/accounts/${encodeURIComponent(reference)}`
+    )
+
+    if (!response.ok) {
+      console.error("[BankConnections] Error fetching accounts:", response.status)
+      return []
+    }
+
+    const data = await response.json()
+    return (data.accounts || []).map((acc: any) => ({
+      id: acc.id,
+      name: acc.name || "Cuenta",
+      iban: acc.iban || "",
+      balance: typeof acc.balance === "number" ? acc.balance : parseFloat(acc.balance || "0"),
+      currency: acc.currency || "EUR",
+    }))
+  } catch (err) {
+    console.error("[BankConnections] Error in fetchRequisitionAccounts:", err)
+    return []
+  }
+}
+
+/**
+ * Lanza la sincronizacion inicial de cuentas recien conectadas
+ */
+export const triggerInitialSync = async (
+  accounts: BankConnectedAccount[]
+): Promise<BankInitialSyncResult | null> => {
+  const baseUrl = getGoCardlessAppUrl()
+  if (!baseUrl) return null
+
+  try {
+    const response = await fetch(`${baseUrl}/api/sync/initial`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        accounts: accounts.map((acc) => ({
+          id: acc.id,
+          name: acc.name,
+          currency: acc.currency,
+        })),
+      }),
+    })
+
+    if (!response.ok) {
+      console.error("[BankConnections] Error in initial sync:", response.status)
+      return null
+    }
+
+    return await response.json()
+  } catch (err) {
+    console.error("[BankConnections] Error in triggerInitialSync:", err)
+    return null
+  }
 }

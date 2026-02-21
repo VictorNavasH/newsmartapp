@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import {
   Building2,
   TrendingUp,
@@ -15,6 +15,11 @@ import {
   fetchConsentStatus,
   triggerAccountSync,
   getGoCardlessAppUrl,
+  fetchInstitutions,
+  createRequisition,
+  pollRequisitionStatus,
+  fetchRequisitionAccounts,
+  triggerInitialSync,
 } from "@/lib/bankConnectionsService"
 import type {
   BankConsolidatedBalance,
@@ -22,10 +27,24 @@ import type {
   BankTransactionsResult,
   BankConsentInfo,
   BankAccount,
+  BankConnectState,
+  BankInstitution,
 } from "@/types"
 import { PAGE_SIZE, type TransactionTypeFilter } from "./bankConnections/constants"
 import { BankResumenTab } from "./bankConnections/BankResumenTab"
 import { BankMovimientosTab } from "./bankConnections/BankMovimientosTab"
+import { BankConnectSheet } from "./bankConnections/BankConnectSheet"
+
+// Estado inicial del flujo de conexion
+const INITIAL_CONNECT_STATE: BankConnectState = {
+  step: "idle",
+  institutions: [],
+  selectedInstitution: null,
+  reference: null,
+  authLink: null,
+  error: null,
+  connectedAccounts: [],
+}
 
 export default function BankConnectionsPage() {
   const { toast } = useToast()
@@ -48,6 +67,11 @@ export default function BankConnectionsPage() {
   const [page, setPage] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
 
+  // Connect flow state
+  const [connectSheetOpen, setConnectSheetOpen] = useState(false)
+  const [connectState, setConnectState] = useState<BankConnectState>(INITIAL_CONNECT_STATE)
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
   const totalPages = Math.ceil(totalCount / PAGE_SIZE)
   const goCardlessAppUrl = getGoCardlessAppUrl()
   const accounts: BankAccount[] = consolidated?.accounts ?? []
@@ -61,7 +85,17 @@ export default function BankConnectionsPage() {
     setPage(1)
   }
 
-  // Load initial data (resumen + consent)
+  // Limpiar polling al desmontar
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current)
+      }
+    }
+  }, [])
+
+  // --- DATA LOADING ---
+
   const loadResumenData = useCallback(async () => {
     setLoading(true)
     try {
@@ -78,7 +112,6 @@ export default function BankConnectionsPage() {
     }
   }, [])
 
-  // Load transactions (with filters)
   const loadTransactions = useCallback(async () => {
     setLoadingTransactions(true)
     try {
@@ -125,7 +158,8 @@ export default function BankConnectionsPage() {
     }
   }, [activeTab, periodStats])
 
-  // Sync account
+  // --- SYNC HANDLER ---
+
   const handleSyncAccount = async (accountId: string) => {
     setSyncingAccountId(accountId)
     try {
@@ -137,7 +171,6 @@ export default function BankConnectionsPage() {
             ? `${result.synced.transactions} transacciones nuevas`
             : result.message,
         })
-        // Recargar datos
         await loadResumenData()
         if (activeTab === "Movimientos") {
           await loadTransactions()
@@ -159,6 +192,289 @@ export default function BankConnectionsPage() {
       setSyncingAccountId(null)
     }
   }
+
+  // --- CONNECT / RENEW FLOW ---
+
+  /** Abre el Sheet con la lista de instituciones */
+  const handleConnectBank = useCallback(async () => {
+    setConnectState({
+      ...INITIAL_CONNECT_STATE,
+      step: "selecting",
+    })
+    setConnectSheetOpen(true)
+
+    // Cargar instituciones en background
+    const institutions = await fetchInstitutions("ES")
+    setConnectState((prev) => ({
+      ...prev,
+      institutions,
+    }))
+  }, [])
+
+  /** Abre el Sheet y pre-selecciona una institucion para renovar */
+  const handleRenewConsent = useCallback(async (institutionId: string) => {
+    if (!institutionId) {
+      // Si no hay institution_id, abrir selector normal
+      handleConnectBank()
+      return
+    }
+
+    setConnectState({
+      ...INITIAL_CONNECT_STATE,
+      step: "selecting",
+    })
+    setConnectSheetOpen(true)
+
+    // Cargar instituciones y pre-seleccionar
+    const institutions = await fetchInstitutions("ES")
+    setConnectState((prev) => ({
+      ...prev,
+      institutions,
+    }))
+
+    // Buscar la institucion por ID y auto-seleccionar
+    const targetInst = institutions.find(
+      (inst) => inst.id === institutionId || inst.gocardless_id === institutionId
+    )
+    if (targetInst) {
+      // Iniciar automaticamente el flujo de conexion
+      handleSelectInstitution(targetInst)
+    }
+  }, [])
+
+  /** Genera la URL de callback para GoCardless */
+  const buildCallbackUrl = (): string => {
+    const origin = typeof window !== "undefined" ? window.location.origin : ""
+    return `${origin}/?gocardless_callback=true`
+  }
+
+  /** Selecciona una institucion y crea la requisition */
+  const handleSelectInstitution = async (institution: BankInstitution) => {
+    setConnectState((prev) => ({
+      ...prev,
+      step: "creating",
+      selectedInstitution: institution,
+    }))
+
+    const reference = `ref_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
+    const redirectUrl = buildCallbackUrl()
+
+    const result = await createRequisition(
+      institution.gocardless_id || institution.id,
+      redirectUrl,
+      reference
+    )
+
+    if (!result.success || !result.link) {
+      setConnectState((prev) => ({
+        ...prev,
+        step: "error",
+        error: result.error || "No se pudo crear la solicitud de conexion",
+      }))
+      return
+    }
+
+    // Guardar referencia para polling posterior
+    setConnectState((prev) => ({
+      ...prev,
+      step: "redirecting",
+      reference: result.reference || reference,
+      authLink: result.link || null,
+    }))
+
+    // Guardar la referencia en sessionStorage para detectar callback
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("gocardless_ref", result.reference || reference)
+    }
+
+    // Abrir ventana del banco
+    try {
+      window.open(result.link, "_blank")
+    } catch {
+      // Si no se puede abrir, el usuario usara el enlace de fallback
+      console.warn("[BankConnectFlow] No se pudo abrir ventana emergente")
+    }
+  }
+
+  /** Inicia el polling de estado despues de que el usuario complete la autorizacion */
+  const handleManualComplete = useCallback(() => {
+    const reference = connectState.reference
+    if (!reference) {
+      setConnectState((prev) => ({
+        ...prev,
+        step: "error",
+        error: "No se encontro referencia de conexion",
+      }))
+      return
+    }
+    startPolling(reference)
+  }, [connectState.reference])
+
+  /** Polling del estado de la requisition + fetch de cuentas + sync inicial */
+  const startPolling = useCallback(async (reference: string) => {
+    setConnectState((prev) => ({ ...prev, step: "processing" }))
+
+    // Limpiar polling anterior si existe
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current)
+      pollingRef.current = null
+    }
+
+    let attempts = 0
+    const maxAttempts = 30 // ~60 segundos con intervalo de 2s
+
+    const poll = async () => {
+      attempts++
+
+      const status = await pollRequisitionStatus(reference)
+
+      if (!status) {
+        if (attempts >= maxAttempts) {
+          if (pollingRef.current) clearInterval(pollingRef.current)
+          pollingRef.current = null
+          setConnectState((prev) => ({
+            ...prev,
+            step: "error",
+            error: "Tiempo de espera agotado. Intenta de nuevo.",
+          }))
+        }
+        return
+      }
+
+      // Estados de GoCardless: CR=created, GC=gave_consent, LN=linked, RJ=rejected, EX=expired
+      if (status.status === "LN" || status.status === "GC") {
+        // Conexion exitosa — detener polling
+        if (pollingRef.current) clearInterval(pollingRef.current)
+        pollingRef.current = null
+
+        // Fetch cuentas conectadas
+        setConnectState((prev) => ({ ...prev, step: "fetching" }))
+        const accounts = await fetchRequisitionAccounts(reference)
+
+        if (accounts.length === 0) {
+          setConnectState((prev) => ({
+            ...prev,
+            step: "error",
+            error: "No se encontraron cuentas asociadas a la autorizacion",
+          }))
+          return
+        }
+
+        // Sincronizacion inicial
+        setConnectState((prev) => ({
+          ...prev,
+          step: "syncing",
+          connectedAccounts: accounts,
+        }))
+
+        await triggerInitialSync(accounts)
+
+        // Exito
+        setConnectState((prev) => ({
+          ...prev,
+          step: "success",
+        }))
+
+        // Limpiar sessionStorage
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem("gocardless_ref")
+        }
+      } else if (status.status === "RJ" || status.status === "EX") {
+        // Rechazado o expirado
+        if (pollingRef.current) clearInterval(pollingRef.current)
+        pollingRef.current = null
+        setConnectState((prev) => ({
+          ...prev,
+          step: "error",
+          error:
+            status.status === "RJ"
+              ? "La autorizacion fue rechazada por el banco"
+              : "La solicitud de autorizacion ha expirado",
+        }))
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem("gocardless_ref")
+        }
+      } else if (attempts >= maxAttempts) {
+        // Timeout
+        if (pollingRef.current) clearInterval(pollingRef.current)
+        pollingRef.current = null
+        setConnectState((prev) => ({
+          ...prev,
+          step: "error",
+          error: "Tiempo de espera agotado. Si ya has completado la autorizacion, intenta de nuevo.",
+        }))
+      }
+      // Si estado es CR (creado), seguir esperando
+    }
+
+    // Primera llamada inmediata
+    await poll()
+
+    // Si no se resolvio, iniciar intervalo
+    if (
+      connectState.step !== "success" &&
+      connectState.step !== "error" &&
+      !pollingRef.current
+    ) {
+      pollingRef.current = setInterval(poll, 2000)
+    }
+  }, [])
+
+  /** Reintentar conexion desde el estado de error */
+  const handleRetry = useCallback(() => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current)
+      pollingRef.current = null
+    }
+    setConnectState({
+      ...INITIAL_CONNECT_STATE,
+      step: "selecting",
+      institutions: connectState.institutions,
+    })
+  }, [connectState.institutions])
+
+  /** Cerrar el Sheet y recargar datos si hubo exito */
+  const handleCloseConnect = useCallback(async () => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current)
+      pollingRef.current = null
+    }
+
+    const wasSuccess = connectState.step === "success"
+
+    setConnectSheetOpen(false)
+    setConnectState(INITIAL_CONNECT_STATE)
+
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("gocardless_ref")
+    }
+
+    // Si la conexion fue exitosa, recargar datos
+    if (wasSuccess) {
+      await loadResumenData()
+      if (activeTab === "Movimientos") {
+        await loadTransactions()
+      }
+    }
+  }, [connectState.step, activeTab, loadResumenData, loadTransactions])
+
+  // --- CALLBACK DETECTION ---
+  // Detecta si venimos de un callback de GoCardless (via sessionStorage)
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const savedRef = sessionStorage.getItem("gocardless_ref")
+    if (savedRef) {
+      // Abrir Sheet y empezar polling automaticamente
+      setConnectState({
+        ...INITIAL_CONNECT_STATE,
+        step: "processing",
+        reference: savedRef,
+      })
+      setConnectSheetOpen(true)
+      startPolling(savedRef)
+    }
+  }, [startPolling])
 
   // Menu items
   const bankMenuItems = [
@@ -200,6 +516,8 @@ export default function BankConnectionsPage() {
           syncingAccountId={syncingAccountId}
           onSyncAccount={handleSyncAccount}
           goCardlessAppUrl={goCardlessAppUrl}
+          onConnectBank={handleConnectBank}
+          onRenewConsent={handleRenewConsent}
         />
       )}
 
@@ -224,6 +542,17 @@ export default function BankConnectionsPage() {
           totalCount={totalCount}
         />
       )}
+
+      {/* Sheet de conexion bancaria */}
+      <BankConnectSheet
+        open={connectSheetOpen}
+        onOpenChange={setConnectSheetOpen}
+        state={connectState}
+        onSelectInstitution={handleSelectInstitution}
+        onManualComplete={handleManualComplete}
+        onRetry={handleRetry}
+        onClose={handleCloseConnect}
+      />
     </div>
   )
 }

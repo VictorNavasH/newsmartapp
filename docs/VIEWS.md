@@ -616,32 +616,57 @@ Usuario escribe mensaje
 | **Archivo** | `components/views/BankConnectionsPage.tsx` |
 | **Servicio(s)** | `bankConnectionsService.ts` |
 | **Export** | Default export |
-| **Sub-componentes** | `views/bankConnections/BankResumenTab.tsx`, `BankMovimientosTab.tsx`, `constants.ts` |
+| **Sub-componentes** | `views/bankConnections/BankResumenTab.tsx`, `BankMovimientosTab.tsx`, `BankConnectSheet.tsx`, `constants.ts` |
 
 ### Arquitectura
 
-La Smart App lee datos bancarios directamente de Supabase (misma DB que la subapp GoCardless). La subapp sigue funcionando como motor de sincronización. Para acciones (sincronizar, renovar), la Smart App llama a las APIs de la subapp vía `NEXT_PUBLIC_GOCARDLESS_APP_URL`.
+La Smart App lee datos bancarios directamente de Supabase (misma DB que la subapp GoCardless). La subapp sigue funcionando como motor de sincronización y como backend API para el flujo de conexión. Todas las acciones (sincronizar, conectar, renovar) se realizan sin salir de la app — la Smart App llama a las APIs de la subapp vía `NEXT_PUBLIC_GOCARDLESS_APP_URL`.
 
 ```
-Smart App (lee datos) ──→ Supabase ←── GoCardless subapp (sincroniza)
-       │                                        ↑
-       └─── Botón "Sincronizar" ────────────────┘
-       └─── Botón "Renovar" ────────────────────┘
+Smart App                          Subapp GoCardless             GoCardless
+────────────                       ─────────────────             ──────────
+1. Lee datos    ──→ Supabase ←──── Sincroniza periódicamente
+2. "Conectar"   ──→ POST /api/requisitions/create ──→ GoCardless API
+3. Abre ventana banco ──────────────────────────────→ Banco auth page
+4. Callback     ←── Redirect a Smart App URL ←────── Banco
+5. Polling      ──→ GET /api/requisitions/status/[ref]
+6. Fetch cuentas──→ GET /api/requisitions/accounts/[ref]
+7. Sync inicial ──→ POST /api/sync/initial
 ```
 
 ### Tabs (MenuBar)
 
 #### Tab 1: Resumen (`BankResumenTab.tsx`)
-- **Alerta renovación** — Aparece si consentimiento bancario expira en ≤15 días (amber) o ≤7 días (rojo), con botón "Renovar ahora"
+- **Alerta renovación** — Aparece si consentimiento bancario expira en ≤15 días (amber) o ≤7 días (rojo), con botón "Renovar ahora" que abre el flujo de conexión embebido
 - **4 KPIs** — Saldo Total, Ingresos del Mes, Gastos del Mes, Balance Neto
 - **Lista de cuentas** — Cada cuenta muestra: logo banco, nombre, IBAN (últimos 4), saldo, última sincronización, botón sincronizar
 - **Info GoCardless** — Card informativo sobre la conexión segura via Open Banking
+- **Botón "Conectar banco"** — Aparece si no hay cuentas conectadas, abre el Sheet de conexión
 
 #### Tab 2: Movimientos (`BankMovimientosTab.tsx`)
 - **Filtros** — Búsqueda texto, selector cuenta, selector tipo (Todos/Ingresos/Gastos), botón limpiar filtros
 - **Resumen período** — Transacciones count, total ingresos, total gastos, balance neto
 - **Tabla transacciones** — Fecha, Cuenta (con logo), Descripción (con icono ingreso/gasto + creditor/debtor), Importe, Saldo
 - **Paginación** — Server-side, 50 por página, botones Anterior/Siguiente
+
+### Flujo de conexión embebido (`BankConnectSheet.tsx`)
+
+Panel lateral (Sheet de Radix) con flujo multi-paso para conectar bancos sin salir de la app:
+
+| Paso | Estado | Descripción |
+|------|--------|-------------|
+| 1 | `selecting` | Buscador + grid 2 columnas con logos de bancos (filtrable por nombre/BIC) |
+| 2 | `creating` | Spinner "Preparando conexión con [banco]..." |
+| 3 | `redirecting` | Instrucciones + fallback link + botón "Ya he completado" |
+| 4 | `processing` | Verificando autorización (polling cada 2s, max 60s) |
+| 5 | `fetching` | Obteniendo cuentas vinculadas |
+| 6 | `syncing` | Sincronizando transacciones iniciales |
+| 7 | `success` | Resumen de cuentas conectadas + botón cerrar |
+| — | `error` | Mensaje de error + botón reintentar / cerrar |
+
+**Callback GoCardless:** Cuando el usuario completa la autorización en el banco, GoCardless redirige a `?gocardless_callback=true&ref=xxx`. `app/page.tsx` detecta estos parámetros, guarda la referencia en `sessionStorage`, limpia la URL y navega a `/bank-connections`. El componente reanuda el polling automáticamente.
+
+**Renovar consentimiento:** El botón "Renovar ahora" abre el Sheet y pre-selecciona la institución bancaria cuyo consentimiento está expirando.
 
 ### Tablas Supabase consultadas
 

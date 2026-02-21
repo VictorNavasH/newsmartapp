@@ -20,6 +20,15 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
   - Variable de entorno `NEXT_PUBLIC_GOCARDLESS_APP_URL` para configurar URL de la subapp
   - Sub-componentes: `BankResumenTab.tsx`, `BankMovimientosTab.tsx`, `constants.ts` (patrón TreasuryPage)
 
+- **Flujo de Conectar/Renovar banco embebido en la Smart App:**
+  - Los botones "Conectar banco" y "Renovar ahora" ya no abren la subapp GoCardless externamente — ahora todo el flujo se realiza dentro de la app
+  - Nuevo componente `BankConnectSheet.tsx` — panel lateral (Sheet) con flujo multi-paso: seleccionar banco → crear requisition → autorizar en banco → polling → obtener cuentas → sync inicial → éxito
+  - 5 nuevas funciones en `bankConnectionsService.ts`: `fetchInstitutions`, `createRequisition`, `pollRequisitionStatus`, `fetchRequisitionAccounts`, `triggerInitialSync`
+  - 8 nuevos tipos en `types/bankConnections.ts`: `BankInstitution`, `BankConnectStep`, `BankConnectedAccount`, `BankConnectState`, `BankCallbackParams`, `BankRequisitionCreateResult`, `BankRequisitionStatus`, `BankInitialSyncResult`
+  - Detección de callback GoCardless en `app/page.tsx` — detecta `?gocardless_callback=true&ref=xxx` y navega a `/bank-connections` para reanudar el polling
+  - CORS configurado en la subapp (`go-cardlessapp (1)/next.config.mjs`) para requests cross-origin
+  - Renovación de consentimiento pre-selecciona la institución bancaria que necesita renovación
+
 - **Food Cost real en Dashboard KPI:**
   - Nueva función `fetchFoodCostAverage()` en `lib/dataService.ts` — consulta ligera a `vw_food_cost` que devuelve el % promedio global
   - `DashboardPage.tsx` ahora llama a `fetchFoodCostAverage()` en el `Promise.all` de carga de datos

@@ -74,3 +74,84 @@ export interface BankSyncResult {
     transactions: number
   }
 }
+
+// --- CONNECT / RENEW FLOW ---
+
+export interface BankInstitution {
+  id: string
+  gocardless_id: string
+  name: string
+  bic: string
+  countries: string[]
+  logo_url: string | null
+  is_active: boolean
+}
+
+export type BankConnectStep =
+  | "idle"
+  | "selecting"
+  | "creating"
+  | "redirecting"
+  | "processing"
+  | "fetching"
+  | "syncing"
+  | "success"
+  | "error"
+
+export interface BankConnectedAccount {
+  id: string
+  name: string
+  iban: string
+  balance: number
+  currency: string
+}
+
+export interface BankConnectState {
+  step: BankConnectStep
+  institutions: BankInstitution[]
+  selectedInstitution: BankInstitution | null
+  reference: string | null
+  authLink: string | null
+  error: string | null
+  connectedAccounts: BankConnectedAccount[]
+}
+
+export interface BankCallbackParams {
+  reference: string
+  error?: string
+}
+
+export interface BankRequisitionCreateResult {
+  success: boolean
+  requisition_id?: string
+  link?: string
+  reference?: string
+  institution?: {
+    id: string
+    gocardless_id: string
+    name: string
+  }
+  error?: string
+}
+
+export interface BankRequisitionStatus {
+  id: string
+  status: "CR" | "GC" | "LN" | "RJ" | "EX" | string
+  reference: string
+  accounts?: string[]
+  link?: string
+}
+
+export interface BankInitialSyncResult {
+  success: boolean
+  accounts_processed: number
+  transactions_imported: number
+  detailed_results: {
+    accountId: string
+    accountName: string
+    success: boolean
+    transactionsFound: number
+    transactionsSaved: number
+    error: string | null
+  }[]
+}

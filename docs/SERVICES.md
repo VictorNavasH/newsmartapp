@@ -701,6 +701,11 @@ Lee datos bancarios directamente de las tablas GoCardless en Supabase y delega a
 | `fetchConsentStatus()` | `BankConsentInfo` | Días hasta renovación del consentimiento más próximo a expirar |
 | `triggerAccountSync(accountId)` | `BankSyncResult` | Llama `POST /api/accounts/{id}/full-sync` en la subapp GoCardless |
 | `getGoCardlessAppUrl()` | `string \| null` | Devuelve `NEXT_PUBLIC_GOCARDLESS_APP_URL` o null |
+| `fetchInstitutions(country?)` | `BankInstitution[]` | GET `/api/institutions?country=ES` — Lista de instituciones bancarias disponibles (logo, nombre, países) |
+| `createRequisition(institutionId, redirectUrl, reference)` | `BankRequisitionCreateResult` | POST `/api/requisitions/create` — Crea solicitud de conexión, devuelve `{link, reference}` |
+| `pollRequisitionStatus(reference)` | `BankRequisitionStatus \| null` | GET `/api/requisitions/status/[ref]` — Estado de la requisición (CR/GC/LN/RJ/EX) |
+| `fetchRequisitionAccounts(reference)` | `BankConnectedAccount[]` | GET `/api/requisitions/accounts/[ref]` — Cuentas conectadas tras autorización |
+| `triggerInitialSync(accounts[])` | `BankInitialSyncResult \| null` | POST `/api/sync/initial` — Sincronización inicial de cuentas recién conectadas |
 
 ### Helpers internos
 

@@ -24,7 +24,7 @@ types/
 ├── purchases.ts           # CompraPedido, CompraKPIs, CompraFacturaConciliacion, etc.
 ├── recharts.ts            # RechartsPayloadEntry, RechartsTooltipProps
 ├── kpiTargets.ts          # KPITargets, DEFAULT_KPI_TARGETS, KPIProgress
-└── bankConnections.ts     # BankAccount, BankTransaction, BankConsolidatedBalance, etc.
+└── bankConnections.ts     # BankAccount, BankTransaction, BankConsolidatedBalance, BankInstitution, BankConnectState, etc.
 ```
 
 ### Dependencias entre módulos
@@ -804,3 +804,29 @@ Estos tipos están definidos directamente en `lib/settingsService.ts` (no en `ty
 | `TableSize` | `table_name, total_size: string; row_count: number` |
 | `RestaurantCapacity` | `totalMesas, totalPlazas: number; turnos: {nombre, hora_inicio, hora_fin}[]; plazasPorDia, mesasPorDia: number` |
 | `SyncLogEntry` | `id, source, type, status, timestamp: string; records, errors: number; message: string\|null` |
+
+---
+
+## 18. Tipos del flujo de conexión bancaria
+
+**Archivo:** `types/bankConnections.ts`
+
+Tipos añadidos para el flujo embebido de conexión/renovación de bancos vía GoCardless.
+
+### Tipos del flujo de conexión
+
+| Tipo | Campos | Descripción |
+|------|--------|-------------|
+| `BankInstitution` | `id, name: string; logo: string\|null; countries: string[]; bic: string\|null; gocardless_id?: string` | Institución bancaria disponible para conectar |
+| `BankConnectStep` | Union literal: `"idle" \| "selecting" \| "creating" \| "redirecting" \| "processing" \| "fetching" \| "syncing" \| "success" \| "error"` | Estado del paso actual del flujo de conexión |
+| `BankConnectedAccount` | `id, name, iban: string; institution_name: string` | Cuenta recién conectada tras autorización |
+| `BankConnectState` | `step: BankConnectStep; institutions: BankInstitution[]; selectedInstitution: BankInstitution\|null; reference: string\|null; authLink: string\|null; error: string\|null; connectedAccounts: BankConnectedAccount[]` | Estado completo del flujo de conexión (gestionado en BankConnectionsPage) |
+| `BankCallbackParams` | `reference: string; error?: string` | Parámetros extraídos de la URL de callback de GoCardless |
+
+### Tipos de respuesta de la subapp
+
+| Tipo | Campos | Descripción |
+|------|--------|-------------|
+| `BankRequisitionCreateResult` | `success: boolean; link?: string; reference?: string; error?: string` | Respuesta de POST `/api/requisitions/create` |
+| `BankRequisitionStatus` | `status: string; reference: string` | Respuesta de GET `/api/requisitions/status/[ref]`. Códigos: CR=created, GC=gave_consent, LN=linked, RJ=rejected, EX=expired |
+| `BankInitialSyncResult` | `success: boolean; synced?: { accounts: number; transactions: number }; error?: string` | Respuesta de POST `/api/sync/initial` |

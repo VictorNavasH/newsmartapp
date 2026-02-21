@@ -235,6 +235,30 @@ GoCardless (Open Banking API)
 | `gocardless_requisitions` | Consentimientos bancarios con `status`, `expires_at`, `institution_id` |
 | `gocardless_sync_logs` | Logs de sincronización con `total_accounts`, `successful_accounts`, `failed_accounts` |
 
+### Flujo de conexión embebido (Smart App → Subapp → GoCardless)
+
+```
+Smart App                          Subapp GoCardless             GoCardless
+────────────                       ─────────────────             ──────────
+1. User clicks "Conectar"
+2. Sheet → Lista de bancos      → GET /api/institutions
+3. User selects bank
+4. Create requisition           → POST /api/requisitions/create → GoCardless API
+5. window.open(authLink)        ──────────────────────────────→ Banco auth page
+6. User completes auth          ← Redirect ?gocardless_callback=true&ref=xxx
+7. Detect callback → polling    → GET /api/requisitions/status/[ref]
+8. Fetch accounts               → GET /api/requisitions/accounts/[ref]
+9. Initial sync                 → POST /api/sync/initial
+10. Success → reload data
+```
+
+**Componente:** `BankConnectSheet.tsx` (Sheet lateral multi-paso)
+**Estados del flujo:** `idle → selecting → creating → redirecting → processing → fetching → syncing → success | error`
+**Callback URL:** `https://domain.com/?gocardless_callback=true&ref=req_xxx`
+**Detección:** `app/page.tsx` detecta params → `sessionStorage` → `BankConnectionsPage` resume polling
+**Renovación:** Mismo flujo con institución pre-seleccionada (`onRenewConsent(institutionId)`)
+**CORS:** Subapp tiene headers CORS en `next.config.mjs` para permitir requests cross-origin
+
 ### En la webapp
 
 - `BankConnectionsPage` — Vista principal de conexiones bancarias (datos reales de Supabase)
@@ -242,6 +266,7 @@ GoCardless (Open Banking API)
   - Lee cuentas, transacciones y consentimientos directamente de Supabase
   - Sincronización manual vía API de la subapp (`NEXT_PUBLIC_GOCARDLESS_APP_URL`)
   - Alerta de renovación de consentimiento (≤15 días)
+  - **Conexión/renovación embebida** vía `BankConnectSheet` (Sheet lateral multi-paso)
 - `TreasuryPage` — Muestra saldos, transacciones, categorización (vía RPCs)
 - `SettingsPage` — Estado de sincronización GoCardless
 

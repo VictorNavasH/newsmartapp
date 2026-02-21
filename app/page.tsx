@@ -1,6 +1,6 @@
 "use client"
 
-import { lazy, Suspense, useState } from "react"
+import { lazy, Suspense, useState, useEffect } from "react"
 import { useAuth } from "@/hooks/useAuth"
 import { useAppRouter } from "@/hooks/useAppRouter"
 import { LoginScreen } from "@/components/features/LoginScreen"
@@ -40,6 +40,30 @@ export default function App() {
   const { user, loading, error, signIn, signOut } = useAuth()
   const [collapsed, setCollapsed] = useState(false)
   const { currentPath, navigate } = useAppRouter()
+
+  // Detectar callback de GoCardless al montar
+  // GoCardless redirige a: https://domain.com/?gocardless_callback=true&ref=req_xxx
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const params = new URLSearchParams(window.location.search)
+    const isCallback = params.get("gocardless_callback")
+    const ref = params.get("ref")
+
+    if (isCallback === "true" && ref) {
+      // Guardar referencia para que BankConnectionsPage la detecte
+      sessionStorage.setItem("gocardless_ref", ref)
+
+      // Limpiar la URL (quitar query params, mantener hash)
+      const cleanUrl = window.location.pathname + (window.location.hash || "#/bank-connections")
+      window.history.replaceState({}, "", cleanUrl)
+
+      // Navegar a bank-connections si no estamos ya ahi
+      if (currentPath !== "/bank-connections") {
+        navigate("/bank-connections")
+      }
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const renderContent = () => {
     switch (currentPath) {
