@@ -75,19 +75,33 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
                 const transactions = await gocardless.getAccountTransactions(gcAccountId)
                 if (transactions && transactions.length > 0) {
                     const txData = transactions.map((tx: any) => ({
-                        gocardless_id: tx.transactionId || `tx_${Math.random().toString(36).substr(2, 9)}`,
+                        gocardless_id: tx.transactionId || tx.internalTransactionId || `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                         account_id: account.id,
+                        account_gocardless_id: gcAccountId,
                         amount: tx.transactionAmount.amount,
-                        currency: tx.transactionAmount.currency,
+                        currency: tx.transactionAmount.currency || "EUR",
                         booking_date: tx.bookingDate || new Date().toISOString().split("T")[0],
+                        value_date: tx.valueDate || null,
                         creditor_name: tx.creditorName || null,
                         debtor_name: tx.debtorName || null,
                         remittance_information_unstructured: tx.remittanceInformationUnstructured || null,
+                        creditor_account_iban: tx.creditorAccount?.iban || null,
+                        debtor_account_iban: tx.debtorAccount?.iban || null,
+                        bank_transaction_code: tx.bankTransactionCode || null,
+                        transaction_id: tx.transactionId || null,
+                        end_to_end_id: tx.endToEndId || null,
                         raw_data: tx
                     }))
 
-                    await supabase.from("gocardless_transactions").upsert(txData, { onConflict: 'gocardless_id' })
-                    syncedTransactions = true
+                    const { error: upsertError } = await supabase
+                        .from("gocardless_transactions")
+                        .upsert(txData, { onConflict: 'gocardless_id' })
+
+                    if (upsertError) {
+                        console.error("Transaction upsert error:", upsertError)
+                    } else {
+                        syncedTransactions = true
+                    }
 
                     const gcLimits = gocardless.getRateLimitInfo()
                     if (gcLimits.accountSuccessRemaining !== undefined) {

@@ -18,6 +18,21 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
   - Variables de entorno: `GOCARDLESS_SECRET_ID` + `GOCARDLESS_SECRET_KEY` (server-only). Eliminada `NEXT_PUBLIC_GOCARDLESS_APP_URL`
 
 ### Corregido
+- **Fix crítico: transacciones no se sincronizaban (faltaba `account_gocardless_id`):**
+  - La columna `account_gocardless_id` en `gocardless_transactions` es NOT NULL sin default
+  - Las rutas `full-sync` e `initial-sync` no incluían este campo en el upsert → violación de constraint → insert silenciosamente fallaba
+  - Las transacciones existentes (insertadas por la subapp antigua) no se afectaban, pero nuevas transacciones nunca se guardaban
+  - Fix: añadido `account_gocardless_id: gcAccountId` al mapping de transacciones en ambas rutas
+  - También añadidos campos adicionales: `value_date`, `creditor_account_iban`, `debtor_account_iban`, `bank_transaction_code`, `transaction_id`, `end_to_end_id`
+  - Añadido logging de errores de upsert para depuración futura
+- **Fix: formato de `current_balance` — RPCs leían JSON pero API escribía número plano:**
+  - Las API routes escribían `current_balance` como número ("80.56") pero las RPCs intentaban `::jsonb->>'amount'` → devolvía null → mostraba 0,00€
+  - Fix en API: ahora escribe `JSON.stringify({amount, currency})` + actualiza `balance_last_updated_at`
+  - Fix en RPCs: `get_treasury_accounts` y `get_treasury_kpis` ahora manejan ambos formatos con `jsonb_typeof()` check
+  - `get_treasury_accounts` usa `GREATEST(last_sync_at, balance_last_updated_at)` para la fecha de sync
+- **Fix: calendario mostraba "0d" — requisitions expiradas contaminaban el cálculo:**
+  - 7 requisitions en BD, las más antiguas (dic 2025) ya expiradas → `Math.max(0, días_negativos) = 0`
+  - Fix: agrupar por `institution_id` y quedarse solo con la requisition más reciente por banco
 - **Fix crítico: mismatch UUID vs gocardless_id en sincronización de cuentas:**
   - La RPC `get_treasury_accounts` devuelve `a.id` (UUID de Supabase) como campo `id` en `TreasuryAccount`
   - La ruta `full-sync` buscaba solo por `.eq("gocardless_id", accountId)` — pero recibía el UUID → siempre 404
