@@ -52,6 +52,7 @@ import { toast } from "sonner"
 import { ComprasPedidosTab } from "./compras/ComprasPedidosTab"
 import { ComprasConciliacionTab } from "./compras/ComprasConciliacionTab"
 import { ComprasAnalisisTab } from "./compras/ComprasAnalisisTab"
+import { UnbilledAlbaranesDrawer } from "./compras/UnbilledAlbaranesDrawer"
 import { ESTADO_PEDIDO_CONFIG } from "./compras/constants"
 
 type ComprasTab = "pedidos" | "conciliacion" | "analisis"
@@ -100,6 +101,44 @@ export default function ComprasPage() {
 
   // State for drawer of order detail
   const [pedidoDetalle, setPedidoDetalle] = useState<CompraPedido | null>(null)
+
+  // Point 1: Unbilled Delivery Notes Drawer
+  const [unbilledDrawerOpen, setUnbilledDrawerOpen] = useState(false)
+  const [unbilledList, setUnbilledList] = useState<CompraAlbaranDisponible[]>([])
+  const [unbilledLoading, setUnbilledLoading] = useState(false)
+
+  // Map for resolving UUIDs to numbers
+  const albaranesMap = useMemo(() => {
+    const map = new Map<string, string>()
+    unbilledList.forEach(a => map.set(a.id, a.numero_albaran))
+    return map
+  }, [unbilledList])
+
+  useEffect(() => {
+    // Cargar albaranes al inicio para el drawer y para resolver UUIDs
+    const loadAllAlbaranes = async () => {
+      try {
+        const data = await fetchAlbaranesDisponibles()
+        setUnbilledList(data)
+      } catch (e) {
+        console.error("Error loading albaranes for map", e)
+      }
+    }
+    loadAllAlbaranes()
+  }, [])
+
+  const handleOpenUnbilledDrawer = async () => {
+    setUnbilledDrawerOpen(true)
+    if (unbilledList.length === 0) {
+      setUnbilledLoading(true)
+      try {
+        const data = await fetchAlbaranesDisponibles()
+        setUnbilledList(data)
+      } finally {
+        setUnbilledLoading(false)
+      }
+    }
+  }
 
   const comprasMenuItems = [
     {
@@ -410,7 +449,10 @@ export default function ComprasPage() {
               </p>
             </TremorCard>
 
-            <TremorCard>
+            <TremorCard
+              className="cursor-pointer hover:border-[#ffcb77] transition-all"
+              onClick={handleOpenUnbilledDrawer}
+            >
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <FileText className="w-5 h-5 text-[#ffcb77]" />
@@ -494,6 +536,7 @@ export default function ComprasPage() {
                 onConfirmar={handleConfirmar}
                 onDescartar={handleDescartar}
                 onConfirmarTodas={handleConfirmarTodas}
+                albaranesMap={albaranesMap}
               />
             )}
 
@@ -674,6 +717,13 @@ export default function ComprasPage() {
           )}
         </SheetContent>
       </Sheet>
+
+      <UnbilledAlbaranesDrawer
+        open={unbilledDrawerOpen}
+        onOpenChange={setUnbilledDrawerOpen}
+        albaranes={unbilledList}
+        loading={unbilledLoading}
+      />
     </div>
   )
 }

@@ -17,6 +17,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { formatCurrency, formatDateFromString } from "@/lib/utils"
 import type { CompraPedido, CompraProveedor, DateRange } from "@/types"
 import { ESTADO_PEDIDO_CONFIG } from "./constants"
+import { differenceInDays, parseISO } from "date-fns"
 
 interface ComprasPedidosTabProps {
   filteredPedidos: CompraPedido[]
@@ -130,9 +131,23 @@ export function ComprasPedidosTab({
                     {formatCurrency(pedido.pedido_total)}
                   </td>
                   <td className="py-3 px-4 text-center">
-                    <span className="text-sm font-medium text-[#02b1c4]">
-                      {ESTADO_PEDIDO_CONFIG[pedido.estado]?.label || pedido.estado_label || pedido.estado}
-                    </span>
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="text-sm font-medium text-[#02b1c4]">
+                        {ESTADO_PEDIDO_CONFIG[pedido.estado]?.label || pedido.estado_label || pedido.estado}
+                      </span>
+                      {pedido.estado === "enviado" && differenceInDays(new Date(), parseISO(pedido.fecha_pedido)) > 3 && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <AlertTriangle className="h-4 w-4 text-[#fe6d73] cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">Pedido sin albarán después de 3 días</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </div>
                   </td>
                   <td className="py-3 px-4 text-slate-600">{pedido.albaran_ref || "-"}</td>
                   <td className="py-3 px-4 text-slate-600">

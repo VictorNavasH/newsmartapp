@@ -42,9 +42,10 @@ interface ComprasConciliacionTabProps {
   actionLoading: string | null
   onRefreshFacturas: () => void
   onVincular: () => void
-  onConfirmar: (factura: CompraFacturaConciliacion) => void
+  onConfirmar: (factura: CompraFacturaConciliacion, vencimiento?: string) => void
   onDescartar: (factura: CompraFacturaConciliacion) => void
   onConfirmarTodas?: () => void
+  albaranesMap?: Map<string, string> // ID -> Numero para resolver UUIDs
 }
 
 // Color de la barra de confianza IA
@@ -74,8 +75,12 @@ export function ComprasConciliacionTab({
   onConfirmar,
   onDescartar,
   onConfirmarTodas,
+  albaranesMap = new Map(),
 }: ComprasConciliacionTabProps) {
   const formatDate = (dateStr: string) => formatDateFromString(dateStr)
+
+  // State para vencimientos manuales antes de confirmar
+  const [manualDates, setManualDates] = (require("react") as any).useState({} as Record<string, string>)
 
   // Resumen de estados
   const resumen = useMemo(() => ({
@@ -233,9 +238,19 @@ export function ComprasConciliacionTab({
                       </div>
                       <div>
                         <span className="text-slate-500">Vencimiento:</span>{" "}
-                        <span className="text-[#364f6b]">
-                          {factura.factura_vencimiento ? formatDate(factura.factura_vencimiento) : "-"}
-                        </span>
+                        {factura.factura_vencimiento ? (
+                          <span className="text-[#364f6b]">{formatDate(factura.factura_vencimiento)}</span>
+                        ) : (
+                          <input
+                            type="date"
+                            className="text-xs border rounded px-1 py-0.5 text-[#364f6b] border-slate-200"
+                            value={manualDates[factura.id] || ""}
+                            onChange={(e) => {
+                              setManualDates({ ...manualDates, [factura.id]: e.target.value })
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        )}
                       </div>
                     </div>
 
@@ -302,11 +317,14 @@ export function ComprasConciliacionTab({
                     {factura.albaranes_vinculados && factura.albaranes_vinculados.length > 0 && (
                       <div className="text-sm mb-3">
                         <span className="text-slate-500">Albaranes: </span>
-                        {(factura.albaranes_vinculados || []).map((alb: string, idx: number) => (
-                          <Badge key={`${factura.id}-alb-${idx}`} variant="outline" className="mr-1">
-                            {alb}
-                          </Badge>
-                        ))}
+                        {(factura.albaranes_vinculados || []).map((albId: string, idx: number) => {
+                          const label = albaranesMap.get(albId) || albId
+                          return (
+                            <Badge key={`${factura.id}-alb-${idx}`} variant="outline" className="mr-1">
+                              {label}
+                            </Badge>
+                          )
+                        })}
                       </div>
                     )}
 
@@ -319,7 +337,7 @@ export function ComprasConciliacionTab({
                           className="text-green-600 border-green-200 hover:bg-green-50 bg-transparent"
                           onClick={(e) => {
                             e.stopPropagation()
-                            onConfirmar(factura)
+                            onConfirmar(factura, manualDates[factura.id])
                           }}
                           disabled={actionLoading === factura.id}
                         >

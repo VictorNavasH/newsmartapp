@@ -1,0 +1,231 @@
+{
+  "name": "CoverManager - Ticket desde Supabase",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "covermanager-ticket",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [-400, -200],
+      "id": "webhook-supabase",
+      "name": "Webhook Supabase",
+      "webhookId": "covermanager-ticket"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// ==============================================\n// EXTRAER Y TRANSFORMAR DATOS DESDE SUPABASE\n// ==============================================\n\nconst data = $json;\n\n// Verificar que tenemos los datos mínimos\nif (!data.table_name) {\n  console.log('❌ Sin mesa asignada, omitiendo');\n  return {\n    status: 'SKIP_NO_TABLE',\n    message: 'Transacción sin mesa asignada'\n  };\n}\n\nif (!data.total_amount || parseFloat(data.total_amount) <= 0) {\n  console.log('❌ Total 0, omitiendo');\n  return {\n    status: 'SKIP_ZERO_TOTAL',\n    message: 'Transacción con total 0'\n  };\n}\n\n// Extraer items del webhook_payload original de Dotyk\nconst webhookPayload = data.webhook_payload || {};\nconst transaction = webhookPayload.Transaction || webhookPayload;\nconst allItems = [];\n\n// Procesar TODAS las órdenes\nconst orders = transaction.Orders || [];\norders.forEach(order => {\n  const items = order.Items || [];\n  items.forEach(item => {\n    const optionsText = (item.ItemOptions || []).length > 0\n      ? ` (${item.ItemOptions.map(opt => opt.Name).join(', ')})`\n      : '';\n\n    allItems.push({\n      productName: (item.ItemData?.Name || 'Producto') + optionsText,\n      amount: \"1\",\n      unitPrice: (item.PriceTotal || 0).toString(),\n      totalPrice: (item.PriceTotal || 0).toString()\n    });\n  });\n});\n\n// Si no hay items en el payload, crear uno genérico\nif (allItems.length === 0) {\n  allItems.push({\n    productName: 'Consumo',\n    amount: '1',\n    unitPrice: data.total_amount.toString(),\n    totalPrice: data.total_amount.toString()\n  });\n}\n\n// Formatear fecha para CoverManager\nconst fecha = data.cuentica_invoice_date || new Date().toISOString().split('T')[0];\n\n// Formato de fecha para printDate\nconst formatDateTime = (dateStr) => {\n  const d = new Date(dateStr);\n  if (isNaN(d.getTime())) {\n    return new Date().toISOString().slice(0, 19).replace('T', ' ');\n  }\n  return d.toISOString().slice(0, 19).replace('T', ' ');\n};\n\n// Datos de pago\nconst payments = [{\n  type: data.payment_method === 'card' ? 'Tarjeta' : 'Efectivo',\n  amount: data.total_amount.toString()\n}];\n\nconsole.log(`✅ Procesando: Mesa ${data.table_name}, Total: ${data.total_amount}€, Items: ${allItems.length}`);\n\nreturn {\n  mesa: data.table_name,\n  total: parseFloat(data.total_amount),\n  items: allItems,\n  payments: payments,\n  printDate: formatDateTime(data.created_at || fecha),\n  date_start: fecha,\n  date_end: fecha,\n  transaction_id: data.transaction_id,\n  cuentica_identifier: data.cuentica_identifier,\n  status: 'VALID_PAYMENT'\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-200, -200],
+      "id": "extraer-datos",
+      "name": "Extraer y Transformar Datos"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "check-valid-payment",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "VALID_PAYMENT",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [0, -200],
+      "id": "if-valid",
+      "name": "¿Pago Válido?"
+    },
+    {
+      "parameters": {
+        "url": "=https://www.covermanager.com/api/restaurant/get_reservs/6JCRyjq4ZrnK5pJPQSxf/NUA-Smart-Restaurant/{{ $json.date_start }}/{{ $json.date_end }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apiKey",
+              "value": "6JCRyjq4ZrnK5pJPQSxf"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [200, -200],
+      "id": "buscar-reservas",
+      "name": "Buscar Reservas CoverManager"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ==============================================\n// FILTRAR RESERVA Y CONSTRUIR PAYLOAD\n// ==============================================\n\n// Obtener datos del ticket del nodo anterior\nconst datosTicket = $item(0).$node[\"Extraer y Transformar Datos\"].json;\nconst reservasResponse = $json;\n\n// Validar respuesta\nif (!reservasResponse || !reservasResponse.reservs) {\n  throw new Error('No se recibió respuesta válida de CoverManager');\n}\n\nconst reservas = reservasResponse.reservs;\nconst mesaBuscada = String(datosTicket.mesa).trim();\n\n// Estados válidos en CoverManager:\n// 3 = Confirmada, 4 = Recordada, 5 = Sentada, 6 = En barra\n// 7 = Postre, 8 = Pagado, 9 = Otro\nconst estadosValidos = [3, 4, 5, 6, 7, 8, 9];\n\nconsole.log(`🔍 Buscando reserva para mesa: ${mesaBuscada}`);\nconsole.log(`📋 Reservas encontradas: ${reservas.length}`);\n\n// Buscar reserva que coincida con mesa y estado\nconst reservaValida = reservas.find(reserva => {\n  // Extraer mesas de la reserva\n  let mesasReserva = [];\n  if (Array.isArray(reserva.tables)) {\n    mesasReserva = reserva.tables.map(m => String(m).trim());\n  } else if (reserva.tables) {\n    mesasReserva = String(reserva.tables).split(',').map(m => m.trim());\n  }\n\n  const mesaCoincide = mesasReserva.includes(mesaBuscada);\n  const statusNum = parseInt(reserva.status);\n  const estadoValido = estadosValidos.includes(statusNum);\n\n  if (mesaCoincide) {\n    console.log(`  → Reserva ${reserva.id_reserv}: Mesa ✓, Estado ${statusNum} ${estadoValido ? '✓' : '✗'}`);\n  }\n\n  return mesaCoincide && estadoValido;\n});\n\nif (!reservaValida) {\n  throw new Error(`❌ No se encontró reserva activa para mesa ${mesaBuscada}. Estados válidos: ${estadosValidos.join(', ')}`);\n}\n\nconst reservaId = reservaValida.id_reserv || reservaValida.id;\nif (!reservaId) {\n  throw new Error('La reserva encontrada no tiene ID válido');\n}\n\nconsole.log(`✅ Reserva encontrada: ${reservaId}`);\n\n// Construir payload final para CoverManager set_ticket\nconst payload = {\n  id_reserv: reservaId,\n  items: datosTicket.items,\n  payments: datosTicket.payments,\n  printDate: datosTicket.printDate,\n  status: \"PAID\",\n  total: datosTicket.total.toString(),\n  idTicketExt: datosTicket.cuentica_identifier || datosTicket.transaction_id\n};\n\nconsole.log(`📤 Payload para CoverManager:`, JSON.stringify(payload, null, 2));\n\nreturn payload;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [400, -200],
+      "id": "filtrar-reserva",
+      "name": "Filtrar Reserva y Construir Payload"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.covermanager.com/api/reserv/set_ticket",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "apikey",
+              "value": "6JCRyjq4ZrnK5pJPQSxf"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [600, -200],
+      "id": "enviar-ticket",
+      "name": "Enviar Ticket a CoverManager"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// ==============================================\n// LOG DEL RESULTADO FINAL\n// ==============================================\n\nconst resultado = $json;\n\nconsole.log('=== RESULTADO FINAL ===');\nconsole.log('Response:', JSON.stringify(resultado, null, 2));\n\nif (resultado.resp === 1 || resultado.resp === 'ok' || resultado.message === 'Inserted') {\n  console.log('✅ Ticket enviado correctamente a CoverManager');\n  return {\n    success: true,\n    message: 'Ticket insertado correctamente',\n    response: resultado\n  };\n} else {\n  console.log('❌ Error al enviar ticket:', resultado.message || 'Error desconocido');\n  return {\n    success: false,\n    message: resultado.message || 'Error desconocido',\n    response: resultado\n  };\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [800, -200],
+      "id": "log-resultado",
+      "name": "Log Resultado"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Log de transacciones omitidas\nconsole.log(`⏭️ Transacción omitida: ${$json.message}`);\nreturn $json;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [200, 0],
+      "id": "log-omitido",
+      "name": "Log Omitido"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook Supabase": {
+      "main": [
+        [
+          {
+            "node": "Extraer y Transformar Datos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer y Transformar Datos": {
+      "main": [
+        [
+          {
+            "node": "¿Pago Válido?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Pago Válido?": {
+      "main": [
+        [
+          {
+            "node": "Buscar Reservas CoverManager",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Omitido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Reservas CoverManager": {
+      "main": [
+        [
+          {
+            "node": "Filtrar Reserva y Construir Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar Reserva y Construir Payload": {
+      "main": [
+        [
+          {
+            "node": "Enviar Ticket a CoverManager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Ticket a CoverManager": {
+      "main": [
+        [
+          {
+            "node": "Log Resultado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "supabase-v1",
+  "meta": {
+    "description": "Workflow para recibir tickets desde Supabase (cuentica_transactions) y enviarlos a CoverManager"
+  },
+  "tags": [
+    {
+      "name": "CoverManager"
+    },
+    {
+      "name": "Supabase"
+    }
+  ]
+}

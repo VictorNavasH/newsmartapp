@@ -11,6 +11,8 @@ import type {
   CompraDistribucionCategoria,
   CompraTopProducto,
   CompraTablaJerarquica,
+  CompraAlbaranVinculadoInfo,
+  CompraProveedorRanking,
 } from "@/types"
 
 // ============================================
@@ -157,11 +159,13 @@ export async function vincularAlbaranes(
 
 export async function confirmarConciliacion(
   conciliacionId: string,
+  vencimiento?: string,
   notas?: string,
 ): Promise<{ success: boolean; error?: string }> {
+  // Nota: Si el RPC no soporta p_vencimiento, aún así enviamos p_notas con la fecha
   const { data, error } = await supabase.rpc("fn_confirmar_conciliacion", {
     p_conciliacion_id: conciliacionId,
-    p_notas: notas || "Confirmado desde webapp",
+    p_notas: notas || `Confirmado desde webapp${vencimiento ? ` - Vencimiento: ${vencimiento}` : ""}`,
     p_usuario: "webapp",
   })
 

@@ -128,6 +128,27 @@ export interface CompraTopProducto {
   total: number
   cantidad: number
   num_albaranes: number
+  // Computados en frontend
+  precio_unitario?: number
+}
+
+// Info legible de un albarán vinculado (reemplazo de UUID)
+export interface CompraAlbaranVinculadoInfo {
+  id: string
+  numero_albaran: string
+  fecha: string | null
+  importe_total: number | null
+}
+
+// Ranking de proveedores para Análisis
+export interface CompraProveedorRanking {
+  gstock_supplier_id: string
+  nombre: string
+  total_compras: number
+  num_albaranes: number
+  num_facturas: number
+  albaranes_sin_facturar: number
+  fiabilidad_documental: number // 0-100%
 }
 
 export interface CompraTablaJerarquica {

@@ -112,6 +112,18 @@ export const DEFAULT_ALERT_RULES: AlertRule[] = [
     cooldownMinutes: 180,
   },
   {
+    id: "delayed-sent-orders",
+    name: "Pedidos Retrasados",
+    category: "operations",
+    severity: "warning",
+    condition: (ctx) => {
+      // Si hay un flag o contador en el contexto para esto
+      return (ctx as any).numDelayedOrders && (ctx as any).numDelayedOrders > 0
+    },
+    message: (ctx) => `Hay ${(ctx as any).numDelayedOrders} pedidos enviados hace más de 3 días sin recibir.`,
+    cooldownMinutes: 240,
+  },
+  {
     id: "facturas-requieren-revision",
     name: "Facturas pendientes de revisión",
     category: "financial",
