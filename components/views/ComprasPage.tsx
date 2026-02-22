@@ -31,6 +31,7 @@ import {
   fetchComprasTopProductos,
   fetchComprasEvolucionMensual,
   fetchComprasTablaJerarquica,
+  computeProveedorRanking,
 } from "@/lib/comprasService"
 import { formatCurrency, formatDateFromString } from "@/lib/utils"
 import type {
@@ -45,6 +46,7 @@ import type {
   CompraAnalisisKPI,
   CompraTopProducto,
   CompraEvolucionMensual,
+  CompraProveedorRanking,
 } from "@/types"
 import { format, startOfMonth, subMonths } from "date-fns"
 import { toast } from "sonner"
@@ -106,6 +108,12 @@ export default function ComprasPage() {
   const [unbilledDrawerOpen, setUnbilledDrawerOpen] = useState(false)
   const [unbilledList, setUnbilledList] = useState<CompraAlbaranDisponible[]>([])
   const [unbilledLoading, setUnbilledLoading] = useState(false)
+
+  // Ranking de proveedores calculado desde datos en memoria
+  const proveedoresRanking = useMemo<CompraProveedorRanking[]>(() => {
+    if (proveedores.length === 0) return []
+    return computeProveedorRanking(proveedores, facturas, unbilledList)
+  }, [proveedores, facturas, unbilledList])
 
   // Map for resolving UUIDs to numbers
   const albaranesMap = useMemo(() => {
@@ -336,11 +344,11 @@ export default function ComprasPage() {
     setActionLoading(null)
   }
 
-  const handleConfirmar = async (factura: CompraFacturaConciliacion) => {
+  const handleConfirmar = async (factura: CompraFacturaConciliacion, vencimiento?: string) => {
     if (!factura.conciliacion_id) return
 
     setActionLoading(factura.id)
-    const result = await confirmarConciliacion(factura.conciliacion_id)
+    const result = await confirmarConciliacion(factura.conciliacion_id, vencimiento)
 
     if (result.success) {
       toast.success("Conciliación confirmada")

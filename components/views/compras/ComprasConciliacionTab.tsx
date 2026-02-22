@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useState, useMemo } from "react"
 import {
   Check,
   X,
@@ -80,7 +80,7 @@ export function ComprasConciliacionTab({
   const formatDate = (dateStr: string) => formatDateFromString(dateStr)
 
   // State para vencimientos manuales antes de confirmar
-  const [manualDates, setManualDates] = (require("react") as any).useState({} as Record<string, string>)
+  const [manualDates, setManualDates] = useState<Record<string, string>>({})
 
   // Resumen de estados
   const resumen = useMemo(() => ({

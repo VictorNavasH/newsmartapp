@@ -385,3 +385,93 @@ export async function fetchComprasTablaJerarquica(params: {
 
   return data || []
 }
+
+// ============================================
+// RANKING DE PROVEEDORES (client-side)
+// ============================================
+
+/**
+ * Calcula ranking de proveedores con fiabilidad documental
+ * a partir de datos ya disponibles (proveedores, facturas, albaranes).
+ */
+export function computeProveedorRanking(
+  proveedores: CompraProveedor[],
+  facturas: CompraFacturaConciliacion[],
+  albaranesSinFacturar: CompraAlbaranDisponible[],
+): CompraProveedorRanking[] {
+  // Construir mapa de métricas por proveedor
+  const provMap = new Map<
+    string,
+    {
+      nombre: string
+      totalCompras: number
+      numFacturas: number
+      facturasConIncidencia: number
+    }
+  >()
+
+  // Inicializar desde proveedores
+  proveedores.forEach((p) => {
+    provMap.set(p.gstock_supplier_id, {
+      nombre: p.nombre,
+      totalCompras: 0,
+      numFacturas: 0,
+      facturasConIncidencia: 0,
+    })
+  })
+
+  // Acumular datos de facturas
+  facturas.forEach((f) => {
+    const key = f.gstock_supplier_id
+    if (!key) return
+    const existing = provMap.get(key) || {
+      nombre: f.proveedor || "Desconocido",
+      totalCompras: 0,
+      numFacturas: 0,
+      facturasConIncidencia: 0,
+    }
+    existing.totalCompras += f.factura_total || 0
+    existing.numFacturas += 1
+    if (f.requiere_revision || f.estado_conciliacion === "revision") {
+      existing.facturasConIncidencia += 1
+    }
+    provMap.set(key, existing)
+  })
+
+  // Contar albaranes sin facturar por proveedor
+  const sinFacturarPorProv = new Map<string, number>()
+  albaranesSinFacturar.forEach((a) => {
+    const key = a.gstock_supplier_id
+    if (!key) return
+    sinFacturarPorProv.set(key, (sinFacturarPorProv.get(key) || 0) + 1)
+  })
+
+  // Generar ranking
+  const ranking: CompraProveedorRanking[] = []
+  provMap.forEach((metrics, supplierId) => {
+    // Solo incluir proveedores con actividad (facturas o albaranes pendientes)
+    const sinFacturar = sinFacturarPorProv.get(supplierId) || 0
+    if (metrics.numFacturas === 0 && sinFacturar === 0) return
+
+    // Fiabilidad = % de facturas sin incidencias
+    const fiabilidad =
+      metrics.numFacturas > 0
+        ? Math.round(((metrics.numFacturas - metrics.facturasConIncidencia) / metrics.numFacturas) * 100)
+        : 100
+
+    ranking.push({
+      gstock_supplier_id: supplierId,
+      nombre: metrics.nombre,
+      total_compras: metrics.totalCompras,
+      num_albaranes: metrics.numFacturas + sinFacturar, // Total documentos
+      num_facturas: metrics.numFacturas,
+      albaranes_sin_facturar: sinFacturar,
+      fiabilidad_documental: fiabilidad,
+    })
+  })
+
+  // Ordenar por volumen total descendente
+  ranking.sort((a, b) => b.total_compras - a.total_compras)
+
+  return ranking
+}
