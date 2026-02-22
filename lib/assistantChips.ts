@@ -25,6 +25,5 @@ export const ASSISTANT_CHIPS: Record<string, string[]> = {
     "¿Cuántos turnos hubo?",
     "Eficiencia por turno",
   ],
-  "/forecasting": ["Previsión para mañana", "¿Qué esperar esta semana?", "Tendencia de ventas", "Predicción del mes"],
   "/treasury": ["¿Cuál es el saldo actual?", "Flujo de caja del mes", "Pagos pendientes", "Previsión de tesorería"],
 }

@@ -16,8 +16,8 @@ Documentación detallada de las 15 vistas principales. Cada vista se carga con `
 8. [Productos (`/products`)](#8-productos)
 9. [Facturación (`/invoices`)](#9-facturación)
 10. [Tesorería (`/treasury`)](#10-tesorería)
-11. [Forecasting (`/forecasting`)](#11-forecasting)
-12. [What-If (`/what-if`)](#12-what-if)
+11. ~~Forecasting~~ *(eliminado v2.12)*
+12. ~~What-If~~ *(eliminado v2.12)*
 13. [Asistente IA (`/ai-assistant`)](#13-asistente-ia)
 14. [Conexiones Bancarias (Tab en Tesorería)](#14-conexiones-bancarias-tab-dentro-de-tesorería)
 15. [Smart Tables (`/tablet-usage`)](#15-smart-tables)
@@ -497,80 +497,15 @@ Sala:   bueno ≤ 8min, advertencia ≤ 15min, alerta > 15min
 
 ---
 
-## 11. Forecasting
+## 11. ~~Forecasting~~ *(ELIMINADO en v2.12)*
 
-| Campo | Valor |
-|-------|-------|
-| **Ruta** | `/forecasting` |
-| **Componente** | `ForecastingPage` |
-| **Archivo** | `components/views/ForecastingPage.tsx` |
-| **Servicio(s)** | `dataService.ts`, `whatIfService.ts` |
-| **Export** | Default export |
-
-### Datos que consume
-
-| Función | Fuente Supabase | Tipo retorno |
-|---------|----------------|--------------|
-| `fetchForecastData()` | Vista `vw_forecasting_analysis` | `{kpis, proximos7dias, precision}` |
-| `fetchForecastCalendar(year, month)` | Vista `vw_forecasting_analysis` | `ForecastDay[]` |
-| `fetchWhatIfReferenceData()` | Vista `vw_forecasting_analysis` | `WhatIfReferenceData` |
-
-### Secciones (MenuBar)
-
-1. **Dashboard de forecast** — KPIs de previsión: comensales previstos, facturación prevista, precisión del modelo
-2. **Próximos 7 días** — Tabla/cards con previsión diaria (comensales, facturación, nivel de lluvia)
-3. **Calendario** — Vista calendario mensual con previsiones por día, código de colores por ocupación
-4. **Precisión del modelo** — Métricas de error: MAPE, desviación media
-
-### Filtros
-
-- Mes/año para calendario
-- Navegación de mes con flechas
-
-### Iconos de clima
-
-Función `getWeatherIcon()` mapea nivel de lluvia a icono:
-- `sin_lluvia` → ☀️ Sol
-- `llovizna` → 🌧️ Llovizna
-- `lluvia_ligera/moderada` → 🌧️ Lluvia
-- `lluvia_fuerte` → 💧 Fuerte
+> Vista eliminada por no ser operativa. La vista materializada `vw_forecasting_analysis` se eliminó de Supabase. Los tipos compartidos (`YearlyTrendInsight`, `PeriodComparisonAggregate`, `MonthlyReservationData`, `YearlyComparisonData`) se movieron a `types/reservations.ts`.
 
 ---
 
-## 12. What-If
+## 12. ~~What-If~~ *(ELIMINADO en v2.12)*
 
-| Campo | Valor |
-|-------|-------|
-| **Ruta** | `/what-if` |
-| **Componente** | `WhatIfPage` |
-| **Archivo** | `components/views/WhatIfPage.tsx` |
-| **Servicio(s)** | `whatIfService.ts` |
-| **Export** | Default export |
-
-### Datos que consume
-
-| Función | Fuente Supabase | Tipo retorno |
-|---------|----------------|--------------|
-| `fetchWhatIfReferenceData()` | Vista `vw_forecasting_analysis` (60 últimos días reales) | `WhatIfReferenceData` |
-
-### Simulador
-
-Dos sliders controlan:
-- **Comensales** — Ajustable
-- **Ticket medio** — Ajustable
-
-### Cálculos en tiempo real (frontend)
-
-```typescript
-dailyRevenue = customers × avgTicket
-difference = dailyRevenue - referenceData.facturacion_media_dia
-percentDiff = (difference / avgDaily) × 100
-monthlyProjection = dailyRevenue × referenceData.dias_operativos_mes
-occupancy = (customers / referenceData.capacidad_dia) × 100
-percentVsBest = (dailyRevenue / referenceData.mejor_dia_facturacion) × 100
-```
-
-### Secciones
+> Vista eliminada junto con Forecasting. El servicio `whatIfService.ts` y el tipo `WhatIfReferenceData` fueron eliminados.
 
 1. **Banner de datos de referencia** — Media diaria, mejor día, capacidad día, ticket medio actual
 2. **Sliders interactivos** — Comensales y ticket medio

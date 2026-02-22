@@ -68,9 +68,3 @@ export {
   useFoodCostProducts,
 } from "./useProductsData"
 
-// Forecasting — predicciones, calendario, benchmarks
-export {
-  useForecastData,
-  useForecastCalendar,
-  useBenchmarks,
-} from "./useForecastingData"

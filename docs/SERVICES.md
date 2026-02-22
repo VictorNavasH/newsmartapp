@@ -11,7 +11,7 @@ Documentación de los 18 servicios/módulos en `lib/`. Cada servicio encapsula l
 3. [facturacionService.ts — Facturación](#3-facturacionservicets)
 4. [operativaService.ts — Operativa](#4-operativaservicets)
 5. [treasuryService.ts — Tesorería](#5-treasuryservicets)
-6. [whatIfService.ts — What-If](#6-whatifservicets)
+6. ~~whatIfService.ts~~ *(eliminado v2.12)*
 7. [settingsService.ts — Configuración](#7-settingsservicets)
 8. [weather.ts — Meteorología](#8-weatherts)
 9. [gemini.ts — IA (Gemini)](#9-geminits)
@@ -33,7 +33,7 @@ Documentación de los 18 servicios/módulos en `lib/`. Cada servicio encapsula l
 
 | Prefijo | Vistas |
 |---------|--------|
-| `vw_` | `vw_dashboard_ventas_facturas_live`, `vw_dashboard_financiero`, `vw_dashboard_ocupacion`, `vw_metricas_diarias_base`, `vw_facturacion_mesas`, `vw_operaciones_tiempo_real`, `vw_mix_productos`, `vw_mix_categorias`, `vw_mix_opciones`, `vw_forecasting_analysis`, `vw_labor_cost_analysis`, `vw_food_cost`, `vw_operativa_items`, `vw_compras_pedidos`, `vw_compras_conciliacion`, `vw_compras_albaranes_para_vincular`, `vw_compras_proveedores`, `vw_compras_resumen` |
+| `vw_` | `vw_dashboard_ventas_facturas_live`, `vw_dashboard_financiero`, `vw_dashboard_ocupacion`, `vw_metricas_diarias_base`, `vw_facturacion_mesas`, `vw_operaciones_tiempo_real`, `vw_mix_productos`, `vw_mix_categorias`, `vw_mix_opciones`, `vw_labor_cost_analysis`, `vw_food_cost`, `vw_operativa_items`, `vw_compras_pedidos`, `vw_compras_conciliacion`, `vw_compras_albaranes_para_vincular`, `vw_compras_proveedores`, `vw_compras_resumen` |
 | `v_` | `v_facturacion_resumen_global`, `v_facturas_listado`, `v_facturas_cuadre_diario`, `v_ingresos_por_categoria`, `v_facturas_alertas`, `v_facturacion_mensual`, `v_pool_bancario_resumen`, `v_pool_bancario_prestamos`, `v_pool_bancario_proximos_vencimientos`, `v_pool_bancario_por_banco`, `v_pool_bancario_calendario_mensual` |
 
 ### Tablas directas (12)
@@ -49,9 +49,9 @@ Documentación de los 18 servicios/módulos en `lib/`. Cada servicio encapsula l
 ## 1. dataService.ts
 
 **Archivo:** `lib/dataService.ts` (~1500 líneas)
-**Consumido por:** DashboardPage, ReservationsPage, IncomePage, ExpensesPage, CostesPage, ProductsPage, ForecastingPage, OperationsPage
+**Consumido por:** DashboardPage, ReservationsPage, IncomePage, ExpensesPage, CostesPage, ProductsPage, OperationsPage
 
-Servicio principal. Contiene funciones para dashboard en tiempo real, reservas, ingresos, gastos, operaciones, productos, forecasting, costes y benchmarks. Los datos mock y generadores se han extraído a `lib/mockData.ts`; las funciones mock se re-exportan desde este módulo para compatibilidad.
+Servicio principal. Contiene funciones para dashboard en tiempo real, reservas, ingresos, gastos, operaciones, productos, costes y benchmarks. Los datos mock y generadores se han extraído a `lib/mockData.ts`; las funciones mock se re-exportan desde este módulo para compatibilidad.
 
 ### Utilidades
 
@@ -115,13 +115,6 @@ Servicio principal. Contiene funciones para dashboard en tiempo real, reservas, 
 | `fetchCategoryMix(start, end, turno?)` | fechas + turno opcional | `Promise<CategoryMixItem[]>` | Vista `vw_mix_categorias` |
 | `fetchOptionMix(start, end, turno?, extraPago?)` | fechas + filtros opcionales | `Promise<OptionMixItem[]>` | Vista `vw_mix_opciones` |
 
-### Forecasting
-
-| Función | Parámetros | Retorna | Fuente Supabase |
-|---------|-----------|---------|----------------|
-| `fetchForecastData()` | — | `Promise<{kpis, proximos7dias, precision}>` | Vista `vw_forecasting_analysis` → `.select("*").gte("fecha", 4weeksAgo).lte("fecha", 7daysAhead)` — Fallback a mock si vacío |
-| `fetchForecastCalendar(year, month)` | `year: number, month: number` | `Promise<ForecastDay[]>` | Vista `vw_forecasting_analysis` → `.select("*").gte/lte("fecha", monthRange)` — Fallback a mock |
-
 ### Costes y Benchmarks
 
 | Función | Parámetros | Retorna | Fuente Supabase |
@@ -149,7 +142,7 @@ Servicio principal. Contiene funciones para dashboard en tiempo real, reservas, 
 ## 1b. mockData.ts
 
 **Archivo:** `lib/mockData.ts` (~470 líneas)
-**Consumido por:** dataService.ts (re-exports y fallbacks de forecasting)
+**Consumido por:** dataService.ts (re-exports)
 
 Módulo que contiene todos los datos mock, constantes de demo y generadores de datos simulados. Extraído de `dataService.ts` para separar las responsabilidades de datos reales (Supabase) y datos ficticios.
 
@@ -171,8 +164,6 @@ Módulo que contiene todos los datos mock, constantes de demo y generadores de d
 | `generateTableSales(revenue)` | `revenue: number` | `TableSales[]` | Distribuye ingresos entre mesas con pesos aleatorios |
 | `generateShift(basePax, type)` | `basePax: number, type: "LUNCH"\|"DINNER"` | `ShiftMetrics` | Genera métricas completas de un turno |
 | `generateMockHistory(days)` | `days: number` | `DailyCompleteMetrics[]` | Genera historial diario completo (comida + cena) |
-| `generateMockForecastData(today, todayStr)` | `today: Date, todayStr: string` | `{kpis, proximos7dias, precision}` | Mock de 7 días de forecast + 28 días históricos de precisión |
-| `generateMockForecastCalendar(year, month, today)` | `year, month: number, today: Date` | `ForecastDay[]` | Mock de calendario mensual de forecast |
 
 ### Datos pre-generados
 
@@ -311,27 +302,9 @@ Módulo que contiene todos los datos mock, constantes de demo y generadores de d
 
 ---
 
-## 6. whatIfService.ts
+## 6. ~~whatIfService.ts~~ *(ELIMINADO en v2.12)*
 
-**Archivo:** `lib/whatIfService.ts` (~52 líneas)
-**Consumido por:** WhatIfPage
-
-| Función | Parámetros | Retorna | Fuente Supabase |
-|---------|-----------|---------|----------------|
-| `fetchWhatIfReferenceData()` | — | `Promise<WhatIfReferenceData>` | Vista `vw_forecasting_analysis` → `.select("facturacion_real, comensales_real, ticket_medio, capacidad_turno, capacidad_dia, capacidad_mesas").eq("tipo_fecha", "pasado").not("facturacion_real", "is", null).order("fecha", desc).limit(60)` |
-
-**Fallback:** Si no hay datos, retorna `DEFAULT_DATA` con valores hardcodeados:
-```typescript
-{
-  facturacion_media_dia: 3500,
-  ticket_medio_actual: 32,
-  capacidad_dia: 132,
-  dias_operativos_mes: 26,
-  mejor_dia_facturacion: 6500
-}
-```
-
-**Cálculos:** Promedia los últimos 60 días reales para obtener `facturacion_media_dia`, `ticket_medio_actual`, y obtiene `mejor_dia_facturacion` del máximo.
+> Servicio eliminado junto con WhatIfPage y ForecastingPage.
 
 ---
 
@@ -363,7 +336,7 @@ Módulo que contiene todos los datos mock, constantes de demo y generadores de d
 ## 8. weather.ts
 
 **Archivo:** `lib/weather.ts` (~146 líneas)
-**Consumido por:** WeatherCard (Dashboard), ForecastingPage
+**Consumido por:** WeatherCard (Dashboard)
 
 | Función | Parámetros | Retorna | Fuente Supabase |
 |---------|-----------|---------|----------------|
@@ -551,8 +524,7 @@ Hooks reutilizables que envuelven las funciones de fetching existentes con TanSt
 | `useTreasuryData.ts` | 13 | `lib/treasuryService.ts` |
 | `useOperationsData.ts` | 7 | `lib/dataService.ts` + `lib/operativaService.ts` |
 | `useProductsData.ts` | 4 | `lib/dataService.ts` |
-| `useForecastingData.ts` | 3 | `lib/dataService.ts` |
-| **Total** | **43** | |
+| **Total** | **40** | |
 
 ### Hooks del Dashboard
 
@@ -627,14 +599,6 @@ Hooks reutilizables que envuelven las funciones de fetching existentes con TanSt
 | `useCategoryMix(start, end, turno?)` | fechas string + turno | `["categoryMix", ...]` |
 | `useOptionMix(start, end, turno?, extraPago?)` | fechas string + filtros | `["optionMix", ...]` |
 | `useFoodCostProducts()` | — | `["foodCostProducts"]` |
-
-### Hooks de Forecasting
-
-| Hook | Parámetros | queryKey |
-|------|-----------|----------|
-| `useForecastData()` | — | `["forecastData"]` |
-| `useForecastCalendar(year, month)` | `year, month: number` | `["forecastCalendar", year, month]` |
-| `useBenchmarks(inicio, fin)` | `fechaInicio, fechaFin: string` | `["benchmarks", inicio, fin]` |
 
 ### Uso típico
 

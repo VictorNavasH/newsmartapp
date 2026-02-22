@@ -15,9 +15,8 @@ types/
 ├── expenses.ts            # ExpenseStats, Invoice, Expense, ExpenseTag, etc.
 ├── operations.ts          # OperacionesResumen, OperativaItem, OperativaKPI, etc.
 ├── products.ts            # ProductMixItem, CategoryMixItem, OptionMixItem, agregados
-├── forecasting.ts         # ForecastDay, ForecastKPIs, YearlyComparisonData, etc.
+├── reservations.ts        # YearlyTrendInsight, PeriodComparisonAggregate, MonthlyReservationData, YearlyComparisonData
 ├── treasury.ts            # TreasuryKPIs, TreasuryAccount, TreasuryTransaction, etc.
-├── whatif.ts              # WhatIfReferenceData
 ├── pool-bancario.ts       # PoolBancarioResumen, PoolBancarioPrestamo, etc.
 ├── billing.ts             # FacturacionResumenGlobal, CuadreListadoItem, BenchmarkResumen, etc.
 ├── food-cost.ts           # FoodCostProduct, FoodCostSummary
@@ -42,10 +41,10 @@ types/
 4. [Operaciones en Tiempo Real](#4-operaciones-en-tiempo-real)
 5. [Product Mix](#5-product-mix)
 6. [Comparación Interanual](#6-comparación-interanual)
-7. [Forecasting](#7-forecasting)
+7. ~~Forecasting~~ *(eliminado v2.12)*
 8. [Operativa Analítica](#8-operativa-analítica)
 9. [Tesorería](#9-tesorería)
-10. [What-If](#10-what-if)
+10. ~~What-If~~ *(eliminado v2.12)*
 11. [Pool Bancario](#11-pool-bancario)
 12. [Labor Cost](#12-labor-cost)
 13. [Facturación](#13-facturación)
@@ -362,36 +361,9 @@ MetricComparison: { current: number; comparison: ComparisonResult }
 
 ---
 
-## 7. Forecasting
+## 7. ~~Forecasting~~ *(ELIMINADO en v2.12)*
 
-### ForecastDay (tipo más extenso)
-```typescript
-{ fecha, nombre_dia: string; mes: number;
-  comensales_real, comensales_comida_real, comensales_cena_real: number;
-  comensales_prediccion, comensales_comida_pred, comensales_cena_pred: number;
-  ventas_prediccion, confianza_prediccion: number;
-  capacidad_turno, capacidad_dia, capacidad_mesas: number;
-  ocupacion_pct_prediccion, ocupacion_pct_comida_pred, ocupacion_pct_cena_pred: number;
-  ocupacion_pct_real, ocupacion_pct_comida_real, ocupacion_pct_cena_real: number;
-  nivel_ocupacion: "tranquilo"|"normal"|"fuerte"|"pico";
-  error_prediccion, error_porcentaje: number|null;
-  nivel_lluvia: string|null; temp_max: number|null;
-  es_festivo: boolean; evento_principal: string|null;
-  comensales_semana_ant, comensales_año_ant: number|null;
-  tipo_fecha: "pasado"|"hoy"|"futuro" }
-```
-
-### ForecastKPIs
-```typescript
-{ prediccion_hoy, reservas_hoy, ocupacion_semana, precision_modelo: number }
-```
-
-### ForecastHistorico / ForecastPrecision
-```typescript
-ForecastHistorico: { fecha: string; prediccion, real, diferencia, error_pct: number }
-ForecastPrecision: { semanas: ForecastHistorico[]; precision_media: number;
-  mejor_dia, peor_dia: { fecha: string; error: number } }
-```
+> Tipos eliminados: `ForecastDay`, `ForecastKPIs`, `ForecastHistorico`, `ForecastPrecision`. Los tipos compartidos con Reservaciones (`YearlyTrendInsight`, `PeriodComparisonAggregate`, `MonthlyReservationData`, `YearlyComparisonData`) se movieron a `types/reservations.ts`.
 
 ---
 
@@ -493,14 +465,9 @@ Category: { id, name, type: string; icon: string|null; subcategories: TreasurySu
 
 ---
 
-## 10. What-If
+## 10. ~~What-If~~ *(ELIMINADO en v2.12)*
 
-### WhatIfReferenceData
-```typescript
-{ facturacion_media_dia, ticket_medio_historico, comensales_media: number;
-  capacidad_turno, capacidad_dia, total_mesas: number;
-  mejor_dia_facturacion, dias_operativos_mes: number }
-```
+> Tipo `WhatIfReferenceData` eliminado junto con `whatIfService.ts`.
 
 ---
 

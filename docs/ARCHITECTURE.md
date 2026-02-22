@@ -145,8 +145,6 @@ components/
 │   │   ├── TreasuryCategoriaTab.tsx # Tab Categorias
 │   │   ├── TreasuryPoolBancarioTab.tsx # Tab Pool Bancario
 │   │   └── TreasuryCuentaTab.tsx    # Tab Cuentas
-│   ├── ForecastingPage.tsx
-│   ├── WhatIfPage.tsx
 │   ├── SmartAssistantPage.tsx
 │   ├── BankConnectionsPage.tsx
 │   ├── TabletUsagePage.tsx
@@ -201,9 +199,8 @@ types/
 ├── expenses.ts            # ExpenseStats, Invoice, Expense, ExpenseTag
 ├── operations.ts          # OperacionesResumen, OperativaItem, OperativaKPI
 ├── products.ts            # ProductMixItem, CategoryMixItem, agregados
-├── forecasting.ts         # ForecastDay, YearlyComparisonData, PeriodComparisonAggregate
+├── reservations.ts        # YearlyTrendInsight, PeriodComparisonAggregate, MonthlyReservationData, YearlyComparisonData
 ├── treasury.ts            # TreasuryKPIs, TreasuryAccount, TreasuryTransaction
-├── whatif.ts              # WhatIfReferenceData
 ├── pool-bancario.ts       # PoolBancarioResumen, PoolBancarioPrestamo
 ├── billing.ts             # FacturacionResumenGlobal, CuadreListadoItem, BenchmarkResumen
 ├── food-cost.ts           # FoodCostProduct, FoodCostSummary

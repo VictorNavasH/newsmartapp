@@ -5,7 +5,6 @@ import {
   PieChart,
   Settings,
   Sparkles,
-  TrendingUp,
   FileText,
   Landmark,
   Clock,
@@ -29,7 +28,6 @@ export const NAVIGATION_ITEMS = [
   { name: "Smart Tables", icon: Tablet, path: "/tablet-usage" },
   { name: "Facturación", icon: FileText, path: "/invoices" },
   { name: "Tesorería", icon: Landmark, path: "/treasury" },
-  { name: "Forecasting", icon: TrendingUp, path: "/forecasting" },
   { name: "Smart Assistant", icon: Sparkles, path: "/ai-assistant" },
   { name: "Configuración", icon: Settings, path: "/settings" },
 ]

@@ -8,6 +8,23 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 
 ## [Unreleased]
 
+### Eliminado
+- **Forecasting y What-If eliminados por completo:**
+  - Vistas: `ForecastingPage.tsx`, `WhatIfPage.tsx`
+  - Tipos: `types/forecasting.ts`, `types/whatif.ts`
+  - Servicio: `lib/whatIfService.ts`
+  - Hooks: `hooks/queries/useForecastingData.ts`
+  - Funciones: `fetchForecastData()`, `fetchForecastCalendar()`, mocks asociados
+  - Rutas `/forecasting` y `/what-if` eliminadas de navegación y router
+  - Vista materializada `vw_forecasting_analysis` eliminada de Supabase
+  - Tipos compartidos (`YearlyTrendInsight`, `PeriodComparisonAggregate`, `MonthlyReservationData`, `YearlyComparisonData`) movidos a `types/reservations.ts`
+  - Workflows n8n eliminados: "🔮 Forecasting - Gemini via HTTP" (activo, cron diario 8AM), "Forecasting - Sync Meteo Barcelona" (archivado)
+  - RPCs de Supabase: `api_get_forecasting_context()`, `api_apply_gemini_adjustments()`
+  - Tablas de Supabase: `forecasting_daily`, `forecasting_gemini_log`, `forecasting_calendar_events`, `forecasting_factores_lluvia`
+  - Funciones de Supabase: `api_generar_forecasting_7dias()`, `fn_sync_weather_to_forecasting()`, `forecasting_clasificar_lluvia()`, `forecasting_multiplicador_lluvia()`
+  - Vista: `vw_forecasting_analysis`
+  - **Conservados:** `fetchBenchmarks()`, `BenchmarksTab`, `forecasting_weather_history`, `reservas_agregadas_diarias`, workflow AEMET
+
 ### Añadido
 - **Panel de Estado de Sincronización Bancaria en Treasury Dashboard:**
   - Nuevo panel centralizado encima de las tarjetas de cuentas bancarias que muestra:

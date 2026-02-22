@@ -19,10 +19,6 @@ import type {
   OptionMixItem,
   YearlyComparisonData,
   MonthlyReservationData,
-  ForecastDay,
-  ForecastKPIs,
-  ForecastHistorico,
-  ForecastPrecision,
   FinancialKPIs,
   OcupacionDia,
   LaborCostDay,
@@ -35,8 +31,6 @@ import type {
   PeriodComparisonAggregate,
 } from "../types"
 import { supabase } from "./supabase" // Corregida importación para usar el cliente correcto
-import { generateMockForecastData, generateMockForecastCalendar } from "./mockData"
-
 // Re-export mock-dependent functions for backward compatibility
 export { fetchHistoryRange, fetchFinancialHistory, fetchUpcomingInvoices } from "./mockData"
 
@@ -1341,177 +1335,6 @@ export const fetchYearlyComparison = async (): Promise<YearlyComparisonData[]> =
     console.error("[v0] Error in fetchYearlyComparison:", err)
     return []
   }
-}
-
-// --- FORECASTING FUNCTIONS ---
-
-export async function fetchForecastData(): Promise<{
-  kpis: ForecastKPIs
-  proximos7dias: ForecastDay[]
-  precision: ForecastPrecision
-}> {
-  const today = getBusinessDate()
-  const todayStr = toLocalISOString(today)
-
-  // Get next 7 days forecast
-  const endDate = new Date(today)
-  endDate.setDate(endDate.getDate() + 7)
-  const endStr = toLocalISOString(endDate)
-
-  // Get historical data (last 4 weeks for precision)
-  const fourWeeksAgo = new Date(today)
-  fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28)
-  const fourWeeksAgoStr = toLocalISOString(fourWeeksAgo)
-
-  // Fetch from vw_forecasting_analysis
-  const { data: allData, error } = await supabase
-    .from("vw_forecasting_analysis")
-    .select("*")
-    .gte("fecha", fourWeeksAgoStr)
-    .lte("fecha", endStr)
-    .order("fecha", { ascending: true })
-
-  if (error) {
-  }
-
-  // If no data from DB, generate mock data
-  if (!allData || allData.length === 0) {
-    return generateMockForecastData(today, todayStr)
-  }
-
-  // Separate future data (next 7 days) and past data (historical)
-  const proximos7dias: ForecastDay[] = allData
-    .filter((d: any) => d.fecha >= todayStr && d.fecha <= endStr)
-    .map((d: any) => ({
-      fecha: d.fecha,
-      nombre_dia: d.nombre_dia || "",
-      mes: d.mes || new Date(d.fecha).getMonth() + 1,
-      comensales_real: d.comensales_real || 0,
-      comensales_comida_real: d.comensales_comida_real || 0,
-      comensales_cena_real: d.comensales_cena_real || 0,
-      comensales_prediccion: d.comensales_prediccion || 0,
-      comensales_comida_pred: d.comensales_comida_pred || 0,
-      comensales_cena_pred: d.comensales_cena_pred || 0,
-      ventas_prediccion: d.ventas_prediccion || 0,
-      confianza_prediccion: d.confianza_prediccion || 0.75,
-      error_prediccion: d.error_prediccion,
-      error_porcentaje: d.error_porcentaje,
-      nivel_lluvia: d.nivel_lluvia,
-      temp_max: d.temp_max,
-      es_festivo: d.es_festivo || false,
-      evento_principal: d.evento_principal,
-      comensales_semana_ant: d.comensales_semana_ant,
-      comensales_año_ant: d.comensales_año_ant,
-      tipo_fecha: d.tipo_fecha || "futuro",
-      // DB fields for capacity and occupancy
-      capacidad_turno: d.capacidad_turno || 66,
-      capacidad_dia: d.capacidad_dia || 132,
-      capacidad_mesas: d.capacidad_mesas || 19,
-      ocupacion_pct_prediccion: d.ocupacion_pct_prediccion || 0,
-      ocupacion_pct_comida_pred: d.ocupacion_pct_comida_pred || 0,
-      ocupacion_pct_cena_pred: d.ocupacion_pct_cena_pred || 0,
-      ocupacion_pct_real: d.ocupacion_pct_real || 0,
-      ocupacion_pct_comida_real: d.ocupacion_pct_comida_real || 0,
-      ocupacion_pct_cena_real: d.ocupacion_pct_cena_real || 0,
-      nivel_ocupacion: d.nivel_ocupacion || "tranquilo",
-    }))
-
-  // Historical data for precision calculation
-  const historicalData = allData.filter((d: any) => d.fecha < todayStr && d.tipo_fecha === "pasado")
-
-  const historico: ForecastHistorico[] = historicalData.map((h: any) => ({
-    fecha: h.fecha,
-    prediccion: h.comensales_prediccion || 0,
-    real: h.comensales_real || 0,
-    diferencia: (h.comensales_real || 0) - (h.comensales_prediccion || 0),
-    error_pct: h.error_porcentaje ? Math.abs(h.error_porcentaje) : 0,
-  }))
-
-  // Calculate precision metrics
-  const errores = historico.filter((h) => h.error_pct > 0).map((h) => h.error_pct)
-  const precisionMedia = errores.length > 0 ? 100 - errores.reduce((a, b) => a + b, 0) / errores.length : 85
-  const mejorDia =
-    historico.length > 0 ? historico.reduce((a, b) => (a.error_pct < b.error_pct ? a : b)) : { fecha: "", error_pct: 0 }
-  const peorDia =
-    historico.length > 0 ? historico.reduce((a, b) => (a.error_pct > b.error_pct ? a : b)) : { fecha: "", error_pct: 0 }
-
-  // KPIs
-  const hoy = proximos7dias.find((d) => d.fecha === todayStr) || proximos7dias[0]
-  const capacidadDiaria = 132 // Capacity from your restaurant
-  const ocupacionSemana =
-    proximos7dias.length > 0
-      ? Math.floor(
-        (proximos7dias.reduce((a, b) => a + b.comensales_prediccion, 0) / (proximos7dias.length * capacidadDiaria)) *
-        100,
-      )
-      : 0
-
-  return {
-    kpis: {
-      prediccion_hoy: hoy?.comensales_prediccion || 0,
-      reservas_hoy: hoy?.comensales_real || 0, // In future dates, comensales_real = reservas confirmadas
-      ocupacion_semana: Math.min(100, ocupacionSemana),
-      precision_modelo: Math.floor(precisionMedia),
-    },
-    proximos7dias,
-    precision: {
-      semanas: historico,
-      precision_media: precisionMedia,
-      mejor_dia: { fecha: mejorDia.fecha, error: mejorDia.error_pct },
-      peor_dia: { fecha: peorDia.fecha, error: peorDia.error_pct },
-    },
-  }
-}
-
-export async function fetchForecastCalendar(year: number, month: number): Promise<ForecastDay[]> {
-  const startDate = new Date(year, month - 1, 1)
-  const endDate = new Date(year, month, 0)
-
-  const { data, error } = await supabase
-    .from("vw_forecasting_analysis")
-    .select("*")
-    .gte("fecha", toLocalISOString(startDate))
-    .lte("fecha", toLocalISOString(endDate))
-    .order("fecha", { ascending: true })
-
-  if (error || !data || data.length === 0) {
-    // Generate mock data for the month
-    const today = getBusinessDate()
-    return generateMockForecastCalendar(year, month, today)
-  }
-
-  return data.map((d: any) => ({
-    fecha: d.fecha,
-    nombre_dia: d.nombre_dia || "",
-    mes: d.mes || month,
-    comensales_real: d.comensales_real || 0,
-    comensales_comida_real: d.comensales_comida_real || 0,
-    comensales_cena_real: d.comensales_cena_real || 0,
-    comensales_prediccion: d.comensales_prediccion || 0,
-    comensales_comida_pred: d.comensales_comida_pred || 0,
-    comensales_cena_pred: d.comensales_cena_pred || 0,
-    ventas_prediccion: d.ventas_prediccion || 0,
-    confianza_prediccion: d.confianza_prediccion || 0.75,
-    capacidad_turno: d.capacidad_turno || 66,
-    capacidad_dia: d.capacidad_dia || 132,
-    capacidad_mesas: d.capacidad_mesas || 19,
-    ocupacion_pct_prediccion: d.ocupacion_pct_prediccion || 0,
-    ocupacion_pct_comida_pred: d.ocupacion_pct_comida_pred || 0,
-    ocupacion_pct_cena_pred: d.ocupacion_pct_cena_pred || 0,
-    ocupacion_pct_real: d.ocupacion_pct_real || 0,
-    ocupacion_pct_comida_real: d.ocupacion_pct_comida_real || 0,
-    ocupacion_pct_cena_real: d.ocupacion_pct_cena_real || 0,
-    nivel_ocupacion: d.nivel_ocupacion || "tranquilo",
-    error_prediccion: d.error_prediccion,
-    error_porcentaje: d.error_porcentaje,
-    nivel_lluvia: d.nivel_lluvia,
-    temp_max: d.temp_max,
-    es_festivo: d.es_festivo || false,
-    evento_principal: d.evento_principal,
-    comensales_semana_ant: d.comensales_semana_ant,
-    comensales_año_ant: d.comensales_año_ant,
-    tipo_fecha: d.tipo_fecha || "futuro",
-  }))
 }
 
 export async function fetchFinancialKPIs(): Promise<FinancialKPIs[]> {

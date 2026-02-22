@@ -77,7 +77,7 @@ Documentación de las 12 integraciones externas del ecosistema NÜA Smart App.
 | Reservas | `reservas_agregadas_diarias`, `vw_metricas_diarias_base` |
 | Ventas | `vw_facturacion_mesas`, `vw_mix_productos`, `vw_mix_categorias`, `vw_mix_opciones` |
 | Operaciones | `vw_operaciones_tiempo_real`, `vw_operativa_items` |
-| Finanzas | `vw_labor_cost_analysis`, `vw_food_cost`, `vw_forecasting_analysis` |
+| Finanzas | `vw_labor_cost_analysis`, `vw_food_cost` |
 | Facturación | `v_facturas_listado`, `v_facturas_cuadre_diario`, `v_facturacion_mensual` |
 | Tesorería | `v_pool_bancario_*` (5 vistas), RPCs `get_treasury_*` |
 | Compras | `vw_compras_*` (5 vistas), RPCs `compras_*` |
@@ -320,7 +320,7 @@ CoverManager (Reservas online)
 
 - `ReservationsPage` — Datos históricos y actuales de reservas
 - `DashboardPage` — Ocupación semanal (componente `WeekReservationsCard`)
-- `ForecastingPage` — Datos históricos para modelo predictivo
+
 
 ---
 
@@ -558,8 +558,6 @@ Error en la app
 | Productos | Dotyk (mix de ventas) |
 | Facturación | Dotyk (facturas, Z-reports) |
 | Tesorería | GoCardless (movimientos bancarios) |
-| Forecasting | CoverManager + Dotyk + AEMET (weather) |
-| What-If | Datos agregados (múltiples fuentes) |
 | Asistente IA | n8n + contexto del restaurante |
 | Conexiones Bancarias | GoCardless (mock actualmente) |
 | Uso de Mesas | Power BI + Smart Performance (externos) |

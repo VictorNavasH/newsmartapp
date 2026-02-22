@@ -16,9 +16,7 @@ const CostesPage = lazy(() => import("@/components/views/CostesPage"))
 const ComprasPage = lazy(() => import("@/components/views/ComprasPage"))
 const OperationsPage = lazy(() => import("@/components/views/OperationsPage"))
 const ProductsPage = lazy(() => import("@/components/views/ProductsPage"))
-const ForecastingPage = lazy(() => import("@/components/views/ForecastingPage"))
 const TreasuryPage = lazy(() => import("@/components/views/TreasuryPage"))
-const WhatIfPage = lazy(() => import("@/components/views/WhatIfPage"))
 const FacturacionPage = lazy(() => import("@/components/views/FacturacionPage"))
 const TabletUsagePage = lazy(() => import("@/components/views/TabletUsagePage"))
 const SmartAssistantPage = lazy(() => import("@/components/views/SmartAssistantPage"))
@@ -84,12 +82,8 @@ export default function App() {
         return <OperationsPage />
       case "/products":
         return <ProductsPage />
-      case "/forecasting":
-        return <ForecastingPage />
       case "/treasury":
         return <TreasuryPage />
-      case "/what-if":
-        return <WhatIfPage />
       case "/invoices":
         return <FacturacionPage />
       case "/tablet-usage":
