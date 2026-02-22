@@ -26,6 +26,9 @@ import {
   UtensilsCrossed,
   ShieldCheck,
   CalendarDays,
+  Sparkles,
+  ArrowRight,
+  AlertTriangle,
 } from "lucide-react"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { PageContent } from "@/components/layout/PageContent"
@@ -66,7 +69,14 @@ export function DashboardPage() {
   const [weekOffset, setWeekOffset] = useState<number>(0)
   const [kpiTargets, setKpiTargets] = useState<KPITargets | null>(null)
   const [foodCostAvg, setFoodCostAvg] = useState<number>(0)
-  const [conciliacionResumen, setConciliacionResumen] = useState<{ totalPendientes: number; autoSinConfirmar: number; requierenRevision: number } | null>(null)
+  const [conciliacionResumen, setConciliacionResumen] = useState<{
+    totalPendientes: number;
+    autoSinConfirmar: number;
+    requierenRevision: number;
+    albaranesPendientes: number;
+    albaranesAged: number;
+    pedidosRetrasados: number;
+  } | null>(null)
 
   const loadData = useCallback(
     async (isRefresh = false) => {
@@ -189,12 +199,12 @@ export function DashboardPage() {
     const previsionSemana = esSemanaCompletamentePasada
       ? totalPrevision
       : weekRevenueData.reduce((sum, d) => {
-          if (d.tipoDia === "pasado") {
-            return sum + (d.facturadoReal || 0)
-          }
-          // Hoy y futuro usan previsión
-          return sum + (d.prevision || 0)
-        }, 0)
+        if (d.tipoDia === "pasado") {
+          return sum + (d.facturadoReal || 0)
+        }
+        // Hoy y futuro usan previsión
+        return sum + (d.prevision || 0)
+      }, 0)
 
     const porcentajeTotal = previsionSemana > 0 ? (totalFacturado / previsionSemana) * 100 : 0
     return { totalFacturado, totalPrevision, previsionSemana, porcentajeTotal }
@@ -392,11 +402,11 @@ export function DashboardPage() {
 
     const summary = currentKPIs
       ? [
-          { label: "Ingresos", value: formatCurrency(currentKPIs.ingresos) },
-          { label: "Gastos", value: formatCurrency(currentKPIs.gastos) },
-          { label: "Margen", value: `${formatCurrency(currentKPIs.margen)} (${currentKPIs.margen_pct.toFixed(1)}%)` },
-          { label: "Ticket Medio", value: formatCurrency(currentKPIs.ticket_medio) },
-        ]
+        { label: "Ingresos", value: formatCurrency(currentKPIs.ingresos) },
+        { label: "Gastos", value: formatCurrency(currentKPIs.gastos) },
+        { label: "Margen", value: `${formatCurrency(currentKPIs.margen)} (${currentKPIs.margen_pct.toFixed(1)}%)` },
+        { label: "Ticket Medio", value: formatCurrency(currentKPIs.ticket_medio) },
+      ]
       : []
 
     await exportToPDF({
@@ -450,40 +460,123 @@ export function DashboardPage() {
       />
 
       <PageContent>
+        {/* SECCIÓN 0: SMART SUMMARY (NEW) */}
+        {!loading && (
+          <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
+            <div className="relative overflow-hidden rounded-3xl border border-white/20 bg-white/40 shadow-2xl backdrop-blur-xl group">
+              {/* Background Glow */}
+              <div className="absolute -top-24 -right-24 w-64 h-64 bg-[#02b1c4]/20 rounded-full blur-3xl group-hover:bg-[#02b1c4]/30 transition-colors" />
+              <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-[#17c3b2]/20 rounded-full blur-3xl" />
+
+              <div className="relative p-6 md:p-8 flex flex-col md:flex-row items-center gap-6">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#02b1c4] to-[#17c3b2] flex items-center justify-center shadow-lg shadow-[#02b1c4]/20 shrink-0">
+                  <Sparkles className="w-8 h-8 text-white animate-pulse" />
+                </div>
+
+                <div className="flex-1 space-y-2 text-center md:text-left">
+                  <h2 className="text-2xl font-bold text-[#364f6b]">Resumen Ejecutivo NÜA</h2>
+                  <p className="text-slate-600 leading-relaxed max-w-3xl">
+                    {conciliacionResumen && (conciliacionResumen.pedidosRetrasados > 0 || conciliacionResumen.albaranesAged > 0) ? (
+                      <>
+                        Hay <span className="font-bold text-[#fe6d73]">{conciliacionResumen.pedidosRetrasados} pedidos retrasados</span> y
+                        <span className="font-bold text-[#fe6d73]"> {conciliacionResumen.albaranesAged} albaranes</span> con más de 30 días.
+                        La facturación semanal está al <span className="font-bold text-[#17c3b2]">{weekRevenueTotals.porcentajeTotal.toFixed(0)}%</span> del objetivo.
+                      </>
+                    ) : (
+                      <>
+                        Todo marcha según lo previsto. La facturación semanal está al <span className="font-bold text-[#17c3b2]">{weekRevenueTotals.porcentajeTotal.toFixed(0)}%</span> y
+                        la fiabilidad de conciliación es óptima.
+                      </>
+                    )}
+                  </p>
+                </div>
+
+                <div className="flex gap-4 shrink-0">
+                  <button
+                    onClick={() => window.location.href = '#/compras'}
+                    className="group/btn flex items-center gap-2 px-5 py-2.5 bg-[#364f6b] hover:bg-[#223143] rounded-2xl text-white font-semibold transition-all shadow-md hover:shadow-xl"
+                  >
+                    Ver Acción
+                    <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* FILA 1: Weather + Reservas Semana */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1">
             <WeatherCard />
+
+            {/* Health Mini-Cards (Cross-module) */}
+            {!loading && conciliacionResumen && (
+              <div className="mt-6 flex flex-col gap-3">
+                <div
+                  onClick={() => window.location.href = '#/compras'}
+                  className="p-4 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer flex items-center justify-between group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#fe6d73]/10 flex items-center justify-center">
+                      <AlertTriangle className="w-5 h-5 text-[#fe6d73]" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">Pedidos Retrasados</p>
+                      <p className="text-lg font-bold text-[#364f6b]">{conciliacionResumen.pedidosRetrasados}</p>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-[#02b1c4] group-hover:translate-x-1 transition-all" />
+                </div>
+
+                <div
+                  onClick={() => window.location.href = '#/compras'}
+                  className="p-4 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer flex items-center justify-between group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#ffcb77]/10 flex items-center justify-center">
+                      <Clock className="w-5 h-5 text-[#ffcb77]" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">Albaranes Antiguos</p>
+                      <p className="text-lg font-bold text-[#364f6b]">{conciliacionResumen.albaranesAged}</p>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-[#02b1c4] group-hover:translate-x-1 transition-all" />
+                </div>
+              </div>
+            )}
           </div>
           <div className="lg:col-span-2">
             <WeekReservationsCard />
           </div>
         </div>
 
-        <TremorCard>
+        <TremorCard
+          className="cursor-pointer hover:shadow-xl transition-all border-white/40 bg-white/80 backdrop-blur-sm group"
+          onClick={() => window.location.hash = '#/facturacion'}
+        >
           <div className="flex items-center justify-between mb-6">
-            <TremorTitle className="flex items-center gap-2">
+            <TremorTitle className="flex items-center gap-2 group-hover:text-[#02b1c4] transition-colors">
               <Banknote className="w-5 h-5 text-[#02b1c4]" />
               Resumen Financiero
             </TremorTitle>
             <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
               <button
                 onClick={() => setFinancialPeriod("mes")}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                  financialPeriod === "mes"
-                    ? "bg-white text-[#02b1c4] shadow-sm"
-                    : "text-slate-500 hover:text-slate-700"
-                }`}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${financialPeriod === "mes"
+                  ? "bg-white text-[#02b1c4] shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+                  }`}
               >
                 Mes
               </button>
               <button
                 onClick={() => setFinancialPeriod(trimestreLabel)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                  financialPeriod !== "mes"
-                    ? "bg-white text-[#02b1c4] shadow-sm"
-                    : "text-slate-500 hover:text-slate-700"
-                }`}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${financialPeriod !== "mes"
+                  ? "bg-white text-[#02b1c4] shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+                  }`}
               >
                 {trimestreLabel}
               </button>
@@ -581,34 +674,34 @@ export function DashboardPage() {
           )}
         </TremorCard>
 
-        <TremorCard>
+        <TremorCard
+          className="cursor-pointer hover:shadow-xl transition-all border-white/40 bg-white/80 backdrop-blur-sm group"
+          onClick={() => window.location.hash = '#/operaciones'}
+        >
           <div className="flex items-center justify-between mb-6">
-            <TremorTitle className="flex items-center gap-2">
+            <TremorTitle className="flex items-center gap-2 group-hover:text-[#02b1c4] transition-colors">
               <TrendingUp className="w-5 h-5 text-[#02b1c4]" />
               Evolución Costes Laborales
             </TremorTitle>
             <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
               <button
                 onClick={() => setLaborCostDays(7)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                  laborCostDays === 7 ? "bg-white text-[#02b1c4] shadow-sm" : "text-slate-500 hover:text-slate-700"
-                }`}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${laborCostDays === 7 ? "bg-white text-[#02b1c4] shadow-sm" : "text-slate-500 hover:text-slate-700"
+                  }`}
               >
                 7 días
               </button>
               <button
                 onClick={() => setLaborCostDays(15)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                  laborCostDays === 15 ? "bg-white text-[#02b1c4] shadow-sm" : "text-slate-500 hover:text-slate-700"
-                }`}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${laborCostDays === 15 ? "bg-white text-[#02b1c4] shadow-sm" : "text-slate-500 hover:text-slate-700"
+                  }`}
               >
                 15 días
               </button>
               <button
                 onClick={() => setLaborCostDays(30)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                  laborCostDays === 30 ? "bg-white text-[#02b1c4] shadow-sm" : "text-slate-500 hover:text-slate-700"
-                }`}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${laborCostDays === 30 ? "bg-white text-[#02b1c4] shadow-sm" : "text-slate-500 hover:text-slate-700"
+                  }`}
               >
                 30 días
               </button>
@@ -799,137 +892,150 @@ export function DashboardPage() {
 
         {/* FILA 4: Facturación/Ticket/VeriFactu */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <MetricGroupCard
-            title="Facturación Hoy"
-            live={true}
-            icon={<Banknote className="w-5 h-5 text-[#02b1c4]" />}
-            loading={loading}
-            decimals={2}
-            suffix=" €"
-            total={{ value: currentShift?.revenue || 0, previous: 0, delta: 0, trend: "neutral" }}
+          <div
+            onClick={() => window.location.hash = '#/facturacion'}
+            className="cursor-pointer group"
           >
-            {liveData && liveData.prevision && liveData.prevision.prevision_facturacion > 0 && (
-              <div className="mb-4 pb-4 border-b border-slate-200">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-slate-500">Previsión del día</span>
-                  <span className="text-xs font-bold text-slate-600">
-                    {formatCurrency(liveData.prevision.prevision_facturacion)}
-                  </span>
-                </div>
-                <div className="relative h-3 bg-slate-100 rounded-full overflow-hidden">
-                  <div
-                    className="absolute left-0 top-0 h-full rounded-full transition-all duration-500"
-                    style={{
-                      width: `${Math.min(liveData.prevision.porcentaje_prevision_alcanzado, 100)}%`,
-                      backgroundColor:
-                        liveData.prevision.porcentaje_prevision_alcanzado >= 100
-                          ? "#17c3b2"
-                          : liveData.prevision.porcentaje_prevision_alcanzado >= 70
-                            ? "#ffcb77"
-                            : "#02b1c4",
-                    }}
-                  />
-                  {/* Indicador si supera el 100% */}
-                  {liveData.prevision.porcentaje_prevision_alcanzado > 100 && (
+            <MetricGroupCard
+              title="Facturación Hoy"
+              live={true}
+              icon={<Banknote className="w-5 h-5 text-[#02b1c4]" />}
+              loading={loading}
+              decimals={2}
+              suffix=" €"
+              total={{ value: currentShift?.revenue || 0, previous: 0, delta: 0, trend: "neutral" }}
+            >
+              {liveData && liveData.prevision && liveData.prevision.prevision_facturacion > 0 && (
+                <div className="mb-4 pb-4 border-b border-slate-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-slate-500">Previsión del día</span>
+                    <span className="text-xs font-bold text-slate-600">
+                      {formatCurrency(liveData.prevision.prevision_facturacion)}
+                    </span>
+                  </div>
+                  <div className="relative h-3 bg-slate-100 rounded-full overflow-hidden">
                     <div
-                      className="absolute top-0 h-full bg-[#17c3b2]/30 rounded-r-full"
+                      className="absolute left-0 top-0 h-full rounded-full transition-all duration-500"
                       style={{
-                        left: "100%",
-                        width: `${Math.min(liveData.prevision.porcentaje_prevision_alcanzado - 100, 50)}%`,
+                        width: `${Math.min(liveData.prevision.porcentaje_prevision_alcanzado, 100)}%`,
+                        backgroundColor:
+                          liveData.prevision.porcentaje_prevision_alcanzado >= 100
+                            ? "#17c3b2"
+                            : liveData.prevision.porcentaje_prevision_alcanzado >= 70
+                              ? "#ffcb77"
+                              : "#02b1c4",
                       }}
                     />
-                  )}
-                </div>
-                <div className="flex items-center justify-between mt-1.5">
-                  <span className="text-[10px] text-slate-400">
-                    {liveData.prevision.comensales_reservados} comensales reservados
-                  </span>
-                  <span
-                    className="text-xs font-bold"
-                    style={{
-                      color:
-                        liveData.prevision.porcentaje_prevision_alcanzado >= 100
-                          ? "#17c3b2"
-                          : liveData.prevision.porcentaje_prevision_alcanzado >= 70
-                            ? "#ffcb77"
-                            : "#02b1c4",
-                    }}
-                  >
-                    {liveData.prevision.porcentaje_prevision_alcanzado.toFixed(1)}%
-                  </span>
-                </div>
-              </div>
-            )}
-            {/* Fin barra de progreso */}
-
-            <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-200">
-              <div className="p-3 rounded-lg bg-[#ffcb77]/20 border border-slate-100/50 flex flex-col justify-between h-full">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-1.5">
-                    <SunIcon className="w-3.5 h-3.5 text-[#ffcb77]" />
-                    <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Comida</span>
+                    {/* Indicador si supera el 100% */}
+                    {liveData.prevision.porcentaje_prevision_alcanzado > 100 && (
+                      <div
+                        className="absolute top-0 h-full bg-[#17c3b2]/30 rounded-r-full"
+                        style={{
+                          left: "100%",
+                          width: `${Math.min(liveData.prevision.porcentaje_prevision_alcanzado - 100, 50)}%`,
+                        }}
+                      />
+                    )}
                   </div>
-                  <span className="text-xs font-bold text-slate-500">{liveData?.lunch_percentage || 0}%</span>
-                </div>
-                <p className="text-lg font-bold text-[#364f6b] text-right">
-                  {formatCurrency(liveData?.lunch?.revenue || 0)}
-                </p>
-              </div>
-
-              <div className="p-3 rounded-lg bg-[#227c9d]/15 border border-slate-100/50 flex flex-col justify-between h-full">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-1.5">
-                    <MoonIcon className="w-3.5 h-3.5 text-[#227c9d]" />
-                    <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Cena</span>
+                  <div className="flex items-center justify-between mt-1.5">
+                    <span className="text-[10px] text-slate-400">
+                      {liveData.prevision.comensales_reservados} comensales reservados
+                    </span>
+                    <span
+                      className="text-xs font-bold"
+                      style={{
+                        color:
+                          liveData.prevision.porcentaje_prevision_alcanzado >= 100
+                            ? "#17c3b2"
+                            : liveData.prevision.porcentaje_prevision_alcanzado >= 70
+                              ? "#ffcb77"
+                              : "#02b1c4",
+                      }}
+                    >
+                      {liveData.prevision.porcentaje_prevision_alcanzado.toFixed(1)}%
+                    </span>
                   </div>
-                  <span className="text-xs font-bold text-slate-500">{liveData?.dinner_percentage || 0}%</span>
                 </div>
-                <p className="text-lg font-bold text-[#364f6b] text-right">
-                  {formatCurrency(liveData?.dinner?.revenue || 0)}
-                </p>
-              </div>
-            </div>
-          </MetricGroupCard>
+              )}
+              {/* Fin barra de progreso */}
 
-          <MetricGroupCard
-            title="Ticket Medio Hoy"
-            live={true}
-            icon={<Receipt className="w-5 h-5 text-[#02b1c4]" />}
-            loading={loading}
-            decimals={2}
-            suffix=" €"
-            total={{ value: currentShift?.avg_ticket_transaction || 0, previous: 0, delta: 0, trend: "neutral" }}
+              <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-200">
+                <div className="p-3 rounded-lg bg-[#ffcb77]/20 border border-slate-100/50 flex flex-col justify-between h-full">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1.5">
+                      <SunIcon className="w-3.5 h-3.5 text-[#ffcb77]" />
+                      <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Comida</span>
+                    </div>
+                    <span className="text-xs font-bold text-slate-500">{liveData?.lunch_percentage || 0}%</span>
+                  </div>
+                  <p className="text-lg font-bold text-[#364f6b] text-right">
+                    {formatCurrency(liveData?.lunch?.revenue || 0)}
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-lg bg-[#227c9d]/15 border border-slate-100/50 flex flex-col justify-between h-full">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1.5">
+                      <MoonIcon className="w-3.5 h-3.5 text-[#227c9d]" />
+                      <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Cena</span>
+                    </div>
+                    <span className="text-xs font-bold text-slate-500">{liveData?.dinner_percentage || 0}%</span>
+                  </div>
+                  <p className="text-lg font-bold text-[#364f6b] text-right">
+                    {formatCurrency(liveData?.dinner?.revenue || 0)}
+                  </p>
+                </div>
+              </div>
+            </MetricGroupCard>
+          </div>
+
+          <div
+            onClick={() => window.location.hash = '#/facturacion'}
+            className="cursor-pointer group"
           >
-            <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-200">
-              <div className="p-3 rounded-lg bg-[#ffcb77]/20 border border-slate-100/50 flex flex-col justify-between h-full">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-1.5">
-                    <SunIcon className="w-3.5 h-3.5 text-[#ffcb77]" />
-                    <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Comida</span>
+            <MetricGroupCard
+              title="Ticket Medio Hoy"
+              live={true}
+              icon={<Receipt className="w-5 h-5 text-[#02b1c4]" />}
+              loading={loading}
+              decimals={2}
+              suffix=" €"
+              total={{ value: currentShift?.avg_ticket_transaction || 0, previous: 0, delta: 0, trend: "neutral" }}
+            >
+              <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-200">
+                <div className="p-3 rounded-lg bg-[#ffcb77]/20 border border-slate-100/50 flex flex-col justify-between h-full">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1.5">
+                      <SunIcon className="w-3.5 h-3.5 text-[#ffcb77]" />
+                      <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Comida</span>
+                    </div>
                   </div>
+                  <p className="text-lg font-bold text-[#364f6b] text-right">
+                    {formatCurrency(liveData?.lunch?.avg_ticket_transaction || 0)}
+                  </p>
                 </div>
-                <p className="text-lg font-bold text-[#364f6b] text-right">
-                  {formatCurrency(liveData?.lunch?.avg_ticket_transaction || 0)}
-                </p>
-              </div>
 
-              <div className="p-3 rounded-lg bg-[#227c9d]/15 border border-slate-100/50 flex flex-col justify-between h-full">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-1.5">
-                    <MoonIcon className="w-3.5 h-3.5 text-[#227c9d]" />
-                    <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Cena</span>
+                <div className="p-3 rounded-lg bg-[#227c9d]/15 border border-slate-100/50 flex flex-col justify-between h-full">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1.5">
+                      <MoonIcon className="w-3.5 h-3.5 text-[#227c9d]" />
+                      <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Cena</span>
+                    </div>
                   </div>
+                  <p className="text-lg font-bold text-[#364f6b] text-right">
+                    {formatCurrency(liveData?.dinner?.avg_ticket_transaction || 0)}
+                  </p>
                 </div>
-                <p className="text-lg font-bold text-[#364f6b] text-right">
-                  {formatCurrency(liveData?.dinner?.avg_ticket_transaction || 0)}
-                </p>
               </div>
-            </div>
-          </MetricGroupCard>
+            </MetricGroupCard>
+          </div>
 
-          <TremorCard className="lg:col-span-1">
+          <TremorCard
+            className="lg:col-span-1 cursor-pointer hover:shadow-xl transition-all border-white/40 bg-white/80 backdrop-blur-sm group"
+            onClick={() => window.location.hash = '#/facturacion'}
+          >
             <div className="flex items-center justify-between mb-4">
-              <TremorTitle>VeriFactu</TremorTitle>
+              <TremorTitle className="group-hover:text-[#02b1c4] transition-colors">VeriFactu</TremorTitle>
               <span className="text-xs bg-[#227c9d]/10 text-[#227c9d] px-2 py-1 rounded-full font-bold live-badge">
                 Live
               </span>
@@ -956,7 +1062,10 @@ export function DashboardPage() {
 
         {/* FILA 5: Progreso KPI vs Objetivos */}
         {kpiTargets && (
-          <TremorCard>
+          <TremorCard
+            className="cursor-pointer hover:shadow-xl transition-all border-white/40 bg-white/80 backdrop-blur-sm group"
+            onClick={() => window.location.hash = '#/settings'}
+          >
             {/* Header con subtítulo (patrón WeatherCard) */}
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2">
@@ -1029,9 +1138,14 @@ export function DashboardPage() {
         )}
 
         {/* FILA 6: Top Productos */}
-        <TremorCard>
+        <TremorCard
+          className="cursor-pointer hover:shadow-xl transition-all border-white/40 bg-white/80 backdrop-blur-sm group"
+          onClick={() => window.location.hash = '#/products'}
+        >
           <div className="flex items-center justify-between mb-4">
-            <TremorTitle>Top Productos Hoy</TremorTitle>
+            <TremorTitle className="flex items-center gap-2 group-hover:text-[#02b1c4] transition-colors">
+              Top Productos Hoy
+            </TremorTitle>
             <span className="text-xs bg-[#227c9d]/10 text-[#227c9d] px-2 py-1 rounded-full font-bold live-badge">
               Live
             </span>

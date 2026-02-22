@@ -1853,20 +1853,36 @@ export async function fetchConciliacionResumen(): Promise<{
   totalPendientes: number
   autoSinConfirmar: number
   requierenRevision: number
+  albaranesPendientes: number
+  albaranesAged: number
+  pedidosRetrasados: number
 }> {
-  const { data, error } = await supabase
-    .from("vw_compras_facturas_pendientes")
-    .select("estado_conciliacion, requiere_revision")
+  // Nota: Importamos dinámicamente o usamos helpers para evitar dependencias circulares si fuera necesario
+  // Pero aquí usaremos queries directas por simplicidad de resumen
+  const [facturasRes, albaranesRes, pedidosRes] = await Promise.all([
+    supabase.from("vw_compras_facturas_pendientes").select("estado_conciliacion, requiere_revision"),
+    supabase.from("vw_compras_albaranes_disponibles").select("fecha"),
+    supabase.from("vw_compras_pedidos").select("fecha_pedido, estado").eq("estado", "enviado")
+  ])
 
-  if (error) {
-    console.error("[fetchConciliacionResumen] Error:", error.message)
-    return { totalPendientes: 0, autoSinConfirmar: 0, requierenRevision: 0 }
+  if (facturasRes.error) {
+    console.error("[fetchConciliacionResumen] Error facturas:", facturasRes.error.message)
   }
 
-  const rows = data || []
+  const facturasRows = facturasRes.data || []
+  const albaranesRows = albaranesRes.data || []
+  const pedidosRows = pedidosRes.data || []
+
+  // Helpers de fecha locales para no depender de librerías externas en este archivo si no están
+  const now = new Date()
+  const diffDays = (d1: Date, d2: Date) => Math.floor((d1.getTime() - d2.getTime()) / (1000 * 60 * 60 * 24))
+
   return {
-    totalPendientes: rows.filter((r: any) => !r.estado_conciliacion || r.estado_conciliacion === "pendiente").length,
-    autoSinConfirmar: rows.filter((r: any) => r.estado_conciliacion === "auto_conciliado").length,
-    requierenRevision: rows.filter((r: any) => r.requiere_revision === true).length,
+    totalPendientes: facturasRows.filter((r: any) => !r.estado_conciliacion || r.estado_conciliacion === "pendiente").length,
+    autoSinConfirmar: facturasRows.filter((r: any) => r.estado_conciliacion === "auto_conciliado").length,
+    requierenRevision: facturasRows.filter((r: any) => r.requiere_revision === true).length,
+    albaranesPendientes: albaranesRows.length,
+    albaranesAged: albaranesRows.filter((r: any) => diffDays(now, new Date(r.fecha)) > 30).length,
+    pedidosRetrasados: pedidosRows.filter((r: any) => diffDays(now, new Date(r.fecha_pedido)) > 3).length
   }
 }
