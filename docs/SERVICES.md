@@ -183,7 +183,7 @@ Módulo que contiene todos los datos mock, constantes de demo y generadores de d
 
 ## 2. comprasService.ts
 
-**Archivo:** `lib/comprasService.ts` (~321 líneas)
+**Archivo:** `lib/comprasService.ts` (~475 líneas)
 **Consumido por:** ComprasPage
 
 > **Nota:** `fetchPedidos()` mapea el campo `items` (nombre en la vista Supabase) a `pedido_items` (nombre en el tipo TypeScript `CompraPedido`). Este mapeo es necesario porque la vista `vw_compras_pedidos` usa `items` como nombre de columna JSONB.
@@ -215,8 +215,14 @@ Módulo que contiene todos los datos mock, constantes de demo y generadores de d
 | Función | Parámetros | Retorna | RPC |
 |---------|-----------|---------|-----|
 | `vincularAlbaranes(facturaId, albaranIds)` | `facturaId: string, albaranIds: string[]` | `Promise<{success, error?}>` | `fn_conciliar_manual` → `{p_factura_id, p_albaran_ids, p_usuario: "webapp"}` |
-| `confirmarConciliacion(id, notas?)` | `conciliacionId: string, notas?: string` | `Promise<{success, error?}>` | `fn_confirmar_conciliacion` |
+| `confirmarConciliacion(id, vencimiento?)` | `conciliacionId: string, vencimiento?: string` | `Promise<{success, error?}>` | `fn_confirmar_conciliacion` |
 | `descartarConciliacion(facturaId, motivo?)` | `facturaId: string, motivo?: string` | `Promise<{success, error?}>` | `fn_descartar_conciliacion` |
+
+### Computación client-side
+
+| Función | Parámetros | Retorna | Descripción |
+|---------|-----------|---------|-------------|
+| `computeProveedorRanking(proveedores, facturas, albaranesSinFacturar)` | `CompraProveedor[], CompraFacturaConciliacion[], CompraAlbaranDisponible[]` | `CompraProveedorRanking[]` | Calcula ranking de proveedores con volumen de compras, nº facturas/albaranes, albaranes sin facturar y fiabilidad documental (% facturas sin incidencias). Ordenado por `total_compras` descendente. Computación 100% client-side a partir de datos ya cargados en memoria. |
 
 ---
 

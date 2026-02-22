@@ -48,8 +48,9 @@ import type {
   CompraEvolucionMensual,
   CompraProveedorRanking,
 } from "@/types"
-import { format, startOfMonth, subMonths } from "date-fns"
+import { format, startOfMonth, subMonths, differenceInDays, parseISO } from "date-fns"
 import { toast } from "sonner"
+import { useAlerts } from "@/hooks/useAlerts"
 
 import { ComprasPedidosTab } from "./compras/ComprasPedidosTab"
 import { ComprasConciliacionTab } from "./compras/ComprasConciliacionTab"
@@ -114,6 +115,23 @@ export default function ComprasPage() {
     if (proveedores.length === 0) return []
     return computeProveedorRanking(proveedores, facturas, unbilledList)
   }, [proveedores, facturas, unbilledList])
+
+  // Contexto de alertas para la campana
+  const alertContext = useMemo(() => {
+    if (!kpis) return null
+    return {
+      pendingInvoices: kpis.facturas_pendientes,
+      invoicesNeedingReview: facturas.filter(f => f.estado_conciliacion === "revision").length,
+      invoicesAutoReconciled: facturas.filter(f => f.estado_conciliacion === "auto_conciliado").length,
+      numDelayedOrders: pedidos.filter(p =>
+        p.estado === "enviado" &&
+        differenceInDays(new Date(), parseISO(p.fecha_pedido)) > 3
+      ).length
+    }
+  }, [kpis, facturas, pedidos])
+
+  // Activar alertas en la campana
+  useAlerts(alertContext)
 
   // Map for resolving UUIDs to numbers
   const albaranesMap = useMemo(() => {
@@ -563,6 +581,7 @@ export default function ComprasPage() {
                 analisisLoading={analisisLoading}
                 toggleRowExpanded={toggleRowExpanded}
                 onRefresh={loadAnalisisData}
+                proveedoresRanking={proveedoresRanking}
               />
             )}
           </>

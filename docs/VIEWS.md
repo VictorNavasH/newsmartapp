@@ -263,7 +263,7 @@ Click en un KPI activa/desactiva el filtro global que se sincroniza con el filtr
 | **Ruta** | `/purchases` |
 | **Componente** | `ComprasPage` |
 | **Archivo** | `components/views/ComprasPage.tsx` |
-| **Sub-componentes** | `compras/ComprasPedidosTab.tsx`, `compras/ComprasConciliacionTab.tsx`, `compras/ComprasAnalisisTab.tsx`, `compras/constants.tsx` |
+| **Sub-componentes** | `compras/ComprasPedidosTab.tsx`, `compras/ComprasConciliacionTab.tsx`, `compras/ComprasAnalisisTab.tsx`, `compras/UnbilledAlbaranesDrawer.tsx`, `compras/constants.tsx` |
 | **Servicio(s)** | `comprasService.ts` |
 | **Export** | Default export |
 
@@ -281,20 +281,25 @@ Click en un KPI activa/desactiva el filtro global que se sincroniza con el filtr
 | `fetchComprasTopProductos(rango)` | RPC `compras_top_productos` | `CompraTopProducto[]` |
 | `fetchComprasEvolucionMensual(meses)` | RPC `compras_evolucion_mensual` | `CompraEvolucionMensual[]` |
 | `fetchComprasTablaJerarquica(rango)` | RPC `compras_tabla_jerarquica` | `CompraTablaJerarquica[]` |
+| `computeProveedorRanking(proveedores, facturas, unbilledList)` | Client-side (datos en memoria) | `CompraProveedorRanking[]` |
 
 ### Acciones (escritura)
 
 | Función | RPC | Descripción |
 |---------|-----|-------------|
 | `vincularAlbaranes(facturaId, albaranIds)` | `fn_conciliar_manual` | Vincular albaranes a factura |
-| `confirmarConciliacion(id, notas)` | `fn_confirmar_conciliacion` | Confirmar conciliación |
+| `confirmarConciliacion(id, vencimiento?)` | `fn_confirmar_conciliacion` | Confirmar conciliación (con fecha de vencimiento opcional) |
 | `descartarConciliacion(facturaId, motivo)` | `fn_descartar_conciliacion` | Descartar conciliación |
 
 ### Secciones (MenuBar con 3 tabs)
 
-1. **Pedidos** — Listado de pedidos de compra con estado, proveedor, líneas, totales. KPIs: Pedidos Pendientes, Albaranes sin Facturar, Facturas Pendientes, Actividad del Mes
-2. **Conciliación** — Facturas pendientes (fuente: `vw_compras_facturas_pendientes`, 225+ facturas) vs albaranes disponibles, vinculación manual, confirmación/descarte. Cada factura muestra cantidad de albaranes candidatos
-3. **Análisis** — KPIs de compras, distribución por categoría, top productos, evolución mensual, tabla jerárquica
+1. **Pedidos** — Listado de pedidos de compra con estado, proveedor, líneas, totales. KPIs: Pedidos Pendientes, Albaranes sin Facturar (clicable → drawer), Facturas Pendientes, Actividad del Mes. Alerta visual (icono ⚠️ rojo) en pedidos con estado "Enviado" sin recepcionar tras 3+ días.
+2. **Conciliación** — Facturas pendientes (fuente: `vw_compras_facturas_pendientes`, 225+ facturas) vs albaranes disponibles, vinculación manual, confirmación/descarte. Cada factura muestra cantidad de albaranes candidatos. Albaranes vinculados se muestran con datos legibles (nº, fecha, importe) en vez de UUIDs. Input manual de fecha de vencimiento al confirmar conciliación.
+3. **Análisis** — KPIs de compras (con mensaje "Sin datos suficientes" cuando `variacion_vs_anterior` es 0), distribución por categoría, top productos con columna Precio/U, evolución mensual, tabla jerárquica, ranking de proveedores con fiabilidad documental
+
+### Sub-componentes destacados
+
+- **`UnbilledAlbaranesDrawer.tsx`** — Sheet/Drawer que muestra albaranes sin facturar ordenados por antigüedad. Se abre al clicar el KPI "Albaranes sin Facturar". Incluye columna "Días sin factura" con color rojo para >30 días.
 
 ### Filtros
 

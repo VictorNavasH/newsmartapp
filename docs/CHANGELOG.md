@@ -8,6 +8,52 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 
 ## [Unreleased]
 
+### Añadido
+- **Compras — Albaranes sin facturar clicables (Item 1):**
+  - KPI "Albaranes sin Facturar" ahora es clicable y abre un Sheet/Drawer lateral
+  - Nuevo componente `UnbilledAlbaranesDrawer.tsx` — lista de albaranes sin factura ordenados por antigüedad
+  - Columna "Días sin factura" con indicador rojo para albaranes con >30 días de antigüedad
+  - Muestra proveedor, número de albarán, fecha, importe y días transcurridos
+- **Compras — Fecha de vencimiento manual en conciliación (Item 2):**
+  - Input de fecha de vencimiento en cada factura de la tab Conciliación
+  - Al confirmar, la fecha se pasa a `confirmarConciliacion()` vía parámetro `vencimiento`
+  - Estado local `manualDates` para gestionar fechas por factura
+- **Compras — Precio unitario en ranking de productos (Item 4):**
+  - Nueva columna "Precio/U" en la tabla de top productos del tab Análisis
+  - Cálculo: `total / cantidad` formateado con `formatCurrency()`
+- **Compras — Alerta de pedidos "Enviado" sin recepción (Item 5):**
+  - Icono `AlertTriangle` rojo junto al estado "Enviado" si han pasado >3 días sin albarán
+  - Tooltip con mensaje "Pedido sin albarán después de 3 días"
+  - Usa `differenceInDays` + `parseISO` de `date-fns`
+- **Compras — Ranking de proveedores con fiabilidad documental (Item 6):**
+  - Nueva sección "Ranking de Proveedores" en tab Análisis con datos reales
+  - Nueva función `computeProveedorRanking()` en `comprasService.ts` — cálculo client-side desde datos en memoria
+  - Métricas: total compras, nº albaranes, nº facturas, albaranes sin facturar, fiabilidad documental (%)
+  - Fiabilidad = % de facturas sin incidencias (ni `requiere_revision` ni estado "revision")
+  - Código de color: verde ≥90%, amarillo ≥70%, rojo <70%
+  - Nuevo tipo `CompraProveedorRanking` en `types/purchases.ts`
+  - Nuevo tipo `CompraAlbaranVinculadoInfo` en `types/purchases.ts` para datos legibles de albarán
+
+### Mejorado
+- **Compras — UUID sustituido por datos legibles en conciliación (Item 3):**
+  - Los albaranes vinculados en la tab Conciliación ahora muestran número, fecha e importe en vez del UUID
+  - `ComprasPage.tsx` construye un `albaranesMap` (Map de ID → info legible) desde `unbilledList`
+  - `ComprasConciliacionTab.tsx` recibe y usa el mapa para resolver los IDs
+- **Compras — Mensaje claro sin datos para comparativa (Item 7):**
+  - Cuando `variacion_vs_anterior` es 0, muestra "Sin datos suficientes para comparar" en vez de "+0.0%"
+  - Aplicado al KPI de variación en el tab Análisis
+
+### Corregido
+- **Compras — Fix `require("react")` hack en ConciliacionTab:**
+  - `ComprasConciliacionTab.tsx` usaba `(require("react") as any).useState(...)` para el state `manualDates`
+  - Reemplazado por import estándar `useState` de React
+- **Compras — Fix `handleConfirmar` no pasaba `vencimiento`:**
+  - La función en `ComprasPage.tsx` aceptaba solo `factura` pero ignoraba el segundo argumento `vencimiento`
+  - Corregido para aceptar y pasar `vencimiento?: string` a `confirmarConciliacion()`
+- **Compras — Fix ranking de proveedores con datos mock:**
+  - El ranking usaba `distribucionAgrupada` con cálculos ficticios (`Math.floor(prov.total / 150)`, `100 - (idx * 5)`)
+  - Reemplazado por `computeProveedorRanking()` que calcula métricas reales desde proveedores + facturas + albaranes
+
 ### Mejorado
 - **Gastos — KPIs clicables con tres estados de color:**
   - 3 tarjetas KPI (Total Gastos, Pagado, Vencido) ahora son clicables y filtran la tabla de detalle

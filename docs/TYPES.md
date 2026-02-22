@@ -733,6 +733,23 @@ CompraProveedor: { gstock_supplier_id, nombre: string;
 ProductFormat: { id: number; name: string }
 ```
 
+### CompraAlbaranVinculadoInfo
+```typescript
+{ numero_albaran, fecha: string; importe_total: number }
+```
+Información legible de un albarán vinculado a una factura. Se construye a partir del `albaranesMap` (mapa de UUID → datos del albarán) para mostrar datos legibles en la vista de conciliación en lugar de UUIDs.
+
+### CompraProveedorRanking
+```typescript
+{
+  gstock_supplier_id, nombre: string;
+  total_compras: number; num_albaranes, num_facturas: number;
+  albaranes_sin_facturar: number;
+  fiabilidad_documental: number; // 0-100%
+}
+```
+Ranking de proveedores calculado client-side por `computeProveedorRanking()`. La fiabilidad documental es el porcentaje de facturas sin incidencias (sin `requiere_revision` ni `estado_conciliacion === "revision"`).
+
 ### Tipos de análisis de compras
 
 | Tipo | Campos principales |

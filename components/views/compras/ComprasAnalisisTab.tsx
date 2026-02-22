@@ -22,6 +22,7 @@ import type {
   CompraAnalisisKPI,
   CompraTopProducto,
   CompraEvolucionMensual,
+  CompraProveedorRanking,
 } from "@/types"
 import { CHART_COLORS } from "./constants"
 import {
@@ -57,7 +58,7 @@ interface ComprasAnalisisTabProps {
   analisisLoading: boolean
   toggleRowExpanded: (key: string) => void
   onRefresh: () => void
-  proveedoresRanking?: any[] // New prop for provider scoring
+  proveedoresRanking?: CompraProveedorRanking[]
 }
 
 export function ComprasAnalisisTab({
@@ -74,6 +75,7 @@ export function ComprasAnalisisTab({
   analisisLoading,
   toggleRowExpanded,
   onRefresh,
+  proveedoresRanking = [],
 }: ComprasAnalisisTabProps) {
   return (
     <>
@@ -486,50 +488,75 @@ export function ComprasAnalisisTab({
             </TremorCard>
           </div>
 
-          {/* Ficha de Proveedores - NEW */}
+          {/* Ficha de Proveedores - Ranking real */}
           <TremorCard className="mt-6">
             <TremorTitle>Análisis de Proveedores (Fiabilidad Documental)</TremorTitle>
-            <div className="mt-4 overflow-x-auto">
+            <p className="text-sm text-slate-500 mb-4">
+              {proveedoresRanking.length} proveedores con actividad
+            </p>
+            <div className="mt-2 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 text-slate-600">
                     <th className="text-left py-3 px-4 font-semibold">Proveedor</th>
                     <th className="text-right py-3 px-4 font-semibold">Volumen Total</th>
-                    <th className="text-right py-3 px-4 font-semibold">Albaranes</th>
+                    <th className="text-right py-3 px-4 font-semibold">Facturas</th>
                     <th className="text-right py-3 px-4 font-semibold">Sin Facturar</th>
-                    <th className="text-right py-3 px-4 font-semibold">Incidencias</th>
+                    <th className="text-right py-3 px-4 font-semibold">Docs Totales</th>
                     <th className="text-right py-3 px-4 font-semibold">Fiabilidad</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {(distribucionAgrupada || []).map((prov, idx) => {
-                    // Usamos distribucion por familia como proxy si no hay ranking específico
-                    const reliability = 100 - (idx * 5) // Mock logic
-                    return (
-                      <tr key={`prov-rank-${idx}`} className="border-b border-slate-100 hover:bg-slate-50">
-                        <td className="py-3 px-4 font-medium text-slate-800">{prov.familia || "Proveedor " + (idx + 1)}</td>
-                        <td className="py-3 px-4 text-right font-bold text-[#02b1c4]">{formatCurrency(prov.total)}</td>
-                        <td className="py-3 px-4 text-right text-slate-600">{Math.floor(prov.total / 150)}</td>
-                        <td className="py-3 px-4 text-right">
-                          <Badge variant="outline" className={idx % 3 === 0 ? "text-[#fe6d73] border-[#fe6d73]/20 bg-[#fe6d73]/5" : ""}>
-                            {idx % 3 === 0 ? idx + 1 : 0}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-4 text-right text-slate-400">{idx % 4 === 0 ? "Importe" : "-"}</td>
-                        <td className="py-3 px-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-[#17c3b2]"
-                                style={{ width: `${reliability}%`, backgroundColor: reliability > 90 ? "#17c3b2" : "#ffcb77" }}
-                              />
+                  {proveedoresRanking.length > 0 ? (
+                    proveedoresRanking.map((prov) => {
+                      const reliability = prov.fiabilidad_documental
+                      const reliabilityColor = reliability >= 90 ? "#17c3b2" : reliability >= 70 ? "#ffcb77" : "#fe6d73"
+                      return (
+                        <tr key={prov.gstock_supplier_id} className="border-b border-slate-100 hover:bg-slate-50">
+                          <td className="py-3 px-4 font-medium text-slate-800">{prov.nombre}</td>
+                          <td className="py-3 px-4 text-right font-bold text-[#02b1c4]">
+                            {formatCurrency(prov.total_compras)}
+                          </td>
+                          <td className="py-3 px-4 text-right text-slate-600">{prov.num_facturas}</td>
+                          <td className="py-3 px-4 text-right">
+                            {prov.albaranes_sin_facturar > 0 ? (
+                              <Badge
+                                variant="outline"
+                                className="text-[#fe6d73] border-[#fe6d73]/20 bg-[#fe6d73]/5"
+                              >
+                                {prov.albaranes_sin_facturar}
+                              </Badge>
+                            ) : (
+                              <span className="text-slate-400">0</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-right text-slate-600">{prov.num_albaranes}</td>
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full rounded-full"
+                                  style={{ width: `${reliability}%`, backgroundColor: reliabilityColor }}
+                                />
+                              </div>
+                              <span
+                                className="font-bold text-xs"
+                                style={{ color: reliabilityColor }}
+                              >
+                                {reliability}%
+                              </span>
                             </div>
-                            <span className="font-bold text-xs">{reliability}%</span>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
+                          </td>
+                        </tr>
+                      )
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-slate-400">
+                        Sin datos de proveedores para el período
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
