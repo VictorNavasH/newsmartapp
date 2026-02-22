@@ -171,6 +171,7 @@ export function evaluateAlerts(
       // Disparar alerta
       const message = rule.message(context)
 
+      /* Toasts disabled - only appearing in notification center
       switch (rule.severity) {
         case "critical":
           toast.error(message, { duration: 10000, id: rule.id })
@@ -182,6 +183,7 @@ export function evaluateAlerts(
           toast.info(message, { duration: 5000, id: rule.id })
           break
       }
+      */
 
       // Notificar a listeners (NotificationCenter)
       alertListeners.forEach((l) => l(message, rule.severity))
