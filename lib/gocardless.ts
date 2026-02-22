@@ -82,6 +82,28 @@ class GoCardlessClient {
             },
         })
 
+        // Capture rate limit headers
+        this.rateLimitInfo = {
+            limit: response.headers.get("HTTP_X_RATELIMIT_LIMIT")
+                ? parseInt(response.headers.get("HTTP_X_RATELIMIT_LIMIT")!)
+                : undefined,
+            remaining: response.headers.get("HTTP_X_RATELIMIT_REMAINING")
+                ? parseInt(response.headers.get("HTTP_X_RATELIMIT_REMAINING")!)
+                : undefined,
+            reset: response.headers.get("HTTP_X_RATELIMIT_RESET")
+                ? parseInt(response.headers.get("HTTP_X_RATELIMIT_RESET")!)
+                : undefined,
+            accountSuccessLimit: response.headers.get("HTTP_X_RATELIMIT_ACCOUNT_SUCCESS_LIMIT")
+                ? parseInt(response.headers.get("HTTP_X_RATELIMIT_ACCOUNT_SUCCESS_LIMIT")!)
+                : undefined,
+            accountSuccessRemaining: response.headers.get("HTTP_X_RATELIMIT_ACCOUNT_SUCCESS_REMAINING")
+                ? parseInt(response.headers.get("HTTP_X_RATELIMIT_ACCOUNT_SUCCESS_REMAINING")!)
+                : undefined,
+            accountSuccessReset: response.headers.get("HTTP_X_RATELIMIT_ACCOUNT_SUCCESS_RESET")
+                ? parseInt(response.headers.get("HTTP_X_RATELIMIT_ACCOUNT_SUCCESS_RESET")!)
+                : undefined,
+        }
+
         if (response.status === 401) {
             this.token = null
             const retryToken = await this.getAccessToken()
@@ -133,11 +155,13 @@ class GoCardlessClient {
 
     async getAccountBalances(accountId: string) {
         const result = await this.makeRequest(`/api/v2/accounts/${accountId}/balances/`)
+        await this.saveRateLimitInfo(accountId, "balances")
         return result.balances || []
     }
 
     async getAccountTransactions(accountId: string) {
         const result = await this.makeRequest(`/api/v2/accounts/${accountId}/transactions/`)
+        await this.saveRateLimitInfo(accountId, "transactions")
         if (result && result.transactions) {
             return [...(result.transactions.booked || []), ...(result.transactions.pending || [])]
         }
@@ -146,7 +170,45 @@ class GoCardlessClient {
 
     async getAccountDetails(accountId: string) {
         const result = await this.makeRequest(`/api/v2/accounts/${accountId}/`)
+        await this.saveRateLimitInfo(accountId, "details")
         return result
+    }
+
+    private async saveRateLimitInfo(accountId: string, scope: string) {
+        if (this.rateLimitInfo.accountSuccessRemaining === undefined) return
+
+        try {
+            const { createClient } = await import("./supabaseServer")
+            const supabase = await createClient()
+
+            // Find internal account id from gocardless_id
+            const { data: account } = await supabase
+                .from("gocardless_accounts")
+                .select("id")
+                .eq("gocardless_id", accountId)
+                .single()
+
+            if (!account) return
+
+            const resetTime = this.rateLimitInfo.accountSuccessReset
+                ? new Date(Date.now() + this.rateLimitInfo.accountSuccessReset * 1000)
+                : null
+
+            await supabase.from("gocardless_rate_limits").upsert(
+                {
+                    account_id: account.id,
+                    scope: scope,
+                    date: new Date().toISOString().split("T")[0],
+                    limit_per_day: this.rateLimitInfo.accountSuccessLimit || 4,
+                    remaining_calls: this.rateLimitInfo.accountSuccessRemaining,
+                    reset_time: resetTime?.toISOString(),
+                    last_updated: new Date().toISOString(),
+                },
+                { onConflict: "account_id,scope,date" }
+            )
+        } catch (error) {
+            console.error("[GoCardless] Error saving rate limits:", error)
+        }
     }
 
     getRateLimitInfo(): RateLimitInfo {
