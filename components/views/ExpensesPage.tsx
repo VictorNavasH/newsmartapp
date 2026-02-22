@@ -11,6 +11,8 @@ import {
   Tag,
   TrendingUp,
   Calendar,
+  Filter,
+  X,
 } from "lucide-react"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { TremorCard } from "@/components/ui/TremorCard"
@@ -40,7 +42,7 @@ import {
 import { ExpensesCategoriaTab } from "./expenses/ExpensesCategoriaTab"
 import { ExpensesProveedorTab } from "./expenses/ExpensesProveedorTab"
 import { ExpensesCalendarioTab } from "./expenses/ExpensesCalendarioTab"
-import { CATEGORY_COLORS, type StatusFilter, type ProviderStatusFilter, type ExpenseTab } from "./expenses/constants"
+import { CATEGORY_COLORS, STATUS_LABELS, type StatusFilter, type ProviderStatusFilter, type ExpenseTab } from "./expenses/constants"
 
 export default function ExpensesPage() {
   // State
@@ -61,6 +63,17 @@ export default function ExpensesPage() {
   const [detailStatusFilter, setDetailStatusFilter] = useState<string>("all")
   const [detailCategoryFilter, setDetailCategoryFilter] = useState<string>("all")
   const [detailTagFilter, setDetailTagFilter] = useState<string>("all")
+
+  // KPI filter: clicking a KPI card filters the detail table by that status
+  const [kpiFilter, setKpiFilter] = useState<"all" | "partial" | "pending" | "overdue">("all")
+
+  const handleKpiClick = (status: "all" | "partial" | "pending" | "overdue") => {
+    // Toggle: if already selected, reset to "all"
+    const newStatus = kpiFilter === status ? "all" : status
+    setKpiFilter(newStatus)
+    // Sync with the detail table status filter
+    setDetailStatusFilter(newStatus)
+  }
 
   const [activeTab, setActiveTab] = useState<ExpenseTab>("categoria")
   const [selectedProvider, setSelectedProvider] = useState<string>("all")
@@ -337,6 +350,14 @@ export default function ExpensesPage() {
 
   const hasActiveFilters = detailStatusFilter !== "all" || detailCategoryFilter !== "all" || detailTagFilter !== "all"
 
+  // Sync kpiFilter when detailStatusFilter changes from the dropdown
+  const handleDetailStatusFilterChange = (v: string) => {
+    setDetailStatusFilter(v)
+    if (v === "all" || v === "partial" || v === "pending" || v === "overdue") {
+      setKpiFilter(v as "all" | "partial" | "pending" | "overdue")
+    }
+  }
+
   const uniqueCategories = useMemo(() => {
     const cats = new Set<string>()
     expenses.forEach((e) => {
@@ -534,8 +555,13 @@ export default function ExpensesPage() {
 
       <div className="max-w-[1400px] mx-auto px-6 py-6 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Total Gastos */}
-          <TremorCard>
+          {/* Total Gastos — Clickable KPI */}
+          <TremorCard
+            className={`cursor-pointer transition-all hover:shadow-md ${kpiFilter === "all" && kpiFilter !== "all" ? "" : ""} ${
+              kpiFilter === "all" ? "ring-2 ring-[#02b1c4]/40" : "hover:ring-1 hover:ring-slate-200"
+            }`}
+            onClick={() => handleKpiClick("all")}
+          >
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <FileText className="w-5 h-5 text-[#02b1c4]" />
@@ -548,32 +574,46 @@ export default function ExpensesPage() {
             <div className="mb-4">
               <span className="text-3xl font-bold text-[#364f6b]">{formatCurrency(totals.total)}</span>
             </div>
-            <div className="border-t border-slate-200 pt-3 grid grid-cols-2 gap-2">
+            <div className="border-t border-slate-200 pt-3 grid grid-cols-3 gap-2">
               <div className="p-2 rounded-lg bg-[#17c3b2]/10 border border-[#17c3b2]/20">
                 <div className="flex items-center gap-1 mb-1">
                   <CheckCircle className="w-3 h-3 text-[#17c3b2]" />
                   <span className="text-[10px] font-bold text-slate-600 uppercase">Pagado</span>
-                  <span className="text-[10px] font-bold text-slate-500 ml-auto">
-                    {totals.total > 0 ? Math.round((totals.pagado / totals.total) * 100) : 0}%
-                  </span>
                 </div>
-                <p className="text-sm font-bold text-[#364f6b] text-right">{formatCurrency(totals.pagado)}</p>
+                <p className="text-xs font-bold text-[#17c3b2] text-right">
+                  {totals.total > 0 ? Math.round((totals.pagado / totals.total) * 100) : 0}%
+                </p>
               </div>
               <div className="p-2 rounded-lg bg-[#ffcb77]/10 border border-[#ffcb77]/20">
                 <div className="flex items-center gap-1 mb-1">
                   <Clock className="w-3 h-3 text-[#ffcb77]" />
-                  <span className="text-[10px] font-bold text-slate-600 uppercase">Pendiente</span>
-                  <span className="text-[10px] font-bold text-slate-500 ml-auto">
-                    {totals.total > 0 ? Math.round((totals.pendiente / totals.total) * 100) : 0}%
-                  </span>
+                  <span className="text-[10px] font-bold text-slate-600 uppercase">Pdte.</span>
                 </div>
-                <p className="text-sm font-bold text-[#364f6b] text-right">{formatCurrency(totals.pendiente)}</p>
+                <p className="text-xs font-bold text-[#ffcb77] text-right">
+                  {totals.total > 0 ? Math.round((totals.pendiente / totals.total) * 100) : 0}%
+                </p>
+              </div>
+              <div className="p-2 rounded-lg bg-[#fe6d73]/10 border border-[#fe6d73]/20">
+                <div className="flex items-center gap-1 mb-1">
+                  <AlertCircle className="w-3 h-3 text-[#fe6d73]" />
+                  <span className="text-[10px] font-bold text-slate-600 uppercase">Venc.</span>
+                </div>
+                <p className="text-xs font-bold text-[#fe6d73] text-right">
+                  {totals.total > 0 ? Math.round((totals.vencido / totals.total) * 100) : 0}%
+                </p>
               </div>
             </div>
           </TremorCard>
 
-          {/* Pagado */}
-          <TremorCard>
+          {/* Pagado — Clickable KPI (Verde) */}
+          <TremorCard
+            className={`cursor-pointer transition-all hover:shadow-md ${
+              kpiFilter === "partial"
+                ? "ring-2 ring-[#17c3b2] border-l-4 border-l-[#17c3b2]"
+                : "hover:ring-1 hover:ring-[#17c3b2]/30"
+            }`}
+            onClick={() => handleKpiClick("partial")}
+          >
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-5 h-5 text-[#17c3b2]" />
@@ -612,8 +652,17 @@ export default function ExpensesPage() {
             </div>
           </TremorCard>
 
-          {/* Vencido */}
-          <TremorCard className={totals.vencido > 0 ? "border-l-4 border-l-[#fe6d73]" : ""}>
+          {/* Vencido — Clickable KPI (Rojo) */}
+          <TremorCard
+            className={`cursor-pointer transition-all hover:shadow-md ${
+              kpiFilter === "overdue"
+                ? "ring-2 ring-[#fe6d73] border-l-4 border-l-[#fe6d73]"
+                : totals.vencido > 0
+                  ? "border-l-4 border-l-[#fe6d73] hover:ring-1 hover:ring-[#fe6d73]/30"
+                  : "hover:ring-1 hover:ring-slate-200"
+            }`}
+            onClick={() => handleKpiClick("overdue")}
+          >
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <AlertCircle className="w-5 h-5 text-[#fe6d73]" />
@@ -655,6 +704,22 @@ export default function ExpensesPage() {
           </TremorCard>
         </div>
 
+        {/* Indicador de filtro activo por KPI */}
+        {kpiFilter !== "all" && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 border border-slate-200 text-sm">
+            <Filter className="w-4 h-4 text-slate-500" />
+            <span className="text-slate-600">
+              Filtrando por: <strong>{STATUS_LABELS[kpiFilter]}</strong>
+            </span>
+            <button
+              onClick={() => handleKpiClick(kpiFilter)}
+              className="ml-auto text-slate-400 hover:text-slate-600"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         <div className="flex justify-center mb-6">
           <MenuBar items={expenseMenuItems} activeItem={getActiveMenuLabel()} onItemClick={handleExpenseMenuClick} />
         </div>
@@ -678,7 +743,7 @@ export default function ExpensesPage() {
             filteredTotal={filteredTotal}
             hasActiveFilters={hasActiveFilters}
             detailStatusFilter={detailStatusFilter}
-            setDetailStatusFilter={setDetailStatusFilter}
+            setDetailStatusFilter={handleDetailStatusFilterChange}
             detailCategoryFilter={detailCategoryFilter}
             setDetailCategoryFilter={setDetailCategoryFilter}
             detailTagFilter={detailTagFilter}

@@ -184,16 +184,25 @@ El Dashboard construye un `AlertContext` con métricas relevantes y lo pasa al h
 | `fetchExpenseSummaryByTags(tags, start, end)` | RPC `get_gastos_resumen_by_tags` | `ExpenseTagSummary[]` |
 | `fetchExpensesByDueDate(start, end, status)` | RPC `get_gastos_by_due_date` | `Expense[]` |
 
+### KPIs superiores (clicables)
+
+3 tarjetas KPI en la cabecera que actúan como filtros globales:
+- **Total Gastos** — Muestra importe total + 3 mini-indicadores (Pagado %, Pendiente %, Vencido %) con colores verde/amarillo/rojo
+- **Total Pagado** — Click para filtrar solo facturas pagadas (anillo verde activo)
+- **Total Vencido** — Click para filtrar solo facturas vencidas (anillo rojo activo)
+
+Click en un KPI activa/desactiva el filtro global que se sincroniza con el filtro de estado de la tab activa. Indicador de filtro activo visible debajo de los KPIs con botón de reset.
+
 ### Secciones (MenuBar con 3 tabs)
 
-1. **ExpensesCategoriaTab** — Selector de etiquetas, filtro de estado, PieChart de distribucion, resumen por categoria con barras de progreso, tabla de detalle de gastos con ordenacion (4 columnas) y 3 filtros (estado, categoria, etiqueta)
+1. **ExpensesCategoriaTab** — Selector de etiquetas, filtro de estado, PieChart de distribución, resumen por categoría con barras de progreso + % pendiente + fecha de vencimiento (si 100% pendiente), tabla de detalle con columnas reorganizadas (Estado visible sin scroll), indicadores de tags con alto % pendiente (≥70%), diferenciación visual de tags "No operativo"
 2. **ExpensesProveedorTab** — Filtros de proveedor y estado, PieChart de distribucion por proveedor, resumen con barras de progreso, tabla de detalle con ranking (medallas top 3)
 3. **ExpensesCalendarioTab** — 4 KPIs del mes, calendario visual con indicadores de estado por dia (color-coded), Sheet de detalle del dia seleccionado
 
 ### Filtros
 
-- Estado: `todos | pagado | pendiente | vencido`
-- Etiquetas de gasto (multi-select)
+- Estado: `todos | pagado | pendiente | vencido` (sincronizado con KPIs clicables)
+- Etiquetas de gasto (multi-select, con indicador visual de % pendiente alto)
 - DateRangePicker con calendario visual integrado
 - Fecha de emision o fecha de vencimiento
 - Proveedor (tab Proveedor)
@@ -203,7 +212,10 @@ El Dashboard construye un `AlertContext` con métricas relevantes y lo pasa al h
 
 - Totales por estado
 - Distribución porcentual por categoría
+- % pendiente por categoría y por tag
+- Fecha de vencimiento más próxima por categoría (para categorías 100% pendientes)
 - Facturas vencidas (fecha vencimiento < hoy)
+- Detección de tags "No operativo" (gastos personales/desplazamiento)
 
 ---
 

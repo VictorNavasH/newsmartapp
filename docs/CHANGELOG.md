@@ -8,6 +8,25 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 
 ## [Unreleased]
 
+### Mejorado
+- **Gastos — KPIs clicables con tres estados de color:**
+  - 3 tarjetas KPI (Total Gastos, Pagado, Vencido) ahora son clicables y filtran la tabla de detalle
+  - Total Gastos muestra 3 mini-indicadores con % pagado (verde), % pendiente (amarillo), % vencido (rojo)
+  - Click en KPI activa/desactiva filtro global sincronizado con el filtro de estado de cada tab
+  - Indicador visual de filtro activo debajo de los KPIs con botón de reset
+- **Gastos — % pendiente en Resumen por Categoría:**
+  - Cards de categoría muestran % pendiente junto al importe pendiente
+- **Gastos — Columnas de tabla reorganizadas:**
+  - Columna "Estado" movida después de "Proveedor" para ser visible sin scroll horizontal
+  - Orden: Fecha → Proveedor → Estado → Importe → Vencimiento → Categoría → Documento → Tags
+- **Gastos — Fecha de vencimiento en cards de categoría:**
+  - Cuando una categoría tiene 100% pendiente, muestra la fecha de vencimiento más próxima con icono CalendarClock
+- **Gastos — Indicador visual en tags con alto % pendiente:**
+  - Tags con ≥70% pendiente muestran icono AlertTriangle y badge rojo "XX% pdte"
+- **Gastos — Tag "No operativo":**
+  - Tags de gastos personales/desplazamiento (dietas, kilometraje, representación) se muestran con borde discontinuo, estilo italic y etiqueta "N/O"
+  - Lista configurable de palabras clave en `NON_OPERATIONAL_TAGS`
+
 ### Eliminado
 - **Forecasting y What-If eliminados por completo:**
   - Vistas: `ForecastingPage.tsx`, `WhatIfPage.tsx`

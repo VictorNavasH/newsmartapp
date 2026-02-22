@@ -10,6 +10,8 @@ import {
   ChevronDown,
   ChevronUp,
   Receipt,
+  AlertTriangle,
+  CalendarClock,
 } from "lucide-react"
 import { TremorCard, TremorTitle } from "@/components/ui/TremorCard"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -20,6 +22,22 @@ import { formatCurrency } from "@/lib/utils"
 import type { ExpenseTag, Expense, ExpenseTagSummary } from "@/types"
 import { ResponsiveContainer, PieChart as RechartsPieChart, Pie, Tooltip as RechartsTooltip } from "recharts"
 import { STATUS_LABELS, STATUS_COLORS, CATEGORY_COLORS, type StatusFilter } from "./constants"
+
+// Tags considerados "no operativos" (gastos personales/desplazamiento)
+const NON_OPERATIONAL_TAGS = [
+  "no operativo",
+  "personal",
+  "desplazamiento",
+  "dietas",
+  "kilometraje",
+  "representacion",
+]
+
+function isNonOperationalTag(tagName: string): boolean {
+  return NON_OPERATIONAL_TAGS.some(
+    (t) => tagName.toLowerCase().includes(t) || t.includes(tagName.toLowerCase()),
+  )
+}
 
 interface PieChartDataItem {
   name: string
@@ -90,6 +108,31 @@ export function ExpensesCategoriaTab({
   handleSort,
   expenses,
 }: ExpensesCategoriaTabProps) {
+  // Calcular % pendiente por tag para indicadores visuales
+  const tagPendingMap = new Map<string, number>()
+  summary.forEach((cat) => {
+    const pendingPercent = cat.total > 0 ? ((cat.pendiente) / cat.total) * 100 : 0
+    tagPendingMap.set(cat.tag_name, pendingPercent)
+  })
+
+  // Encontrar la fecha de vencimiento más próxima para categorías 100% pendientes
+  const getNextDueDateForCategory = (tagName: string): string | null => {
+    const catExpenses = expenses.filter(
+      (e) =>
+        e.tags?.some((tag) => {
+          const name = typeof tag === "string" ? tag : tag?.name
+          return name === tagName
+        }) && (e.status === "pending" || e.status === "overdue"),
+    )
+    if (catExpenses.length === 0) return null
+
+    const withDueDate = catExpenses
+      .filter((e) => e.due_date)
+      .sort((a, b) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime())
+
+    return withDueDate.length > 0 ? withDueDate[0].due_date : null
+  }
+
   return (
     <div className="space-y-6">
       {/* Selector de Tags */}
@@ -117,6 +160,9 @@ export function ExpensesCategoriaTab({
           <div className="flex gap-2 flex-wrap">
             {tags.map((tag) => {
               const isSelected = selectedTags.includes(tag.tag_name)
+              const pendingPct = tagPendingMap.get(tag.tag_name) || 0
+              const isHighPending = pendingPct >= 70
+              const isNonOp = isNonOperationalTag(tag.tag_name)
               return (
                 <button
                   key={tag.tag_name}
@@ -125,14 +171,29 @@ export function ExpensesCategoriaTab({
                     px-4 py-2 rounded-full text-sm font-medium transition-all
                     flex items-center gap-2
                     ${isSelected ? "bg-[#17c3b2] text-white shadow-md" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}
+                    ${isNonOp && !isSelected ? "border-2 border-dashed border-slate-300 bg-slate-50 italic" : ""}
                   `}
                 >
+                  {/* Indicador visual: % pendiente alto (item 5) */}
+                  {isHighPending && !isSelected && (
+                    <AlertTriangle className="w-3.5 h-3.5 text-[#fe6d73]" />
+                  )}
+                  {/* Tag "No operativo" label (item 6) */}
+                  {isNonOp && !isSelected && (
+                    <span className="text-[9px] uppercase font-bold text-slate-400 mr-0.5">N/O</span>
+                  )}
                   {tag.tag_name}
                   <span
                     className={`text-xs px-2 py-0.5 rounded-full ${isSelected ? "bg-white/20 text-white" : "bg-slate-200 text-slate-500"}`}
                   >
                     {tag.num_gastos}
                   </span>
+                  {/* Indicador de % pendiente */}
+                  {isHighPending && !isSelected && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#fe6d73]/15 text-[#fe6d73] font-bold">
+                      {Math.round(pendingPct)}% pdte
+                    </span>
+                  )}
                 </button>
               )
             })}
@@ -238,12 +299,31 @@ export function ExpensesCategoriaTab({
               {summary.map((cat, index) => {
                 const percentage = totals.total > 0 ? (cat.total / totals.total) * 100 : 0
                 const color = CATEGORY_COLORS[index % CATEGORY_COLORS.length]
+                const pendingPct = cat.total > 0 ? (cat.pendiente / cat.total) * 100 : 0
+                const isFullyPending = pendingPct >= 99
+                const isHighPending = pendingPct >= 70
+                const nextDueDate = isFullyPending ? getNextDueDateForCategory(cat.tag_name) : null
+                const isNonOp = isNonOperationalTag(cat.tag_name)
+
                 return (
-                  <div key={cat.tag_name} className="p-3 bg-slate-50 rounded-lg">
+                  <div
+                    key={cat.tag_name}
+                    className={`p-3 rounded-lg ${
+                      isHighPending ? "bg-[#fe6d73]/5 border border-[#fe6d73]/20" : "bg-slate-50"
+                    } ${isNonOp ? "border-l-2 border-l-slate-300" : ""}`}
+                  >
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
                         <span className="font-medium text-slate-700">{cat.tag_name}</span>
+                        {isNonOp && (
+                          <span className="text-[8px] uppercase font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-500">
+                            No operativo
+                          </span>
+                        )}
+                        {isHighPending && (
+                          <AlertTriangle className="w-3.5 h-3.5 text-[#fe6d73]" />
+                        )}
                       </div>
                       <span className="font-bold text-slate-800">{formatCurrency(cat.total)}</span>
                     </div>
@@ -256,10 +336,25 @@ export function ExpensesCategoriaTab({
                       </div>
                       <span className="text-xs text-slate-500 w-12 text-right">{percentage.toFixed(1)}%</span>
                     </div>
-                    <div className="flex items-center gap-4 text-xs text-slate-500">
+                    <div className="flex items-center gap-4 text-xs text-slate-500 flex-wrap">
                       <span>{cat.num_facturas} facturas</span>
                       <span className="text-[#17c3b2]">Pagado: {formatCurrency(cat.pagado)}</span>
-                      <span className="text-[#ffcb77]">Pendiente: {formatCurrency(cat.pendiente)}</span>
+                      <span className={pendingPct >= 70 ? "text-[#fe6d73] font-medium" : "text-[#ffcb77]"}>
+                        Pendiente: {formatCurrency(cat.pendiente)}
+                        {pendingPct > 0 && (
+                          <span className="ml-1 text-[10px]">({Math.round(pendingPct)}%)</span>
+                        )}
+                      </span>
+                      {/* Item 4: Fecha de vencimiento cuando es 100% pendiente */}
+                      {isFullyPending && nextDueDate && (
+                        <span className="flex items-center gap-1 text-[#fe6d73] font-medium">
+                          <CalendarClock className="w-3 h-3" />
+                          Vence: {new Date(nextDueDate).toLocaleDateString("es-ES", {
+                            day: "2-digit",
+                            month: "short",
+                          })}
+                        </span>
+                      )}
                     </div>
                   </div>
                 )
@@ -269,7 +364,7 @@ export function ExpensesCategoriaTab({
         </div>
       </div>
 
-      {/* Tabla de Gastos */}
+      {/* Tabla de Gastos — Columnas reorganizadas: Estado visible antes (item 3) */}
       <TremorCard>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -386,9 +481,8 @@ export function ExpensesCategoriaTab({
                         ))}
                     </div>
                   </th>
-                  <th className="text-left p-3 font-semibold text-slate-600">Documento</th>
-                  <th className="text-left p-3 font-semibold text-slate-600">Categoría</th>
-                  <th className="text-left p-3 font-semibold text-slate-600">Tags</th>
+                  {/* Item 3: Estado movido antes para ser visible sin scroll */}
+                  <th className="text-center p-3 font-semibold text-slate-600">Estado</th>
                   <th
                     className="text-right p-3 font-semibold text-slate-600 cursor-pointer hover:bg-slate-100"
                     onClick={() => handleSort("total_amount")}
@@ -417,13 +511,15 @@ export function ExpensesCategoriaTab({
                         ))}
                     </div>
                   </th>
-                  <th className="text-center p-3 font-semibold text-slate-600">Estado</th>
+                  <th className="text-left p-3 font-semibold text-slate-600">Categoría</th>
+                  <th className="text-left p-3 font-semibold text-slate-600">Documento</th>
+                  <th className="text-left p-3 font-semibold text-slate-600">Tags</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredExpenses.map((expense) => (
                   <tr key={expense.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                    <td className="p-3 text-slate-700">
+                    <td className="p-3 text-slate-700 whitespace-nowrap">
                       {new Date(expense.fecha).toLocaleDateString("es-ES", {
                         day: "2-digit",
                         month: "short",
@@ -432,46 +528,25 @@ export function ExpensesCategoriaTab({
                     </td>
                     <td className="p-3">
                       <div className="flex items-center gap-2">
-                        <Building2 className="w-4 h-4 text-slate-400" />
-                        <span className="font-medium text-slate-700">{expense.proveedor}</span>
+                        <Building2 className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                        <span className="font-medium text-slate-700 truncate max-w-[200px]">{expense.proveedor}</span>
                       </div>
                     </td>
-                    <td className="p-3 text-slate-600">{expense.document_number || "-"}</td>
-                    <td className="p-3 text-slate-600">{expense.categoria_nombre}</td>
-                    <td className="p-3">
-                      <div className="flex flex-wrap gap-1">
-                        {expense.tags?.map((tag, index) => {
-                          let tagObj: { name: string; normalized_name: string } | null = null
-                          if (typeof tag === "string") {
-                            try {
-                              tagObj = JSON.parse(tag)
-                            } catch {
-                              tagObj = null
-                            }
-                          } else if (typeof tag === "object" && tag !== null) {
-                            tagObj = tag as { name: string; normalized_name: string }
-                          }
-                          const tagName = tagObj?.name || String(tag)
-                          return (
-                            <Badge
-                              key={tagObj?.normalized_name || index}
-                              variant="secondary"
-                              className="text-xs"
-                              style={{
-                                backgroundColor: `${BRAND_COLORS.primary}20`,
-                                color: BRAND_COLORS.primary,
-                              }}
-                            >
-                              {tagName}
-                            </Badge>
-                          )
-                        })}
-                      </div>
+                    {/* Item 3: Estado ahora visible sin scroll */}
+                    <td className="p-3 text-center">
+                      <Badge
+                        style={{
+                          backgroundColor: `${STATUS_COLORS[expense.status]}20`,
+                          color: STATUS_COLORS[expense.status],
+                        }}
+                      >
+                        {STATUS_LABELS[expense.status] || expense.status}
+                      </Badge>
                     </td>
-                    <td className="p-3 text-right font-semibold text-[#364f6b]">
+                    <td className="p-3 text-right font-semibold text-[#364f6b] whitespace-nowrap">
                       {formatCurrency(expense.total_amount)}
                     </td>
-                    <td className="p-3 text-slate-600">
+                    <td className="p-3 text-slate-600 whitespace-nowrap">
                       {expense.due_date ? (
                         <span
                           className={
@@ -490,15 +565,43 @@ export function ExpensesCategoriaTab({
                         "-"
                       )}
                     </td>
-                    <td className="p-3 text-center">
-                      <Badge
-                        style={{
-                          backgroundColor: `${STATUS_COLORS[expense.status]}20`,
-                          color: STATUS_COLORS[expense.status],
-                        }}
-                      >
-                        {STATUS_LABELS[expense.status] || expense.status}
-                      </Badge>
+                    <td className="p-3 text-slate-600">{expense.categoria_nombre}</td>
+                    <td className="p-3 text-slate-600">{expense.document_number || "-"}</td>
+                    <td className="p-3">
+                      <div className="flex flex-wrap gap-1">
+                        {expense.tags?.map((tag, index) => {
+                          let tagObj: { name: string; normalized_name: string } | null = null
+                          if (typeof tag === "string") {
+                            try {
+                              tagObj = JSON.parse(tag)
+                            } catch {
+                              tagObj = null
+                            }
+                          } else if (typeof tag === "object" && tag !== null) {
+                            tagObj = tag as { name: string; normalized_name: string }
+                          }
+                          const tagName = tagObj?.name || String(tag)
+                          const isNonOp = isNonOperationalTag(tagName)
+                          return (
+                            <Badge
+                              key={tagObj?.normalized_name || index}
+                              variant="secondary"
+                              className={`text-xs ${isNonOp ? "border border-dashed border-slate-300 italic" : ""}`}
+                              style={
+                                isNonOp
+                                  ? { backgroundColor: "#f1f5f9", color: "#94a3b8" }
+                                  : {
+                                      backgroundColor: `${BRAND_COLORS.primary}20`,
+                                      color: BRAND_COLORS.primary,
+                                    }
+                              }
+                            >
+                              {isNonOp && <span className="mr-0.5 text-[8px] font-bold">N/O</span>}
+                              {tagName}
+                            </Badge>
+                          )
+                        })}
+                      </div>
                     </td>
                   </tr>
                 ))}
