@@ -26,8 +26,6 @@ import {
   UtensilsCrossed,
   ShieldCheck,
   CalendarDays,
-  Sparkles,
-  ArrowRight,
   AlertTriangle,
 } from "lucide-react"
 import { PageHeader } from "@/components/layout/PageHeader"
@@ -460,94 +458,43 @@ export function DashboardPage() {
       />
 
       <PageContent>
-        {/* SECCIÓN 0: SMART SUMMARY (NEW) */}
-        {!loading && (
-          <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
-            <div className="relative overflow-hidden rounded-3xl border border-white/20 bg-white/40 shadow-2xl backdrop-blur-xl group">
-              {/* Background Glow */}
-              <div className="absolute -top-24 -right-24 w-64 h-64 bg-[#02b1c4]/20 rounded-full blur-3xl group-hover:bg-[#02b1c4]/30 transition-colors" />
-              <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-[#17c3b2]/20 rounded-full blur-3xl" />
-
-              <div className="relative p-6 md:p-8 flex flex-col md:flex-row items-center gap-6">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#02b1c4] to-[#17c3b2] flex items-center justify-center shadow-lg shadow-[#02b1c4]/20 shrink-0">
-                  <Sparkles className="w-8 h-8 text-white animate-pulse" />
-                </div>
-
-                <div className="flex-1 space-y-2 text-center md:text-left">
-                  <h2 className="text-2xl font-bold text-[#364f6b]">Resumen Ejecutivo NÜA</h2>
-                  <p className="text-slate-600 leading-relaxed max-w-3xl">
-                    {conciliacionResumen && (conciliacionResumen.pedidosRetrasados > 0 || conciliacionResumen.albaranesAged > 0) ? (
-                      <>
-                        Hay <span className="font-bold text-[#fe6d73]">{conciliacionResumen.pedidosRetrasados} pedidos retrasados</span> y
-                        <span className="font-bold text-[#fe6d73]"> {conciliacionResumen.albaranesAged} albaranes</span> con más de 30 días.
-                        La facturación semanal está al <span className="font-bold text-[#17c3b2]">{weekRevenueTotals.porcentajeTotal.toFixed(0)}%</span> del objetivo.
-                      </>
-                    ) : (
-                      <>
-                        Todo marcha según lo previsto. La facturación semanal está al <span className="font-bold text-[#17c3b2]">{weekRevenueTotals.porcentajeTotal.toFixed(0)}%</span> y
-                        la fiabilidad de conciliación es óptima.
-                      </>
-                    )}
-                  </p>
-                </div>
-
-                <div className="flex gap-4 shrink-0">
-                  <button
-                    onClick={() => window.location.href = '#/compras'}
-                    className="group/btn flex items-center gap-2 px-5 py-2.5 bg-[#364f6b] hover:bg-[#223143] rounded-2xl text-white font-semibold transition-all shadow-md hover:shadow-xl"
-                  >
-                    Ver Acción
-                    <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* FILA 1: Weather + Reservas Semana */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-1">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+          <div className="lg:col-span-2 flex flex-col gap-4">
             <WeatherCard />
 
             {/* Health Mini-Cards (Cross-module) */}
             {!loading && conciliacionResumen && (
-              <div className="mt-6 flex flex-col gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div
                   onClick={() => window.location.href = '#/compras'}
-                  className="p-4 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer flex items-center justify-between group"
+                  className="p-3 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer flex items-center gap-3 group"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-[#fe6d73]/10 flex items-center justify-center">
-                      <AlertTriangle className="w-5 h-5 text-[#fe6d73]" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">Pedidos Retrasados</p>
-                      <p className="text-lg font-bold text-[#364f6b]">{conciliacionResumen.pedidosRetrasados}</p>
-                    </div>
+                  <div className="w-9 h-9 rounded-xl bg-[#fe6d73]/10 flex items-center justify-center shrink-0">
+                    <AlertTriangle className="w-4 h-4 text-[#fe6d73]" />
                   </div>
-                  <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-[#02b1c4] group-hover:translate-x-1 transition-all" />
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase truncate">Pedidos Retrasados</p>
+                    <p className="text-lg font-bold text-[#364f6b] leading-tight">{conciliacionResumen.pedidosRetrasados}</p>
+                  </div>
                 </div>
 
                 <div
                   onClick={() => window.location.href = '#/compras'}
-                  className="p-4 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer flex items-center justify-between group"
+                  className="p-3 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer flex items-center gap-3 group"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-[#ffcb77]/10 flex items-center justify-center">
-                      <Clock className="w-5 h-5 text-[#ffcb77]" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">Albaranes Antiguos</p>
-                      <p className="text-lg font-bold text-[#364f6b]">{conciliacionResumen.albaranesAged}</p>
-                    </div>
+                  <div className="w-9 h-9 rounded-xl bg-[#ffcb77]/10 flex items-center justify-center shrink-0">
+                    <Clock className="w-4 h-4 text-[#ffcb77]" />
                   </div>
-                  <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-[#02b1c4] group-hover:translate-x-1 transition-all" />
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase truncate">Albaranes Antiguos</p>
+                    <p className="text-lg font-bold text-[#364f6b] leading-tight">{conciliacionResumen.albaranesAged}</p>
+                  </div>
                 </div>
               </div>
             )}
           </div>
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-3">
             <WeekReservationsCard />
           </div>
         </div>

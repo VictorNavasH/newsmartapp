@@ -8,6 +8,17 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 
 ## [Unreleased]
 
+### Eliminado
+- **Dashboard — Resumen Ejecutivo NÜA desactivado:**
+  - Eliminada la tarjeta "Resumen Ejecutivo NÜA" (Smart AI Summary) del dashboard — no era funcional ni navegaba a ningún sitio
+  - Eliminados imports no usados (`Sparkles`, `ArrowRight`)
+
+### Cambiado
+- **Dashboard — Layout Weather + Reservas mejorado:**
+  - Grid cambiado de `3 cols (1+2)` a `5 cols (2+3)` para dar más espacio al tiempo y mejor proporción
+  - Mini-cards de alertas (Pedidos Retrasados, Albaranes Antiguos) ahora en grid horizontal 2 columnas en vez de vertical apilado
+  - Mejor aprovechamiento del espacio sin gaps innecesarios
+
 ### Añadido
 - **Compras — Albaranes sin facturar clicables (Item 1):**
   - KPI "Albaranes sin Facturar" ahora es clicable y abre un Sheet/Drawer lateral
