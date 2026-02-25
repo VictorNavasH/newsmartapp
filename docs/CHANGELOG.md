@@ -8,6 +8,16 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 
 ## [Unreleased]
 
+### Corregido
+- **Gastos — Colores pendiente/vencido en tab Categoría:**
+  - Corregido bug donde facturas pendientes dentro de plazo se mostraban en rojo (color de vencido) en vez de amarillo (color de pendiente)
+  - Root cause: RPC `get_gastos_resumen_by_tags` agrupa todo lo no pagado como "pendiente" sin distinguir vencido
+  - Fix: Nuevo `tagStatusMap` (useMemo) calcula montos reales de `pending` vs `overdue` por tag desde el array `expenses` que tiene el status correcto
+  - Tag filter badges: indicador rojo solo cuando hay gastos vencidos, amarillo para alto % pendiente en plazo
+  - Category summary cards: fondo rojo solo con gastos vencidos, fondo amarillo para alto % pendiente en plazo
+  - Ahora se muestran "Pendiente" (amarillo) y "Vencido" (rojo) como líneas separadas en el resumen por categoría
+  - Fecha de vencimiento usa color contextual (rojo si hay vencidos, amarillo si solo pendientes)
+
 ### Eliminado
 - **Dashboard — Resumen Ejecutivo NÜA desactivado:**
   - Eliminada la tarjeta "Resumen Ejecutivo NÜA" (Smart AI Summary) del dashboard — no era funcional ni navegaba a ningún sitio

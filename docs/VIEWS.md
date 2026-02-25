@@ -195,14 +195,14 @@ Click en un KPI activa/desactiva el filtro global que se sincroniza con el filtr
 
 ### Secciones (MenuBar con 3 tabs)
 
-1. **ExpensesCategoriaTab** — Selector de etiquetas, filtro de estado, PieChart de distribución, resumen por categoría con barras de progreso + % pendiente + fecha de vencimiento (si 100% pendiente), tabla de detalle con columnas reorganizadas (Estado visible sin scroll), indicadores de tags con alto % pendiente (≥70%), diferenciación visual de tags "No operativo"
+1. **ExpensesCategoriaTab** — Selector de etiquetas, filtro de estado, PieChart de distribución, resumen por categoría con barras de progreso + separación real de "Pendiente" (amarillo, en plazo) y "Vencido" (rojo, fuera de plazo) + fecha de vencimiento próxima, tabla de detalle con columnas reorganizadas (Estado visible sin scroll), indicadores de tags con % vencido (rojo) o alto % pendiente en plazo (amarillo ≥70%), diferenciación visual de tags "No operativo". Usa `tagStatusMap` (useMemo) para calcular montos reales de pending/overdue por tag desde `expenses` (el RPC summary agrupa todo como "pendiente")
 2. **ExpensesProveedorTab** — Filtros de proveedor y estado, PieChart de distribucion por proveedor, resumen con barras de progreso, tabla de detalle con ranking (medallas top 3)
 3. **ExpensesCalendarioTab** — 4 KPIs del mes, calendario visual con indicadores de estado por dia (color-coded), Sheet de detalle del dia seleccionado
 
 ### Filtros
 
 - Estado: `todos | pagado | pendiente | vencido` (sincronizado con KPIs clicables)
-- Etiquetas de gasto (multi-select, con indicador visual de % pendiente alto)
+- Etiquetas de gasto (multi-select, con indicador visual de % vencido en rojo o % pendiente en plazo alto en amarillo)
 - DateRangePicker con calendario visual integrado
 - Fecha de emision o fecha de vencimiento
 - Proveedor (tab Proveedor)

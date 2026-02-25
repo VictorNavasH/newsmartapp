@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+import { useMemo } from "react"
 import {
   PieChartIcon,
   Filter,
@@ -108,11 +109,46 @@ export function ExpensesCategoriaTab({
   handleSort,
   expenses,
 }: ExpensesCategoriaTabProps) {
-  // Calcular % pendiente por tag para indicadores visuales
+  // Calcular montos reales de vencido y pendiente por tag desde los gastos individuales
+  // (el summary del RPC agrupa todo como "pendiente", pero expenses tiene el status correcto)
+  const tagStatusMap = useMemo(() => {
+    const map = new Map<string, { pendiente: number; vencido: number; total: number }>()
+
+    expenses.forEach((expense) => {
+      expense.tags?.forEach((tag) => {
+        const tagName = typeof tag === "string" ? tag : tag?.name
+        if (!tagName) return
+
+        const current = map.get(tagName) || { pendiente: 0, vencido: 0, total: 0 }
+        current.total += expense.total_amount
+
+        if (expense.status === "pending") {
+          current.pendiente += expense.total_amount
+        } else if (expense.status === "overdue") {
+          current.vencido += expense.total_amount
+        }
+
+        map.set(tagName, current)
+      })
+    })
+
+    return map
+  }, [expenses])
+
+  // Calcular % vencido y pendiente por tag para indicadores visuales
   const tagPendingMap = new Map<string, number>()
+  const tagOverdueMap = new Map<string, number>()
   summary.forEach((cat) => {
-    const pendingPercent = cat.total > 0 ? ((cat.pendiente) / cat.total) * 100 : 0
-    tagPendingMap.set(cat.tag_name, pendingPercent)
+    const statusData = tagStatusMap.get(cat.tag_name)
+    // Usar datos reales de expenses para % de vencido y pendiente
+    const overduePct = statusData && statusData.total > 0
+      ? (statusData.vencido / cat.total) * 100
+      : 0
+    const pendingPct = statusData && statusData.total > 0
+      ? (statusData.pendiente / cat.total) * 100
+      : 0
+    tagPendingMap.set(cat.tag_name, pendingPct)
+    tagOverdueMap.set(cat.tag_name, overduePct)
   })
 
   // Encontrar la fecha de vencimiento más próxima para categorías 100% pendientes
@@ -160,8 +196,9 @@ export function ExpensesCategoriaTab({
           <div className="flex gap-2 flex-wrap">
             {tags.map((tag) => {
               const isSelected = selectedTags.includes(tag.tag_name)
+              const overduePct = tagOverdueMap.get(tag.tag_name) || 0
               const pendingPct = tagPendingMap.get(tag.tag_name) || 0
-              const isHighPending = pendingPct >= 70
+              const hasOverdue = overduePct > 0
               const isNonOp = isNonOperationalTag(tag.tag_name)
               return (
                 <button
@@ -174,11 +211,11 @@ export function ExpensesCategoriaTab({
                     ${isNonOp && !isSelected ? "border-2 border-dashed border-slate-300 bg-slate-50 italic" : ""}
                   `}
                 >
-                  {/* Indicador visual: % pendiente alto (item 5) */}
-                  {isHighPending && !isSelected && (
+                  {/* Indicador visual: tiene gastos vencidos (rojo) */}
+                  {hasOverdue && !isSelected && (
                     <AlertTriangle className="w-3.5 h-3.5 text-[#fe6d73]" />
                   )}
-                  {/* Tag "No operativo" label (item 6) */}
+                  {/* Tag "No operativo" label */}
                   {isNonOp && !isSelected && (
                     <span className="text-[9px] uppercase font-bold text-slate-400 mr-0.5">N/O</span>
                   )}
@@ -188,9 +225,14 @@ export function ExpensesCategoriaTab({
                   >
                     {tag.num_gastos}
                   </span>
-                  {/* Indicador de % pendiente */}
-                  {isHighPending && !isSelected && (
+                  {/* Indicador de % vencido (rojo) o pendiente (amarillo) */}
+                  {hasOverdue && !isSelected && (
                     <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#fe6d73]/15 text-[#fe6d73] font-bold">
+                      {Math.round(overduePct)}% venc.
+                    </span>
+                  )}
+                  {!hasOverdue && pendingPct >= 70 && !isSelected && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#ffcb77]/15 text-[#ffcb77] font-bold">
                       {Math.round(pendingPct)}% pdte
                     </span>
                   )}
@@ -299,17 +341,26 @@ export function ExpensesCategoriaTab({
               {summary.map((cat, index) => {
                 const percentage = totals.total > 0 ? (cat.total / totals.total) * 100 : 0
                 const color = CATEGORY_COLORS[index % CATEGORY_COLORS.length]
-                const pendingPct = cat.total > 0 ? (cat.pendiente / cat.total) * 100 : 0
-                const isFullyPending = pendingPct >= 99
-                const isHighPending = pendingPct >= 70
-                const nextDueDate = isFullyPending ? getNextDueDateForCategory(cat.tag_name) : null
+                // Usar datos reales de expenses (no del RPC summary que agrupa todo como "pendiente")
+                const statusData = tagStatusMap.get(cat.tag_name)
+                const realOverdue = statusData?.vencido || 0
+                const realPending = statusData?.pendiente || 0
+                const overduePct = cat.total > 0 ? (realOverdue / cat.total) * 100 : 0
+                const pendingInTermPct = cat.total > 0 ? (realPending / cat.total) * 100 : 0
+                const hasOverdue = realOverdue > 0
+                const hasUnpaid = realOverdue > 0 || realPending > 0
+                const nextDueDate = hasUnpaid ? getNextDueDateForCategory(cat.tag_name) : null
                 const isNonOp = isNonOperationalTag(cat.tag_name)
 
                 return (
                   <div
                     key={cat.tag_name}
                     className={`p-3 rounded-lg ${
-                      isHighPending ? "bg-[#fe6d73]/5 border border-[#fe6d73]/20" : "bg-slate-50"
+                      hasOverdue
+                        ? "bg-[#fe6d73]/5 border border-[#fe6d73]/20"
+                        : pendingInTermPct >= 70
+                          ? "bg-[#ffcb77]/5 border border-[#ffcb77]/20"
+                          : "bg-slate-50"
                     } ${isNonOp ? "border-l-2 border-l-slate-300" : ""}`}
                   >
                     <div className="flex items-center justify-between mb-1">
@@ -321,7 +372,7 @@ export function ExpensesCategoriaTab({
                             No operativo
                           </span>
                         )}
-                        {isHighPending && (
+                        {hasOverdue && (
                           <AlertTriangle className="w-3.5 h-3.5 text-[#fe6d73]" />
                         )}
                       </div>
@@ -339,15 +390,33 @@ export function ExpensesCategoriaTab({
                     <div className="flex items-center gap-4 text-xs text-slate-500 flex-wrap">
                       <span>{cat.num_facturas} facturas</span>
                       <span className="text-[#17c3b2]">Pagado: {formatCurrency(cat.pagado)}</span>
-                      <span className={pendingPct >= 70 ? "text-[#fe6d73] font-medium" : "text-[#ffcb77]"}>
-                        Pendiente: {formatCurrency(cat.pendiente)}
-                        {pendingPct > 0 && (
-                          <span className="ml-1 text-[10px]">({Math.round(pendingPct)}%)</span>
-                        )}
-                      </span>
-                      {/* Item 4: Fecha de vencimiento cuando es 100% pendiente */}
-                      {isFullyPending && nextDueDate && (
-                        <span className="flex items-center gap-1 text-[#fe6d73] font-medium">
+                      {/* Pendiente en plazo: siempre amarillo */}
+                      {realPending > 0 && (
+                        <span className="text-[#ffcb77]">
+                          Pendiente: {formatCurrency(realPending)}
+                          {pendingInTermPct > 0 && (
+                            <span className="ml-1 text-[10px]">({Math.round(pendingInTermPct)}%)</span>
+                          )}
+                        </span>
+                      )}
+                      {/* Vencido: siempre rojo */}
+                      {realOverdue > 0 && (
+                        <span className="text-[#fe6d73] font-medium">
+                          Vencido: {formatCurrency(realOverdue)}
+                          {overduePct > 0 && (
+                            <span className="ml-1 text-[10px]">({Math.round(overduePct)}%)</span>
+                          )}
+                        </span>
+                      )}
+                      {/* Sin pendiente ni vencido pero con importes no pagados del summary */}
+                      {realPending === 0 && realOverdue === 0 && cat.pendiente > 0 && (
+                        <span className="text-[#ffcb77]">
+                          Pendiente: {formatCurrency(cat.pendiente)}
+                        </span>
+                      )}
+                      {/* Fecha de vencimiento próxima */}
+                      {hasUnpaid && nextDueDate && (
+                        <span className={`flex items-center gap-1 font-medium ${hasOverdue ? "text-[#fe6d73]" : "text-[#ffcb77]"}`}>
                           <CalendarClock className="w-3 h-3" />
                           Vence: {new Date(nextDueDate).toLocaleDateString("es-ES", {
                             day: "2-digit",
