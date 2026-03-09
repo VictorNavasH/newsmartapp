@@ -16,9 +16,9 @@ export function useOperationsRealTime() {
   return useQuery({
     queryKey: ["operationsRealTime"],
     queryFn: fetchOperationsRealTime,
-    // Datos en tiempo real: refrescar cada 2 minutos
-    refetchInterval: 2 * 60 * 1000,
-    staleTime: 1 * 60 * 1000,
+    // Datos en tiempo real: refrescar cada 5 minutos
+    refetchInterval: 5 * 60 * 1000,
+    staleTime: 3 * 60 * 1000,
   })
 }
 
