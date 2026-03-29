@@ -12,14 +12,16 @@ export async function POST(request: NextRequest) {
 
         const supabase = await createClient()
 
-        // 1. Obtener la institución de la base de datos
+        // 1. Obtener la institución de la base de datos (buscar por UUID o por gocardless_id)
         const { data: localInstitution, error: localError } = await supabase
             .from("gocardless_institutions")
             .select("*")
-            .eq("id", institution_id)
+            .or(`id.eq.${institution_id},gocardless_id.eq.${institution_id}`)
+            .limit(1)
             .single()
 
         if (localError || !localInstitution) {
+            console.error("[API] Institution not found for id:", institution_id, localError?.message)
             return NextResponse.json({ error: "Institution not found" }, { status: 404 })
         }
 

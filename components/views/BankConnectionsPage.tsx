@@ -260,7 +260,7 @@ export default function BankConnectionsPage() {
     const redirectUrl = buildCallbackUrl()
 
     const result = await createRequisition(
-      institution.gocardless_id || institution.id,
+      institution.id,
       redirectUrl,
       reference
     )

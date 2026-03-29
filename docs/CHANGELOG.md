@@ -9,6 +9,23 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 ## [Unreleased]
 
 ### Corregido
+- **Conexiones Bancarias — Error "Institution not found" al renovar consentimiento:**
+  - `handleSelectInstitution` enviaba `gocardless_id` (ej: "BBVA_ES_BBVAESMM") pero la API esperaba el UUID local
+  - Corregido en `TreasuryPage.tsx` y `BankConnectionsPage.tsx` para enviar `institution.id` (UUID)
+  - API `requisitions/create` ahora también busca por ambos campos (`id` o `gocardless_id`) como fallback
+
+### Añadido
+- **Reservas — Horario de turnos y ocupación corregida:**
+  - Lunes y martes mediodía se marcan como "Cerrado" por defecto en la tarjeta de reservas semanales
+  - Ocupación se calcula solo sobre turnos abiertos (66 plazas si solo cena, 132 si ambos)
+  - Media semanal excluye turnos cerrados del cálculo
+  - UI muestra "Cerrado" en gris para turnos no operativos
+  - Soporte para excepciones vía tabla `horario_excepciones` en Supabase
+  - Nuevo campo `closedLunch`/`closedDinner` en tipo `WeekReservationDay`
+  - Integración con CoverManager: workflow n8n semanal que sincroniza turnos abiertos desde `availability_calendar_total` a Supabase
+  - Archivo: `scripts/n8n_workflow_covermanager_horarios.json`
+
+### Corregido
 - **Gastos — Colores pendiente/vencido en tab Categoría:**
   - Corregido bug donde facturas pendientes dentro de plazo se mostraban en rojo (color de vencido) en vez de amarillo (color de pendiente)
   - Root cause: RPC `get_gastos_resumen_by_tags` agrupa todo lo no pagado como "pendiente" sin distinguir vencido

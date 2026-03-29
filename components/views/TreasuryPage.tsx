@@ -468,7 +468,7 @@ export default function TreasuryPage() {
     const redirectUrl = `${origin}/?gocardless_callback=true`
 
     const result = await createRequisition(
-      institution.gocardless_id || institution.id,
+      institution.id,
       redirectUrl,
       reference,
     )
