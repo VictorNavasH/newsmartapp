@@ -8,6 +8,18 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 
 ## [Unreleased]
 
+### Eliminado
+- **Dashboard — Mini-tarjetas "Pedidos Retrasados" y "Albaranes Antiguos":**
+  - Eliminadas las dos health mini-cards que aparecían debajo de la previsión del tiempo
+  - Limpieza: import `AlertTriangle` ya no se usa y se ha quitado de `DashboardPage.tsx`
+  - El estado `conciliacionResumen` se mantiene porque sigue alimentando el sistema de alertas (`useAlerts`)
+
+### Cambiado
+- **Dashboard — Previsión 7 días ahora alinea altura con Reservas Semana:**
+  - El grid `Weather + Reservas` pasa de `items-start` a `items-stretch`
+  - `WeatherCard` (que ya tenía `h-full flex flex-col`) ahora ocupa toda la altura de la fila
+  - Resultado: ambas tarjetas quedan visualmente a la misma altura
+
 ### Corregido
 - **Conexiones Bancarias — Error "Institution not found" al renovar consentimiento:**
   - `handleSelectInstitution` enviaba `gocardless_id` (ej: "BBVA_ES_BBVAESMM") pero la API esperaba el UUID local

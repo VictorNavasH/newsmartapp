@@ -26,7 +26,6 @@ import {
   UtensilsCrossed,
   ShieldCheck,
   CalendarDays,
-  AlertTriangle,
 } from "lucide-react"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { PageContent } from "@/components/layout/PageContent"
@@ -37,6 +36,16 @@ import { ExportButton } from "@/components/ui/ExportButton"
 import { exportToCSV, exportToPDF } from "@/lib/exportUtils"
 import { formatCurrency, formatNumber, formatTime, formatDateLong } from "@/lib/utils"
 import { BRAND_COLORS, CHART_CONFIG } from "@/constants"
+import {
+  DEMO_FINANCIAL_KPIS,
+  DEMO_LIVE_DATA,
+  getDemoLaborCostData,
+  getDemoWeekRevenueData,
+  DEMO_KPI_TARGETS,
+  DEMO_FOOD_COST_AVG,
+  DEMO_LABOR_COST_MONTHLY_AVG,
+  DEMO_CONCILIACION,
+} from "@/lib/demoData"
 import {
   BarChart as RechartsBarChart,
   Bar,
@@ -52,7 +61,7 @@ import {
   Legend,
 } from "recharts"
 
-export function DashboardPage() {
+export function DashboardPage({ demoMode = false }: { demoMode?: boolean }) {
   const [liveData, setLiveData] = useState<RealTimeData | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -111,9 +120,22 @@ export function DashboardPage() {
   )
 
   useEffect(() => {
+    if (demoMode) {
+      // En modo demo usamos datos estáticos con buenos números
+      setLiveData(DEMO_LIVE_DATA)
+      setFinancialKPIs(DEMO_FINANCIAL_KPIS)
+      setLaborCostData(getDemoLaborCostData())
+      setWeekRevenueData(getDemoWeekRevenueData())
+      setKpiTargets(DEMO_KPI_TARGETS)
+      setFoodCostAvg(DEMO_FOOD_COST_AVG)
+      setConciliacionResumen(DEMO_CONCILIACION)
+      setDbConnected(true)
+      setLoading(false)
+      return
+    }
     loadData()
     loadKPITargets().then(setKpiTargets)
-  }, [loadData])
+  }, [loadData, demoMode])
 
   const currentKPIs = useMemo(() => {
     return financialKPIs.find((k) => k.periodo === financialPeriod) || null
@@ -176,9 +198,9 @@ export function DashboardPage() {
       totalRevenue += d.ventas_netas || 0
     }
 
-    if (totalRevenue <= 0) return 0
+    if (totalRevenue <= 0) return demoMode ? DEMO_LABOR_COST_MONTHLY_AVG : 0
     return Math.round((totalCost / totalRevenue) * 1000) / 10
-  }, [laborCostData])
+  }, [laborCostData, demoMode])
 
   const weekRevenueChartData = useMemo(() => {
     return weekRevenueData.map((d) => ({
@@ -459,40 +481,9 @@ export function DashboardPage() {
 
       <PageContent>
         {/* FILA 1: Weather + Reservas Semana */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
-          <div className="lg:col-span-2 flex flex-col gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-stretch">
+          <div className="lg:col-span-2">
             <WeatherCard />
-
-            {/* Health Mini-Cards (Cross-module) */}
-            {!loading && conciliacionResumen && (
-              <div className="grid grid-cols-2 gap-3">
-                <div
-                  onClick={() => window.location.href = '#/compras'}
-                  className="p-3 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer flex items-center gap-3 group"
-                >
-                  <div className="w-9 h-9 rounded-xl bg-[#fe6d73]/10 flex items-center justify-center shrink-0">
-                    <AlertTriangle className="w-4 h-4 text-[#fe6d73]" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase truncate">Pedidos Retrasados</p>
-                    <p className="text-lg font-bold text-[#364f6b] leading-tight">{conciliacionResumen.pedidosRetrasados}</p>
-                  </div>
-                </div>
-
-                <div
-                  onClick={() => window.location.href = '#/compras'}
-                  className="p-3 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer flex items-center gap-3 group"
-                >
-                  <div className="w-9 h-9 rounded-xl bg-[#ffcb77]/10 flex items-center justify-center shrink-0">
-                    <Clock className="w-4 h-4 text-[#ffcb77]" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase truncate">Albaranes Antiguos</p>
-                    <p className="text-lg font-bold text-[#364f6b] leading-tight">{conciliacionResumen.albaranesAged}</p>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
           <div className="lg:col-span-3">
             <WeekReservationsCard />
