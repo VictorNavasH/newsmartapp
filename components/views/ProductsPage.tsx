@@ -497,6 +497,8 @@ export default function ProductsPage() {
     if (searchQuery.length < 2) return []
     const query = searchQuery.toLowerCase()
     return searchData
+      // Excluir filas sin ventas reales (solo anulaciones) para cuadrar con el Ranking
+      .filter((p) => p.unidades > 0 && p.facturado > 0)
       .filter((p) => p.producto_nombre.toLowerCase().includes(query))
       .sort((a, b) => {
         // Sort by date desc, then turno

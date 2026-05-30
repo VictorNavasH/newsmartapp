@@ -21,6 +21,11 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
   - Resultado: ambas tarjetas quedan visualmente a la misma altura
 
 ### Corregido
+- **Mix de Producto — Buscador descuadraba con el Ranking por incluir anulaciones:**
+  - El Buscador sumaba filas con `unidades = 0` / solo anulaciones, mientras que el Ranking las excluye (`unidades > 0 && facturado > 0`)
+  - Añadido el mismo filtro en `searchResults` (`ProductsPage.tsx`) para que totales y filas cuadren entre ambas pestañas
+  - Nota: los filtros propios del Buscador (Turno/Período/Fechas) siguen siendo independientes de la selección global de la cabecera por decisión de producto
+
 - **Conexiones Bancarias — Error "Institution not found" al renovar consentimiento:**
   - `handleSelectInstitution` enviaba `gocardless_id` (ej: "BBVA_ES_BBVAESMM") pero la API esperaba el UUID local
   - Corregido en `TreasuryPage.tsx` y `BankConnectionsPage.tsx` para enviar `institution.id` (UUID)
