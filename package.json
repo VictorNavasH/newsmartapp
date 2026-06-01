@@ -14,7 +14,6 @@
     "lodash": "4.17.21"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.100.1",
     "@cfworker/json-schema": "latest",
     "@emotion/is-prop-valid": "latest",
     "@google/genai": "1.30.0",

@@ -21,7 +21,6 @@ if (!SUPABASE_ANON_KEY) {
 
 // Variables opcionales
 export const AI_API_KEY = process.env.IA_ASSISTANT_SMART_APP || null
-export const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || null
 
 // Variable opcional — URL del webhook n8n para el asistente AI
 export const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL || null
