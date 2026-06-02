@@ -1,22 +1,11 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { NAVIGATION_ITEMS } from "@/constants"
 
-const VALID_PATHS = new Set([
-  "/",
-  "/reservations",
-  "/revenue",
-  "/expenses",
-  "/costs",
-  "/purchases",
-  "/operations",
-  "/products",
-  "/treasury",
-  "/invoices",
-  "/tablet-usage",
-  "/ai-assistant",
-  "/settings",
-])
+// Se deriva de NAVIGATION_ITEMS para que siempre esté en sincronía:
+// añadir una vista al menú la hace navegable automáticamente (evita olvidos como /agent).
+const VALID_PATHS = new Set(NAVIGATION_ITEMS.map((item) => item.path))
 
 export function useAppRouter() {
   const getInitialPath = (): string => {
