@@ -8,6 +8,11 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 
 ## [Unreleased]
 
+### Corregido
+- **Navegación — la pestaña "Agent" no abría al hacer clic:**
+  - `useAppRouter` tenía `VALID_PATHS` **hardcodeada a mano** y le faltaba `/agent`, así que `navigate("/agent")` caía a `/` (el clic en el menú no hacía nada).
+  - Ahora `VALID_PATHS` se **deriva de `NAVIGATION_ITEMS`** → cualquier vista del menú es navegable automáticamente y no se vuelve a desincronizar al añadir nuevas.
+
 ### Añadido
 - **Nueva sección "Agent" (`/agent`) — panel de control del agente NÜA (Hermes):**
   - Vista nueva en el menú lateral que lee el estado del agente desde las tablas `hermes_*` de Supabase (el VPS sincroniza cada ~5 min; la app solo lee, rol `authenticated`).
