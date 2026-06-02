@@ -718,3 +718,25 @@ Además de la página completa del asistente, existe un **widget flotante** que 
 - Chips contextuales según la vista actual (`ASSISTANT_CHIPS[currentPath]`)
 - Mismo flujo que SmartAssistantPage: POST `/api/chat`
 - Se diferencia de la página completa en: tamaño reducido, overlay sobre contenido
+
+---
+
+## Vista Agent (`/agent`)
+
+| | |
+|---|---|
+| **Componente** | `components/views/AgentPage.tsx` |
+| **Ruta** | `/agent` (SPA, `case` en `app/page.tsx`) |
+| **Datos** | Tablas `hermes_*` de Supabase vía `hooks/queries/useHermesData.ts` |
+| **Objetivo** | Panel de control del agente NÜA (Hermes Agent v0.15.1, VPS) — solo lectura |
+
+Panel de monitorización. El VPS sincroniza su estado a Supabase cada ~5 min; la app solo lee.
+
+Secciones (tabs `MenuBar`):
+1. **Vista General** — badge online/offline (online si `updated_at < 10 min`), versión, modelo, sesiones activas. Recursos VPS (RAM/CPU con barras y colores: verde <60%, amarillo <80%, rojo ≥80%). Consumo de API (gasto mensual, saldo, cache hit, tokens 30d) + gráfico de tokens/día (`hermes_analytics_daily`).
+2. **Memoria** — subtabs Perfil (`target=user`) / Sistema, notas en tarjetas.
+3. **Skills** — grid con badge activa/inactiva, categoría, resalta las `is_custom`.
+4. **Cron** — tabla: estado, schedule, próxima/última ejecución, resultado (ok/error).
+5. **Sesiones** — origen (telegram/cli/cron), modelo, tokens, preview, última actividad.
+
+Auto-refresh vía React Query (estado cada 60s). Todas las secciones manejan estados vacíos/null (las tablas se rellenan cuando el agente sincroniza).

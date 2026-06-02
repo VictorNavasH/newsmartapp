@@ -68,3 +68,13 @@ export {
   useFoodCostProducts,
 } from "./useProductsData"
 
+// Agent (Hermes) — estado, memoria, sesiones, cron, skills, analítica
+export {
+  useHermesStatus,
+  useHermesMemory,
+  useHermesSessions,
+  useHermesCronJobs,
+  useHermesSkills,
+  useHermesAnalytics,
+} from "./useHermesData"
+

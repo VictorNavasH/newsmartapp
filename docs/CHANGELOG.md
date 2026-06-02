@@ -8,6 +8,15 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 
 ## [Unreleased]
 
+### Añadido
+- **Nueva sección "Agent" (`/agent`) — panel de control del agente NÜA (Hermes):**
+  - Vista nueva en el menú lateral que lee el estado del agente desde las tablas `hermes_*` de Supabase (el VPS sincroniza cada ~5 min; la app solo lee, rol `authenticated`).
+  - Secciones (tabs `MenuBar`): **Vista General** (estado online/offline, recursos VPS RAM/CPU con colores de alerta, consumo de API: gasto mensual/saldo/cache hit/tokens 30d, y gráfico de tokens por día — `hermes_analytics_daily`), **Memoria** (Perfil/Sistema), **Skills** (grid con activa/inactiva + custom), **Cron** (tabla con estado, schedule, próxima/última ejecución y resultado), **Sesiones** (origen telegram/cli/cron, modelo, tokens, preview).
+  - Online si `hermes_status.updated_at < 10 min`. Auto-refresh vía React Query (estado cada 60s). Maneja estados vacíos/null (las tablas se rellenan cuando el agente sincroniza).
+  - Nuevos: `components/views/AgentPage.tsx`, `lib/hermesService.ts`, `hooks/queries/useHermesData.ts`, `types/hermes.ts`. Item de nav + `case "/agent"` en `app/page.tsx`.
+  - Estilo: claro, mismos componentes que el resto (`TremorCard`, `PageHeader`, `PageContent`, `MenuBar`, recharts).
+  - Migración SQL de referencia de las tablas en `supabase/migrations/20260602_create_hermes_tables.sql`.
+
 ### Eliminado
 - **Dashboard — Mini-tarjetas "Pedidos Retrasados" y "Albaranes Antiguos":**
   - Eliminadas las dos health mini-cards que aparecían debajo de la previsión del tiempo

@@ -814,3 +814,18 @@ Tipos añadidos para el flujo embebido de conexión/renovación de bancos vía G
 | `BankRequisitionCreateResult` | `success: boolean; link?: string; reference?: string; error?: string` | Respuesta de POST `/api/requisitions/create` |
 | `BankRequisitionStatus` | `status: string; reference: string` | Respuesta de GET `/api/requisitions/status/[ref]`. Códigos: CR=created, GC=gave_consent, LN=linked, RJ=rejected, EX=expired |
 | `BankInitialSyncResult` | `success: boolean; synced?: { accounts: number; transactions: number }; error?: string` | Respuesta de POST `/api/sync/initial` |
+
+---
+
+## `types/hermes.ts` — Agent (Hermes)
+
+Tipos de las 6 tablas `hermes_*` que alimentan la vista `/agent`. Todos los campos pueden ser `null` (se rellenan cuando el VPS sincroniza).
+
+| Tipo | Tabla | Campos clave |
+|------|-------|--------------|
+| `HermesStatus` | `hermes_status` | `gateway_state`, `version`, `model_name`, `cpu_usage_pct`, `ram_usage_mb`/`ram_total_mb`, `monthly_spend_usd`, `api_balance_usd`, `tokens_input_30d`/`tokens_output_30d`, `cache_hit_pct`, `updated_at`. |
+| `HermesMemory` | `hermes_memory` | `target` (user/system), `content`, `updated_at`. |
+| `HermesSession` | `hermes_sessions` | `title`, `model`, `source` (telegram/cli/cron), `message_count`, `token_count`, `preview`, `last_active`, `is_active`. |
+| `HermesCronJob` | `hermes_cron_jobs` | `name`, `schedule`, `status`, `next_run`, `last_run_at`, `last_run_status`. |
+| `HermesSkill` | `hermes_skills` | `name`, `category`, `enabled`, `is_custom`. |
+| `HermesAnalyticsDay` | `hermes_analytics_daily` | `date`, `tokens_input`/`tokens_output`, `cost_usd`, `cache_hit_pct`, `models_used` (jsonb). |

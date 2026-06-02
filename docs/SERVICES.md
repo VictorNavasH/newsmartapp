@@ -779,3 +779,20 @@ Endpoint `GET` que agrega el estado actual de sincronización desde 3 tablas de 
 | `gocardless_rate_limits` | `remaining_calls` y `limit_per_day` por scope para el día actual |
 | `gocardless_accounts` | `last_sync_at` más reciente |
 | `gocardless_requisitions` | `created_at` y `institution_id` de la requisition activa ("LN") más reciente |
+
+---
+
+## `lib/hermesService.ts`
+
+Lectura del dashboard del agente NÜA (Hermes). Cliente Supabase, rol `authenticated` (RLS de solo lectura sobre las tablas `hermes_*`).
+
+| Función | Tabla | Descripción |
+|---------|-------|-------------|
+| `fetchHermesStatus()` | `hermes_status` | Fila única (id=1): estado, versión, modelo, recursos VPS, gasto/saldo, tokens 30d, cache hit. |
+| `fetchHermesMemory()` | `hermes_memory` | Notas de memoria (`target` user/system), recientes primero. |
+| `fetchHermesSessions(limit=50)` | `hermes_sessions` | Últimas sesiones por `last_active`. |
+| `fetchHermesCronJobs()` | `hermes_cron_jobs` | Tareas programadas por `next_run`. |
+| `fetchHermesSkills()` | `hermes_skills` | Skills instaladas, alfabéticas. |
+| `fetchHermesAnalytics(days=30)` | `hermes_analytics_daily` | Analítica diaria de consumo, orden cronológico. |
+
+Hooks React Query en `hooks/queries/useHermesData.ts` (auto-refresh: estado 60s, sesiones/cron 2 min). Todas las funciones devuelven `null`/`[]` ante error o tablas vacías.

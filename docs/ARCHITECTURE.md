@@ -442,3 +442,18 @@ Endpoint de documentación.
 
 **Query params:** `?file=CHANGELOG.md` (whitelist de archivos en `docs/`)
 **Response:** Contenido del archivo markdown
+
+---
+
+## Integración del agente NÜA (Hermes)
+
+El agente **Hermes** (bot de Telegram, Gemini) corre en un **VPS independiente** y **no se conecta directamente** con la Smart App. En su lugar:
+
+```
+VPS Hermes ──(cron Python cada ~5 min, curl REST)──> Supabase (tablas hermes_*) <──(lee)── Smart App /agent
+```
+
+- **Cero puertos abiertos**: la app solo **lee** las tablas `hermes_*` con el cliente Supabase normal (rol `authenticated`).
+- **RLS**: lectura para `authenticated`; escritura solo con `service_role` o cabecera `x-sync-secret` (la usa el cron del VPS). Ver `supabase/migrations/20260602_create_hermes_tables.sql`.
+- **Tablas**: `hermes_status` (fila única id=1), `hermes_memory`, `hermes_sessions`, `hermes_cron_jobs`, `hermes_skills`, `hermes_analytics_daily`.
+- **Frontend**: ruta SPA `/agent` (`AgentPage`), servicio `lib/hermesService.ts`, hooks `hooks/queries/useHermesData.ts`. Auto-refresh con React Query.

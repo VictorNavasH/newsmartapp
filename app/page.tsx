@@ -20,6 +20,7 @@ const TreasuryPage = lazy(() => import("@/components/views/TreasuryPage"))
 const FacturacionPage = lazy(() => import("@/components/views/FacturacionPage"))
 const TabletUsagePage = lazy(() => import("@/components/views/TabletUsagePage"))
 const SmartAssistantPage = lazy(() => import("@/components/views/SmartAssistantPage"))
+const AgentPage = lazy(() => import("@/components/views/AgentPage"))
 const SettingsPage = lazy(() => import("@/components/views/SettingsPage"))
 
 function ViewLoadingFallback() {
@@ -90,6 +91,8 @@ export default function App() {
         return <TabletUsagePage />
       case "/ai-assistant":
         return <SmartAssistantPage />
+      case "/agent":
+        return <AgentPage />
       case "/settings":
         return <SettingsPage userName={user?.user_metadata?.full_name} userEmail={user?.email} />
       default:
