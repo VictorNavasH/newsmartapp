@@ -584,52 +584,87 @@ const OperationsPage: React.FC = () => {
               ))}
             </div>
           ) : topProductos.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50">
-                    <th className="text-left p-3 font-semibold text-slate-600">Producto</th>
-                    <th className="text-left p-3 font-semibold text-slate-600">Categoría</th>
-                    <th className="text-right p-3 font-semibold text-slate-600">Pedidos</th>
-                    <th className="text-right p-3 font-semibold text-slate-600">T. Medio</th>
-                    <th className="text-right p-3 font-semibold text-slate-600">Mediana</th>
-                    <th className="text-right p-3 font-semibold text-slate-600">Máximo</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {topProductos.map((prod, index) => (
-                    <tr key={index} className="border-b border-slate-100 hover:bg-slate-50">
-                      <td className="p-3 font-medium text-slate-700">{prod.producto}</td>
-                      <td className="p-3">
-                        <Badge
-                          variant="outline"
-                          style={{
-                            borderColor: BRAND_COLORS.primary, // Changed from dynamic to fixed primary color
-                            color: BRAND_COLORS.primary, // Changed from dynamic to fixed primary color
-                          }}
-                        >
-                          {prod.categoria}
-                        </Badge>
-                      </td>
-                      <td className="p-3 text-right text-slate-600">{prod.total_pedidos}</td>
-                      <td
-                        className="p-3 text-right font-bold"
+            <>
+              {/* Cards (móvil) */}
+              <div className="md:hidden space-y-3">
+                {topProductos.map((prod, index) => (
+                  <div key={index} className="border border-slate-200 rounded-xl p-3 space-y-2 bg-white">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-sm font-medium text-[#364f6b] truncate">{prod.producto}</p>
+                      <span
+                        className="shrink-0 text-sm font-semibold"
                         style={{ color: getTimeColor(prod.tiempo_medio, "cocina") }}
                       >
                         {prod.tiempo_medio.toFixed(1)} min
-                      </td>
-                      <td className="p-3 text-right text-slate-600">{prod.mediana.toFixed(1)} min</td>
-                      <td
-                        className="p-3 text-right"
-                        style={{ color: prod.tiempo_max > 45 ? BRAND_COLORS.error : "inherit" }}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
+                      <Badge
+                        variant="outline"
+                        style={{
+                          borderColor: BRAND_COLORS.primary,
+                          color: BRAND_COLORS.primary,
+                        }}
                       >
-                        {prod.tiempo_max.toFixed(1)} min
-                      </td>
+                        {prod.categoria}
+                      </Badge>
+                      <span>Pedidos: {prod.total_pedidos}</span>
+                      <span style={{ color: prod.tiempo_max > 45 ? BRAND_COLORS.error : "inherit" }}>
+                        Máx: {prod.tiempo_max.toFixed(1)} min
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Tabla (escritorio) */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50">
+                      <th className="text-left p-3 font-semibold text-slate-600">Producto</th>
+                      <th className="text-left p-3 font-semibold text-slate-600">Categoría</th>
+                      <th className="text-right p-3 font-semibold text-slate-600">Pedidos</th>
+                      <th className="text-right p-3 font-semibold text-slate-600">T. Medio</th>
+                      <th className="text-right p-3 font-semibold text-slate-600">Mediana</th>
+                      <th className="text-right p-3 font-semibold text-slate-600">Máximo</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {topProductos.map((prod, index) => (
+                      <tr key={index} className="border-b border-slate-100 hover:bg-slate-50">
+                        <td className="p-3 font-medium text-slate-700">{prod.producto}</td>
+                        <td className="p-3">
+                          <Badge
+                            variant="outline"
+                            style={{
+                              borderColor: BRAND_COLORS.primary, // Changed from dynamic to fixed primary color
+                              color: BRAND_COLORS.primary, // Changed from dynamic to fixed primary color
+                            }}
+                          >
+                            {prod.categoria}
+                          </Badge>
+                        </td>
+                        <td className="p-3 text-right text-slate-600">{prod.total_pedidos}</td>
+                        <td
+                          className="p-3 text-right font-bold"
+                          style={{ color: getTimeColor(prod.tiempo_medio, "cocina") }}
+                        >
+                          {prod.tiempo_medio.toFixed(1)} min
+                        </td>
+                        <td className="p-3 text-right text-slate-600">{prod.mediana.toFixed(1)} min</td>
+                        <td
+                          className="p-3 text-right"
+                          style={{ color: prod.tiempo_max > 45 ? BRAND_COLORS.error : "inherit" }}
+                        >
+                          {prod.tiempo_max.toFixed(1)} min
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           ) : (
             <div className="py-8 text-center text-slate-400">Sin datos de productos</div>
           )}
@@ -642,7 +677,42 @@ const OperationsPage: React.FC = () => {
               <AlertTriangle className="w-5 h-5" style={{ color: BRAND_COLORS.error }} />
               <TremorTitle>Items con Retraso ({">"}30 min)</TremorTitle>
             </div>
-            <div className="overflow-x-auto max-h-[300px]">
+            {/* Cards (móvil) */}
+            <div className="md:hidden space-y-3 max-h-[300px] overflow-y-auto">
+              {alertItems.map((item, index) => (
+                <div key={index} className="border border-slate-200 rounded-xl p-3 space-y-2 bg-white">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-sm font-medium text-[#364f6b] truncate">{item.producto}</p>
+                    <span className="shrink-0 text-sm font-semibold" style={{ color: BRAND_COLORS.error }}>
+                      {item.minutos_operativo.toFixed(0)} min
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
+                    <span>
+                      {new Date(item.fecha).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })} ·{" "}
+                      {item.hora}:00
+                    </span>
+                    <span>Mesa: {item.mesa}</span>
+                    <Badge
+                      style={{
+                        backgroundColor:
+                          item.minutos_operativo > 60
+                            ? BRAND_COLORS.error
+                            : item.minutos_operativo > 45
+                              ? "#f59e0b"
+                              : BRAND_COLORS.warning,
+                        color: "white",
+                      }}
+                    >
+                      {item.minutos_operativo > 60 ? "Crítico" : item.minutos_operativo > 45 ? "Alto" : "Medio"}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Tabla (escritorio) */}
+            <div className="hidden md:block overflow-x-auto max-h-[300px]">
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-white">
                   <tr className="border-b border-slate-200 bg-slate-50">

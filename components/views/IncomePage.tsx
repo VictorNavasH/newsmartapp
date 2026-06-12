@@ -846,63 +846,99 @@ const IncomePage: React.FC = () => {
                 ))}
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-200 bg-slate-50">
-                      <th className="text-left p-3 font-semibold text-slate-600">Ranking</th>
-                      <th className="text-left p-3 font-semibold text-slate-600">Mesa</th>
-                      <th className="text-right p-3 font-semibold text-slate-600">Total €</th>
-                      <th className="text-right p-3 font-semibold text-slate-600">Facturas</th>
-                      <th className="text-right p-3 font-semibold text-slate-600">Propinas</th>
-                      <th className="text-right p-3 font-semibold text-slate-700">Avg/Factura</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {tableData.map((table, index) => {
-                      const medalEmoji = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : null
+              <>
+                {/* Cards (móvil) */}
+                <div className="md:hidden space-y-3">
+                  {tableData.map((table, index) => {
+                    const medalEmoji = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `${index + 1}`
 
-                      return (
-                        <tr
-                          key={table.table_id}
-                          className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors"
-                          style={{
-                            backgroundColor: selectedTable === table.table_id ? `${BRAND_COLORS.primary}08` : undefined,
-                          }}
-                          onClick={() => setSelectedTable(table.table_id)}
-                        >
-                          <td className="p-3">
-                            {medalEmoji ? (
-                              <span className="text-lg">{medalEmoji}</span>
-                            ) : (
-                              <span
-                                className="inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold"
-                                style={{
-                                  backgroundColor: "#f1f5f9",
-                                  color: "#64748b",
-                                }}
-                              >
-                                {index + 1}
-                              </span>
-                            )}
-                          </td>
-                          <td className="p-3 font-medium text-slate-700">{table.nombre_mesa}</td>
-                          <td className="p-3 text-right font-bold" style={{ color: BRAND_COLORS.primary }}>
+                    return (
+                      <div
+                        key={table.table_id}
+                        className="border border-slate-200 rounded-xl p-3 space-y-2 bg-white cursor-pointer"
+                        style={{
+                          backgroundColor: selectedTable === table.table_id ? `${BRAND_COLORS.primary}08` : undefined,
+                        }}
+                        onClick={() => setSelectedTable(table.table_id)}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <p className="text-sm font-medium text-[#364f6b] truncate">
+                            <span className="mr-1.5">{medalEmoji}</span>
+                            {table.nombre_mesa}
+                          </p>
+                          <span className="shrink-0 text-sm font-semibold" style={{ color: BRAND_COLORS.primary }}>
                             {formatCurrency(table.total_facturado)}
-                          </td>
-                          <td className="p-3 text-right text-slate-600">{table.num_facturas}</td>
-                          <td className="p-3 text-right text-slate-600">
-                            {formatCurrency(table.total_propinas)}
-                          </td>
-                          <td className="p-3 text-right font-medium text-slate-700">
-                            {formatCurrency(table.avg_factura)}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
+                          <span>Facturas: {table.num_facturas}</span>
+                          <span>Propinas: {formatCurrency(table.total_propinas)}</span>
+                          <span>Avg/Factura: {formatCurrency(table.avg_factura)}</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Tabla (escritorio) */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-200 bg-slate-50">
+                        <th className="text-left p-3 font-semibold text-slate-600">Ranking</th>
+                        <th className="text-left p-3 font-semibold text-slate-600">Mesa</th>
+                        <th className="text-right p-3 font-semibold text-slate-600">Total €</th>
+                        <th className="text-right p-3 font-semibold text-slate-600">Facturas</th>
+                        <th className="text-right p-3 font-semibold text-slate-600">Propinas</th>
+                        <th className="text-right p-3 font-semibold text-slate-700">Avg/Factura</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tableData.map((table, index) => {
+                        const medalEmoji = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : null
+
+                        return (
+                          <tr
+                            key={table.table_id}
+                            className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors"
+                            style={{
+                              backgroundColor: selectedTable === table.table_id ? `${BRAND_COLORS.primary}08` : undefined,
+                            }}
+                            onClick={() => setSelectedTable(table.table_id)}
+                          >
+                            <td className="p-3">
+                              {medalEmoji ? (
+                                <span className="text-lg">{medalEmoji}</span>
+                              ) : (
+                                <span
+                                  className="inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold"
+                                  style={{
+                                    backgroundColor: "#f1f5f9",
+                                    color: "#64748b",
+                                  }}
+                                >
+                                  {index + 1}
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-3 font-medium text-slate-700">{table.nombre_mesa}</td>
+                            <td className="p-3 text-right font-bold" style={{ color: BRAND_COLORS.primary }}>
+                              {formatCurrency(table.total_facturado)}
+                            </td>
+                            <td className="p-3 text-right text-slate-600">{table.num_facturas}</td>
+                            <td className="p-3 text-right text-slate-600">
+                              {formatCurrency(table.total_propinas)}
+                            </td>
+                            <td className="p-3 text-right font-medium text-slate-700">
+                              {formatCurrency(table.avg_factura)}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </TremorCard>
         </div>

@@ -440,7 +440,36 @@ export function ComprasAnalisisTab({
             {/* Top Productos */}
             <TremorCard>
               <TremorTitle>Productos</TremorTitle>
-              <div className="mt-4 max-h-[400px] overflow-y-auto">
+              {/* Cards (móvil) */}
+              <div className="md:hidden mt-4 max-h-[400px] overflow-y-auto space-y-3">
+                {topProductos.length > 0 ? (
+                  topProductos.map((producto, idx) => (
+                    <div key={`top-prod-card-${idx}`} className="border border-slate-200 rounded-xl p-3 space-y-2 bg-white">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-[#364f6b] truncate">{producto.producto}</p>
+                          {producto.familia && (
+                            <p className="text-[10px] text-slate-400 uppercase tracking-tighter truncate">{producto.familia}</p>
+                          )}
+                        </div>
+                        <span className="shrink-0 text-sm font-semibold text-[#364f6b]">
+                          {formatCurrency(producto.total)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
+                        <span>{producto.cantidad} {producto.formato || ""}</span>
+                        <span>{formatCurrency(producto.total / (producto.cantidad || 1))} / unidad</span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex items-center justify-center h-[200px] text-slate-400">
+                    Sin datos para el período
+                  </div>
+                )}
+              </div>
+              {/* Tabla (escritorio) */}
+              <div className="hidden md:block mt-4 max-h-[400px] overflow-y-auto">
                 {topProductos.length > 0 ? (
                   <table className="w-full text-sm">
                     <thead>
@@ -494,7 +523,65 @@ export function ComprasAnalisisTab({
             <p className="text-sm text-slate-500 mb-4">
               {proveedoresRanking.length} proveedores con actividad
             </p>
-            <div className="mt-2 overflow-x-auto">
+            {/* Cards (móvil) */}
+            <div className="md:hidden mt-2 space-y-3">
+              {proveedoresRanking.length > 0 ? (
+                proveedoresRanking.map((prov) => {
+                  const reliability = prov.fiabilidad_documental
+                  const reliabilityColor = reliability >= 90 ? "#17c3b2" : reliability >= 70 ? "#ffcb77" : "#fe6d73"
+                  return (
+                    <div key={prov.gstock_supplier_id} className="border border-slate-200 rounded-xl p-3 space-y-2 bg-white">
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="min-w-0 text-sm font-medium text-[#364f6b] truncate">{prov.nombre}</p>
+                        <span className="shrink-0 text-sm font-semibold text-[#02b1c4]">
+                          {formatCurrency(prov.total_compras)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
+                        <span>
+                          {prov.num_facturas} facturas · {prov.num_albaranes} docs
+                        </span>
+                        {prov.albaranes_sin_facturar > 0 && (
+                          <span className="flex items-center gap-1.5">
+                            Sin facturar:
+                            <Badge
+                              variant="outline"
+                              className="text-[#fe6d73] border-[#fe6d73]/20 bg-[#fe6d73]/5"
+                            >
+                              {prov.albaranes_sin_facturar}
+                            </Badge>
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
+                        <span>Fiabilidad</span>
+                        <div className="flex items-center justify-end gap-2">
+                          <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full"
+                              style={{ width: `${reliability}%`, backgroundColor: reliabilityColor }}
+                            />
+                          </div>
+                          <span
+                            className="font-bold text-xs"
+                            style={{ color: reliabilityColor }}
+                          >
+                            {reliability}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })
+              ) : (
+                <p className="py-8 text-center text-slate-400 text-sm">
+                  Sin datos de proveedores para el período
+                </p>
+              )}
+            </div>
+
+            {/* Tabla (escritorio) */}
+            <div className="hidden md:block mt-2 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 text-slate-600">

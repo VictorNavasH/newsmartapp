@@ -163,6 +163,10 @@ El Dashboard construye un `AlertContext` con métricas relevantes y lo pasa al h
 - Agregación de métricas diarias a total del período
 - Rankings de mesa por facturación total
 
+### Responsive
+
+- Tabla "Métricas Detalladas por Mesa": en `< md` se muestra como tarjetas (`md:hidden`) con ranking + mesa, total facturado, facturas, propinas y avg/factura; la tabla queda `hidden md:block`. La tarjeta es clicable (selecciona la mesa).
+
 ---
 
 ## 4. Gastos
@@ -197,8 +201,8 @@ Click en un KPI activa/desactiva el filtro global que se sincroniza con el filtr
 
 ### Secciones (MenuBar con 3 tabs)
 
-1. **ExpensesCategoriaTab** — Selector de etiquetas, filtro de estado, PieChart de distribución, resumen por categoría con barras de progreso + separación real de "Pendiente" (amarillo, en plazo) y "Vencido" (rojo, fuera de plazo) + fecha de vencimiento próxima, tabla de detalle con columnas reorganizadas (Estado visible sin scroll), indicadores de tags con % vencido (rojo) o alto % pendiente en plazo (amarillo ≥70%), diferenciación visual de tags "No operativo". Usa `tagStatusMap` (useMemo) para calcular montos reales de pending/overdue por tag desde `expenses` (el RPC summary agrupa todo como "pendiente")
-2. **ExpensesProveedorTab** — Filtros de proveedor y estado, PieChart de distribucion por proveedor, resumen con barras de progreso, tabla de detalle con ranking (medallas top 3)
+1. **ExpensesCategoriaTab** — Selector de etiquetas, filtro de estado, PieChart de distribución, resumen por categoría con barras de progreso + separación real de "Pendiente" (amarillo, en plazo) y "Vencido" (rojo, fuera de plazo) + fecha de vencimiento próxima, tabla de detalle con columnas reorganizadas (Estado visible sin scroll), indicadores de tags con % vencido (rojo) o alto % pendiente en plazo (amarillo ≥70%), diferenciación visual de tags "No operativo". Usa `tagStatusMap` (useMemo) para calcular montos reales de pending/overdue por tag desde `expenses` (el RPC summary agrupa todo como "pendiente"). La tabla de detalle es solo escritorio (`hidden md:block`); en móvil se renderiza como tarjetas (proveedor + importe, fecha, badge de estado, vencimiento y categoría; se omiten Documento y Tags)
+2. **ExpensesProveedorTab** — Filtros de proveedor y estado, PieChart de distribucion por proveedor, resumen con barras de progreso, tabla de detalle con ranking (medallas top 3). La tabla es solo escritorio (`hidden md:block`); en móvil se renderiza como tarjetas (ranking + proveedor + total, facturas, pagado, pendiente y vencido coloreados; se omite % Total)
 3. **ExpensesCalendarioTab** — 4 KPIs del mes, calendario visual con indicadores de estado por dia (color-coded), Sheet de detalle del dia seleccionado
 
 ### Filtros
@@ -295,9 +299,9 @@ Click en un KPI activa/desactiva el filtro global que se sincroniza con el filtr
 
 ### Secciones (MenuBar con 3 tabs)
 
-1. **Pedidos** — Listado de pedidos de compra con estado, proveedor, líneas, totales. KPIs: Pedidos Pendientes, Albaranes sin Facturar (clicable → drawer), Facturas Pendientes, Actividad del Mes. Alerta visual (icono ⚠️ rojo) en pedidos con estado "Enviado" sin recepcionar tras 3+ días.
+1. **Pedidos** — Listado de pedidos de compra con estado, proveedor, líneas, totales. KPIs: Pedidos Pendientes, Albaranes sin Facturar (clicable → drawer), Facturas Pendientes, Actividad del Mes. Alerta visual (icono ⚠️ rojo) en pedidos con estado "Enviado" sin recepcionar tras 3+ días. En móvil (`< md`) la tabla se sustituye por tarjetas clicables que abren el detalle del pedido.
 2. **Conciliación** — Facturas pendientes (fuente: `vw_compras_facturas_pendientes`, 225+ facturas) vs albaranes disponibles, vinculación manual, confirmación/descarte. Cada factura muestra cantidad de albaranes candidatos. Albaranes vinculados se muestran con datos legibles (nº, fecha, importe) en vez de UUIDs. Input manual de fecha de vencimiento al confirmar conciliación.
-3. **Análisis** — KPIs de compras (con mensaje "Sin datos suficientes" cuando `variacion_vs_anterior` es 0), distribución por categoría, top productos con columna Precio/U, evolución mensual, tabla jerárquica, ranking de proveedores con fiabilidad documental
+3. **Análisis** — KPIs de compras (con mensaje "Sin datos suficientes" cuando `variacion_vs_anterior` es 0), distribución por categoría, top productos con columna Precio/U, evolución mensual, tabla jerárquica, ranking de proveedores con fiabilidad documental. En móvil (`< md`) las tablas de Productos y Proveedores se sustituyen por tarjetas.
 
 ### Sub-componentes destacados
 
@@ -353,6 +357,10 @@ Click en un KPI activa/desactiva el filtro global que se sincroniza con el filtr
 Cocina: bueno ≤ 15min, advertencia ≤ 25min, alerta > 25min
 Sala:   bueno ≤ 8min, advertencia ≤ 15min, alerta > 15min
 ```
+
+### Responsive
+
+- Tablas "Ranking Productos por Tiempo" e "Items con Retraso": en `< md` se muestran como tarjetas (`md:hidden`) y las tablas quedan `hidden md:block`. Ranking: producto + t. medio coloreado, badge de categoría, pedidos y máximo (se omite la mediana). Alertas: producto + tiempo, fecha · hora, mesa y badge de severidad (lista con scroll `max-h-[300px]`).
 
 ---
 
@@ -608,8 +616,9 @@ Smart App (TreasuryPage)           Subapp GoCardless             GoCardless
 #### Sub-Tab 2: Movimientos (`BankMovimientosTab.tsx`)
 - **Filtros** — Búsqueda texto, selector cuenta, selector tipo (Todos/Ingresos/Gastos), botón limpiar filtros
 - **Resumen período** — Transacciones count, total ingresos, total gastos, balance neto
-- **Tabla transacciones** — Fecha, Cuenta (con logo), Descripción (con icono ingreso/gasto + creditor/debtor), Importe, Saldo
-- **Paginación** — Server-side, 50 por página, botones Anterior/Siguiente
+- **Tabla transacciones** — Fecha, Cuenta (con logo), Descripción (con icono ingreso/gasto + creditor/debtor), Importe, Saldo. Solo escritorio (`hidden md:block`)
+- **Cards móvil** — En `< md` la tabla se sustituye por tarjetas: descripción + contraparte, importe coloreado, fecha y cuenta con logo (sin columna Saldo)
+- **Paginación** — Server-side, 50 por página, botones Anterior/Siguiente (apilada en móvil)
 
 ### Flujo de conexión embebido (`BankConnectSheet.tsx`)
 

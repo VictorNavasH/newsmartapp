@@ -655,7 +655,53 @@ export default function FacturacionPage() {
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto">
+              {/* Cards (móvil) */}
+              <div className="md:hidden space-y-3">
+                {listado.length === 0 ? (
+                  <p className="text-center py-8 text-slate-400 text-sm">No hay facturas</p>
+                ) : (
+                  listado.map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => setFacturaDetalle(item)}
+                      className="border border-slate-200 rounded-xl p-3 space-y-2 bg-white cursor-pointer"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="text-sm font-medium text-[#364f6b] truncate">{item.numero_completo}</p>
+                        <span className="shrink-0 text-sm font-semibold">{formatCurrency(item.importe_total)}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
+                        <span>{formatDateES(item.fecha)}</span>
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                            item.verifactu_estado === "accepted"
+                              ? "bg-[#17c3b2]/10 text-[#17c3b2]"
+                              : item.verifactu_estado === "rejected"
+                                ? "bg-[#fe6d73]/10 text-[#fe6d73]"
+                                : item.verifactu_estado === "signed"
+                                  ? "bg-[#227c9d]/10 text-[#227c9d]"
+                                  : "bg-[#ffcb77]/10 text-[#ffcb77]"
+                          }`}
+                        >
+                          {item.verifactu_estado === "accepted" ? (
+                            <CheckCircle className="w-3 h-3" />
+                          ) : item.verifactu_estado === "rejected" ? (
+                            <XCircle className="w-3 h-3" />
+                          ) : item.verifactu_estado === "signed" ? (
+                            <CheckCircle className="w-3 h-3" />
+                          ) : (
+                            <Clock className="w-3 h-3" />
+                          )}
+                          {item.verifactu_estado_nombre}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Tabla (escritorio) */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50">
@@ -717,7 +763,7 @@ export default function FacturacionPage() {
                 </table>
               </div>
 
-              <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-200">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-4 pt-4 border-t border-slate-200">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-slate-600">Mostrar</span>
                   <Select

@@ -272,70 +272,118 @@ export function ExpensesProveedorTab({
             ))}
           </div>
         ) : providerSummary.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50">
-                  <th className="text-left p-3 font-semibold text-slate-600">Ranking</th>
-                  <th className="text-left p-3 font-semibold text-slate-600">Proveedor</th>
-                  <th className="text-center p-3 font-semibold text-slate-600">Facturas</th>
-                  <th className="text-right p-3 font-semibold text-slate-600">Total</th>
-                  <th className="text-right p-3 font-semibold text-slate-600">Pagado</th>
-                  <th className="text-right p-3 font-semibold text-slate-600">Pendiente</th>
-                  <th className="text-right p-3 font-semibold text-slate-600">Vencido</th>
-                  <th className="text-right p-3 font-semibold text-slate-600">% Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {providerSummary.map((provider, index) => {
-                  const percentage = totals.total > 0 ? (provider.total / totals.total) * 100 : 0
-                  return (
-                    <tr
-                      key={provider.proveedor}
-                      className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
-                    >
-                      <td className="p-3">
-                        {index === 0 ? (
-                          <span className="text-lg">{"\u{1F947}"}</span>
-                        ) : index === 1 ? (
-                          <span className="text-lg">{"\u{1F948}"}</span>
-                        ) : index === 2 ? (
-                          <span className="text-lg">{"\u{1F949}"}</span>
-                        ) : (
-                          <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold bg-slate-100 text-slate-500">
-                            {index + 1}
-                          </span>
-                        )}
-                      </td>
-                      <td className="p-3">
-                        <div className="flex items-center gap-2">
-                          <Building2 className="w-4 h-4 text-slate-400" />
-                          <span className="font-medium text-slate-700">{provider.proveedor}</span>
-                        </div>
-                      </td>
-                      <td className="p-3 text-center text-slate-600">{provider.facturas}</td>
-                      <td className="p-3 text-right font-semibold text-[#364f6b]">
-                        {formatCurrency(provider.total)}
-                      </td>
-                      <td className="p-3 text-right" style={{ color: STATUS_COLORS.partial }}>
-                        {formatCurrency(provider.pagado)}
-                      </td>
-                      <td className="p-3 text-right" style={{ color: STATUS_COLORS.pending }}>
-                        {formatCurrency(provider.pendiente)}
-                      </td>
-                      <td
-                        className="p-3 text-right"
-                        style={{ color: provider.vencido > 0 ? STATUS_COLORS.overdue : "inherit" }}
+          <>
+            {/* Cards (móvil) */}
+            <div className="md:hidden space-y-3">
+              {providerSummary.map((provider, index) => (
+                <div key={provider.proveedor} className="border border-slate-200 rounded-xl p-3 space-y-2 bg-white">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {index === 0 ? (
+                        <span className="text-lg">{"\u{1F947}"}</span>
+                      ) : index === 1 ? (
+                        <span className="text-lg">{"\u{1F948}"}</span>
+                      ) : index === 2 ? (
+                        <span className="text-lg">{"\u{1F949}"}</span>
+                      ) : (
+                        <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold bg-slate-100 text-slate-500 flex-shrink-0">
+                          {index + 1}
+                        </span>
+                      )}
+                      <p className="text-sm font-medium text-[#364f6b] truncate">{provider.proveedor}</p>
+                    </div>
+                    <span className="shrink-0 text-sm font-semibold text-[#364f6b]">
+                      {formatCurrency(provider.total)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
+                    <span>Facturas</span>
+                    <span>{provider.facturas}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
+                    <span>Pagado</span>
+                    <span style={{ color: STATUS_COLORS.partial }}>{formatCurrency(provider.pagado)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
+                    <span>Pendiente</span>
+                    <span style={{ color: STATUS_COLORS.pending }}>{formatCurrency(provider.pendiente)}</span>
+                  </div>
+                  {provider.vencido > 0 && (
+                    <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
+                      <span>Vencido</span>
+                      <span style={{ color: STATUS_COLORS.overdue }}>{formatCurrency(provider.vencido)}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Tabla (escritorio) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50">
+                    <th className="text-left p-3 font-semibold text-slate-600">Ranking</th>
+                    <th className="text-left p-3 font-semibold text-slate-600">Proveedor</th>
+                    <th className="text-center p-3 font-semibold text-slate-600">Facturas</th>
+                    <th className="text-right p-3 font-semibold text-slate-600">Total</th>
+                    <th className="text-right p-3 font-semibold text-slate-600">Pagado</th>
+                    <th className="text-right p-3 font-semibold text-slate-600">Pendiente</th>
+                    <th className="text-right p-3 font-semibold text-slate-600">Vencido</th>
+                    <th className="text-right p-3 font-semibold text-slate-600">% Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {providerSummary.map((provider, index) => {
+                    const percentage = totals.total > 0 ? (provider.total / totals.total) * 100 : 0
+                    return (
+                      <tr
+                        key={provider.proveedor}
+                        className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
                       >
-                        {provider.vencido > 0 ? formatCurrency(provider.vencido) : "-"}
-                      </td>
-                      <td className="p-3 text-right text-slate-600">{percentage.toFixed(1)}%</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+                        <td className="p-3">
+                          {index === 0 ? (
+                            <span className="text-lg">{"\u{1F947}"}</span>
+                          ) : index === 1 ? (
+                            <span className="text-lg">{"\u{1F948}"}</span>
+                          ) : index === 2 ? (
+                            <span className="text-lg">{"\u{1F949}"}</span>
+                          ) : (
+                            <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold bg-slate-100 text-slate-500">
+                              {index + 1}
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            <Building2 className="w-4 h-4 text-slate-400" />
+                            <span className="font-medium text-slate-700">{provider.proveedor}</span>
+                          </div>
+                        </td>
+                        <td className="p-3 text-center text-slate-600">{provider.facturas}</td>
+                        <td className="p-3 text-right font-semibold text-[#364f6b]">
+                          {formatCurrency(provider.total)}
+                        </td>
+                        <td className="p-3 text-right" style={{ color: STATUS_COLORS.partial }}>
+                          {formatCurrency(provider.pagado)}
+                        </td>
+                        <td className="p-3 text-right" style={{ color: STATUS_COLORS.pending }}>
+                          {formatCurrency(provider.pendiente)}
+                        </td>
+                        <td
+                          className="p-3 text-right"
+                          style={{ color: provider.vencido > 0 ? STATUS_COLORS.overdue : "inherit" }}
+                        >
+                          {provider.vencido > 0 ? formatCurrency(provider.vencido) : "-"}
+                        </td>
+                        <td className="p-3 text-right text-slate-600">{percentage.toFixed(1)}%</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         ) : (
           <div className="py-12 text-center text-slate-400">
             <Building2 className="w-12 h-12 mx-auto mb-3 opacity-50" />

@@ -76,6 +76,64 @@ export function TreasuryMovimientosTab({
   totalCount,
   onCategoryUpdate,
 }: TreasuryMovimientosTabProps) {
+  // Selector de categoría compartido entre la tabla (escritorio) y las cards (móvil)
+  const renderCategorySelect = (tx: TreasuryTransaction, triggerClassName: string) => (
+    <div className="flex items-center gap-1.5 min-w-0">
+      <Select
+        value={tx.subcategory_id || tx.category_id || undefined}
+        onValueChange={(value) => {
+          const cat = flattenedCategories.find((c) => c.id === value)
+          if (cat) {
+            onCategoryUpdate(tx.id, cat.parentId || cat.id, cat.parentId ? cat.id : undefined)
+          }
+        }}
+      >
+        <SelectTrigger
+          className={triggerClassName}
+          style={
+            !tx.category_name
+              ? { borderColor: BRAND_COLORS.warning, color: BRAND_COLORS.warning }
+              : tx.categorization_method === "rule"
+                ? { borderColor: BRAND_COLORS.primary }
+                : tx.categorization_method === "ai"
+                  ? { borderColor: BRAND_COLORS.warning }
+                  : { borderColor: "#e2e8f0" }
+          }
+        >
+          <SelectValue placeholder="Categorizar">
+            {tx.category_name ? (
+              <span className="truncate">
+                {tx.category_name}
+                {tx.subcategory_name && ` / ${tx.subcategory_name}`}
+              </span>
+            ) : null}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          {flattenedCategories.length > 0 ? (
+            flattenedCategories.map((cat) => (
+              <SelectItem key={cat.id} value={cat.id} className="text-xs">
+                {cat.name}
+              </SelectItem>
+            ))
+          ) : (
+            <SelectItem value="none" disabled className="text-xs text-slate-400">
+              No hay categorias
+            </SelectItem>
+          )}
+        </SelectContent>
+      </Select>
+      {tx.category_name && tx.categorization_method && (
+        <span title={`Categorizada: ${tx.categorization_method}`}>
+          {tx.categorization_method === "rule" && <Wand2 className="h-3.5 w-3.5 text-[#02b1c4]" />}
+          {tx.categorization_method === "ai" && <Sparkles className="h-3.5 w-3.5 text-[#ffcb77]" />}
+          {tx.categorization_method === "manual" && <User className="h-3.5 w-3.5 text-slate-400" />}
+          {tx.categorization_method === "imported" && <Download className="h-3.5 w-3.5 text-slate-400" />}
+        </span>
+      )}
+    </div>
+  )
+
   return (
     <div className="space-y-6">
       <TremorCard>
@@ -188,8 +246,54 @@ export function TreasuryMovimientosTab({
           </div>
         )}
 
-        {/* Tabla */}
-        <div id="transactions-table" className="overflow-x-auto">
+        {/* Cards (móvil) */}
+        <div className="md:hidden space-y-3">
+          {loadingTransactions ? (
+            <p className="text-center py-8 text-slate-400 text-sm">Cargando movimientos...</p>
+          ) : (transactions?.length || 0) === 0 ? (
+            <p className="text-center py-8 text-slate-400 text-sm">No hay movimientos en el periodo seleccionado</p>
+          ) : (
+            transactions.map((tx) => {
+              const desc = getTransactionDescription(tx)
+              return (
+                <div key={tx.id} className="border border-slate-200 rounded-xl p-3 space-y-2 bg-white">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-[#364f6b] truncate">{desc.main}</p>
+                      {desc.secondary && <p className="text-xs text-slate-400 truncate">{desc.secondary}</p>}
+                    </div>
+                    <span
+                      className="shrink-0 text-sm font-semibold"
+                      style={{ color: tx.amount >= 0 ? BRAND_COLORS.success : BRAND_COLORS.error }}
+                    >
+                      {tx.amount >= 0 ? "+" : ""}
+                      {formatCurrency(tx.amount)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
+                    <span>{format(new Date(tx.booking_date), "dd MMM yyyy", { locale: es })}</span>
+                    <span className="flex items-center gap-1.5 min-w-0">
+                      {tx.bank_logo ? (
+                        <img
+                          src={tx.bank_logo || "/placeholder.svg"}
+                          alt={tx.bank_name}
+                          className="h-4 w-4 object-contain rounded"
+                        />
+                      ) : (
+                        <Building2 className="h-4 w-4 text-slate-400" />
+                      )}
+                      <span className="truncate max-w-[140px]">{tx.account_name}</span>
+                    </span>
+                  </div>
+                  {renderCategorySelect(tx, "h-8 w-full text-xs")}
+                </div>
+              )
+            })
+          )}
+        </div>
+
+        {/* Tabla (escritorio) */}
+        <div id="transactions-table" className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200">
@@ -246,70 +350,7 @@ export function TreasuryMovimientosTab({
                         )
                       })()}
                     </td>
-                    <td className="py-3 px-2">
-                      <div className="flex items-center gap-1.5">
-                        <Select
-                          value={tx.subcategory_id || tx.category_id || undefined}
-                          onValueChange={(value) => {
-                            const cat = flattenedCategories.find((c) => c.id === value)
-                            if (cat) {
-                              onCategoryUpdate(tx.id, cat.parentId || cat.id, cat.parentId ? cat.id : undefined)
-                            }
-                          }}
-                        >
-                          <SelectTrigger
-                            className="h-7 w-[150px] text-xs"
-                            style={
-                              !tx.category_name
-                                ? { borderColor: BRAND_COLORS.warning, color: BRAND_COLORS.warning }
-                                : tx.categorization_method === "rule"
-                                  ? { borderColor: BRAND_COLORS.primary }
-                                  : tx.categorization_method === "ai"
-                                    ? { borderColor: BRAND_COLORS.warning }
-                                    : { borderColor: "#e2e8f0" }
-                            }
-                          >
-                            <SelectValue placeholder="Categorizar">
-                              {tx.category_name ? (
-                                <span className="truncate">
-                                  {tx.category_name}
-                                  {tx.subcategory_name && ` / ${tx.subcategory_name}`}
-                                </span>
-                              ) : null}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {flattenedCategories.length > 0 ? (
-                              flattenedCategories.map((cat) => (
-                                <SelectItem key={cat.id} value={cat.id} className="text-xs">
-                                  {cat.name}
-                                </SelectItem>
-                              ))
-                            ) : (
-                              <SelectItem value="none" disabled className="text-xs text-slate-400">
-                                No hay categorias
-                              </SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
-                        {tx.category_name && tx.categorization_method && (
-                          <span title={`Categorizada: ${tx.categorization_method}`}>
-                            {tx.categorization_method === "rule" && (
-                              <Wand2 className="h-3.5 w-3.5 text-[#02b1c4]" />
-                            )}
-                            {tx.categorization_method === "ai" && (
-                              <Sparkles className="h-3.5 w-3.5 text-[#ffcb77]" />
-                            )}
-                            {tx.categorization_method === "manual" && (
-                              <User className="h-3.5 w-3.5 text-slate-400" />
-                            )}
-                            {tx.categorization_method === "imported" && (
-                              <Download className="h-3.5 w-3.5 text-slate-400" />
-                            )}
-                          </span>
-                        )}
-                      </div>
-                    </td>
+                    <td className="py-3 px-2">{renderCategorySelect(tx, "h-7 w-[150px] text-xs")}</td>
                     <td className="py-3 px-2 text-right">
                       <span style={{ color: tx.amount >= 0 ? BRAND_COLORS.success : BRAND_COLORS.error }}>
                         {tx.amount >= 0 ? "+" : ""}
@@ -324,7 +365,7 @@ export function TreasuryMovimientosTab({
         </div>
 
         {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-4 pt-4 border-t border-slate-200">
             <p className="text-sm text-slate-500">
               Mostrando {(page - 1) * PAGE_SIZE + 1} - {Math.min(page * PAGE_SIZE, totalCount)} de {totalCount}
             </p>

@@ -105,7 +105,70 @@ export function ComprasPedidosTab({
         <TremorTitle>Pedidos</TremorTitle>
         <p className="text-sm text-slate-500 mb-4">{filteredPedidos.length} pedidos</p>
 
-        <div className="overflow-x-auto">
+        {/* Cards (móvil) */}
+        <div className="md:hidden space-y-3">
+          {filteredPedidos.map((pedido) => (
+            <div
+              key={pedido.id}
+              onClick={() => onViewDetail(pedido)}
+              className="border border-slate-200 rounded-xl p-3 space-y-2 bg-white cursor-pointer"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-[#364f6b] truncate">{pedido.proveedor}</p>
+                  <p className="text-xs text-slate-400 truncate">{pedido.numero_pedido}</p>
+                </div>
+                <span className="shrink-0 text-sm font-semibold text-slate-800">
+                  {formatCurrency(pedido.pedido_total)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
+                <span>{formatDate(pedido.fecha_pedido)}</span>
+                <div className="flex items-center justify-center gap-2">
+                  <span className="text-sm font-medium text-[#02b1c4]">
+                    {ESTADO_PEDIDO_CONFIG[pedido.estado]?.label || pedido.estado_label || pedido.estado}
+                  </span>
+                  {pedido.estado === "enviado" && differenceInDays(new Date(), parseISO(pedido.fecha_pedido)) > 3 && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <AlertTriangle className="h-4 w-4 text-[#fe6d73] cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-xs">Pedido sin albarán después de 3 días</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                  {pedido.estado === "recepcionado" && pedido.albaran_ref && (
+                    pedido.importe_coincide ? (
+                      <CheckCircle className="h-5 w-5 text-[#17c3b2]" />
+                    ) : (
+                      <AlertTriangle className="h-5 w-5 text-[#ffcb77]" />
+                    )
+                  )}
+                </div>
+              </div>
+              {pedido.albaran_ref && (
+                <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
+                  <span className="truncate">
+                    Albarán {pedido.albaran_ref}
+                    {pedido.albaran_fecha && ` · ${formatDate(pedido.albaran_fecha)}`}
+                  </span>
+                  <span className="shrink-0">
+                    {pedido.albaran_total != null ? formatCurrency(pedido.albaran_total) : "-"}
+                  </span>
+                </div>
+              )}
+            </div>
+          ))}
+          {filteredPedidos.length === 0 && (
+            <p className="py-8 text-center text-slate-400 text-sm">No se encontraron pedidos</p>
+          )}
+        </div>
+
+        {/* Tabla (escritorio) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200">

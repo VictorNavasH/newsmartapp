@@ -158,8 +158,61 @@ export function BankMovimientosTab({
           </div>
         )}
 
-        {/* Tabla */}
-        <div className="overflow-x-auto">
+        {/* Cards (móvil) */}
+        <div className="md:hidden space-y-3">
+          {loading ? (
+            <p className="text-center py-8 text-slate-400 text-sm">Cargando movimientos...</p>
+          ) : transactions.length === 0 ? (
+            <p className="text-center py-8 text-slate-400 text-sm">
+              No hay movimientos
+              {hasActiveFilters ? " con los filtros seleccionados" : ""}
+            </p>
+          ) : (
+            transactions.map((tx) => (
+              <div key={tx.id} className="border border-slate-200 rounded-xl p-3 space-y-2 bg-white">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-[#364f6b] truncate">{tx.description}</p>
+                    {(tx.creditor_name || tx.debtor_name) && (
+                      <p className="text-xs text-slate-400 truncate">
+                        {tx.type === "credit" ? tx.debtor_name : tx.creditor_name}
+                      </p>
+                    )}
+                  </div>
+                  <span
+                    className="shrink-0 text-sm font-semibold"
+                    style={{ color: tx.amount >= 0 ? "#17c3b2" : "#fe6d73" }}
+                  >
+                    {tx.amount >= 0 ? "+" : ""}
+                    {formatCurrency(tx.amount)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
+                  <span>{format(new Date(tx.date), "dd MMM yyyy", { locale: es })}</span>
+                  <span className="flex items-center gap-1.5 min-w-0">
+                    {tx.institution_logo ? (
+                      <img
+                        src={tx.institution_logo}
+                        alt={tx.institution_name}
+                        className="h-4 w-4 object-contain rounded"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement
+                          target.style.display = "none"
+                        }}
+                      />
+                    ) : (
+                      <Building2 className="h-4 w-4 text-slate-400" />
+                    )}
+                    <span className="truncate max-w-[140px]">{tx.account_name}</span>
+                  </span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Tabla (escritorio) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200">
@@ -252,7 +305,7 @@ export function BankMovimientosTab({
 
         {/* Paginacion */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-4 pt-4 border-t border-slate-200">
             <p className="text-sm text-slate-500">
               Mostrando {(page - 1) * PAGE_SIZE + 1} - {Math.min(page * PAGE_SIZE, totalCount)} de{" "}
               {totalCount}

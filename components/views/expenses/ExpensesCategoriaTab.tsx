@@ -518,165 +518,226 @@ export function ExpensesCategoriaTab({
             ))}
           </div>
         ) : filteredExpenses.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50">
-                  <th
-                    className="text-left p-3 font-semibold text-slate-600 cursor-pointer hover:bg-slate-100"
-                    onClick={() => handleSort("fecha")}
-                  >
-                    <div className="flex items-center gap-1">
-                      Fecha
-                      {sortColumn === "fecha" &&
-                        (sortDirection === "asc" ? (
-                          <ChevronUp className="w-4 h-4" />
-                        ) : (
-                          <ChevronDown className="w-4 h-4" />
-                        ))}
+          <>
+            {/* Cards (móvil) */}
+            <div className="md:hidden space-y-3">
+              {filteredExpenses.map((expense) => (
+                <div key={expense.id} className="border border-slate-200 rounded-xl p-3 space-y-2 bg-white">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Building2 className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                      <p className="text-sm font-medium text-[#364f6b] truncate">{expense.proveedor}</p>
                     </div>
-                  </th>
-                  <th
-                    className="text-left p-3 font-semibold text-slate-600 cursor-pointer hover:bg-slate-100"
-                    onClick={() => handleSort("proveedor")}
-                  >
-                    <div className="flex items-center gap-1">
-                      Proveedor
-                      {sortColumn === "proveedor" &&
-                        (sortDirection === "asc" ? (
-                          <ChevronUp className="w-4 h-4" />
-                        ) : (
-                          <ChevronDown className="w-4 h-4" />
-                        ))}
-                    </div>
-                  </th>
-                  {/* Item 3: Estado movido antes para ser visible sin scroll */}
-                  <th className="text-center p-3 font-semibold text-slate-600">Estado</th>
-                  <th
-                    className="text-right p-3 font-semibold text-slate-600 cursor-pointer hover:bg-slate-100"
-                    onClick={() => handleSort("total_amount")}
-                  >
-                    <div className="flex items-center justify-end gap-1">
-                      Importe
-                      {sortColumn === "total_amount" &&
-                        (sortDirection === "asc" ? (
-                          <ChevronUp className="w-4 h-4" />
-                        ) : (
-                          <ChevronDown className="w-4 h-4" />
-                        ))}
-                    </div>
-                  </th>
-                  <th
-                    className="text-left p-3 font-semibold text-slate-600 cursor-pointer hover:bg-slate-100"
-                    onClick={() => handleSort("due_date")}
-                  >
-                    <div className="flex items-center gap-1">
-                      Vencimiento
-                      {sortColumn === "due_date" &&
-                        (sortDirection === "asc" ? (
-                          <ChevronUp className="w-4 h-4" />
-                        ) : (
-                          <ChevronDown className="w-4 h-4" />
-                        ))}
-                    </div>
-                  </th>
-                  <th className="text-left p-3 font-semibold text-slate-600">Categoría</th>
-                  <th className="text-left p-3 font-semibold text-slate-600">Documento</th>
-                  <th className="text-left p-3 font-semibold text-slate-600">Tags</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredExpenses.map((expense) => (
-                  <tr key={expense.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                    <td className="p-3 text-slate-700 whitespace-nowrap">
+                    <span className="shrink-0 text-sm font-semibold text-[#364f6b]">
+                      {formatCurrency(expense.total_amount)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
+                    <span>
                       {new Date(expense.fecha).toLocaleDateString("es-ES", {
                         day: "2-digit",
                         month: "short",
                         year: "numeric",
                       })}
-                    </td>
-                    <td className="p-3">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                        <span className="font-medium text-slate-700 truncate max-w-[200px]">{expense.proveedor}</span>
-                      </div>
-                    </td>
-                    {/* Item 3: Estado ahora visible sin scroll */}
-                    <td className="p-3 text-center">
-                      <Badge
-                        style={{
-                          backgroundColor: `${STATUS_COLORS[expense.status]}20`,
-                          color: STATUS_COLORS[expense.status],
-                        }}
+                    </span>
+                    <Badge
+                      style={{
+                        backgroundColor: `${STATUS_COLORS[expense.status]}20`,
+                        color: STATUS_COLORS[expense.status],
+                      }}
+                    >
+                      {STATUS_LABELS[expense.status] || expense.status}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
+                    <span>Vencimiento</span>
+                    {expense.due_date ? (
+                      <span
+                        className={
+                          new Date(expense.due_date) < new Date() && expense.status !== "partial"
+                            ? "text-red-500 font-medium"
+                            : ""
+                        }
                       >
-                        {STATUS_LABELS[expense.status] || expense.status}
-                      </Badge>
-                    </td>
-                    <td className="p-3 text-right font-semibold text-[#364f6b] whitespace-nowrap">
-                      {formatCurrency(expense.total_amount)}
-                    </td>
-                    <td className="p-3 text-slate-600 whitespace-nowrap">
-                      {expense.due_date ? (
-                        <span
-                          className={
-                            new Date(expense.due_date) < new Date() && expense.status !== "partial"
-                              ? "text-red-500 font-medium"
-                              : ""
-                          }
-                        >
-                          {new Date(expense.due_date).toLocaleDateString("es-ES", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                          })}
-                        </span>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
-                    <td className="p-3 text-slate-600">{expense.categoria_nombre}</td>
-                    <td className="p-3 text-slate-600">{expense.document_number || "-"}</td>
-                    <td className="p-3">
-                      <div className="flex flex-wrap gap-1">
-                        {expense.tags?.map((tag, index) => {
-                          let tagObj: { name: string; normalized_name: string } | null = null
-                          if (typeof tag === "string") {
-                            try {
-                              tagObj = JSON.parse(tag)
-                            } catch {
-                              tagObj = null
-                            }
-                          } else if (typeof tag === "object" && tag !== null) {
-                            tagObj = tag as { name: string; normalized_name: string }
-                          }
-                          const tagName = tagObj?.name || String(tag)
-                          const isNonOp = isNonOperationalTag(tagName)
-                          return (
-                            <Badge
-                              key={tagObj?.normalized_name || index}
-                              variant="secondary"
-                              className={`text-xs ${isNonOp ? "border border-dashed border-slate-300 italic" : ""}`}
-                              style={
-                                isNonOp
-                                  ? { backgroundColor: "#f1f5f9", color: "#94a3b8" }
-                                  : {
-                                      backgroundColor: `${BRAND_COLORS.primary}20`,
-                                      color: BRAND_COLORS.primary,
-                                    }
-                              }
-                            >
-                              {isNonOp && <span className="mr-0.5 text-[8px] font-bold">N/O</span>}
-                              {tagName}
-                            </Badge>
-                          )
+                        {new Date(expense.due_date).toLocaleDateString("es-ES", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
                         })}
+                      </span>
+                    ) : (
+                      <span>-</span>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
+                    <span>Categoría</span>
+                    <span className="truncate">{expense.categoria_nombre}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Tabla (escritorio) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50">
+                    <th
+                      className="text-left p-3 font-semibold text-slate-600 cursor-pointer hover:bg-slate-100"
+                      onClick={() => handleSort("fecha")}
+                    >
+                      <div className="flex items-center gap-1">
+                        Fecha
+                        {sortColumn === "fecha" &&
+                          (sortDirection === "asc" ? (
+                            <ChevronUp className="w-4 h-4" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4" />
+                          ))}
                       </div>
-                    </td>
+                    </th>
+                    <th
+                      className="text-left p-3 font-semibold text-slate-600 cursor-pointer hover:bg-slate-100"
+                      onClick={() => handleSort("proveedor")}
+                    >
+                      <div className="flex items-center gap-1">
+                        Proveedor
+                        {sortColumn === "proveedor" &&
+                          (sortDirection === "asc" ? (
+                            <ChevronUp className="w-4 h-4" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4" />
+                          ))}
+                      </div>
+                    </th>
+                    {/* Item 3: Estado movido antes para ser visible sin scroll */}
+                    <th className="text-center p-3 font-semibold text-slate-600">Estado</th>
+                    <th
+                      className="text-right p-3 font-semibold text-slate-600 cursor-pointer hover:bg-slate-100"
+                      onClick={() => handleSort("total_amount")}
+                    >
+                      <div className="flex items-center justify-end gap-1">
+                        Importe
+                        {sortColumn === "total_amount" &&
+                          (sortDirection === "asc" ? (
+                            <ChevronUp className="w-4 h-4" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4" />
+                          ))}
+                      </div>
+                    </th>
+                    <th
+                      className="text-left p-3 font-semibold text-slate-600 cursor-pointer hover:bg-slate-100"
+                      onClick={() => handleSort("due_date")}
+                    >
+                      <div className="flex items-center gap-1">
+                        Vencimiento
+                        {sortColumn === "due_date" &&
+                          (sortDirection === "asc" ? (
+                            <ChevronUp className="w-4 h-4" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4" />
+                          ))}
+                      </div>
+                    </th>
+                    <th className="text-left p-3 font-semibold text-slate-600">Categoría</th>
+                    <th className="text-left p-3 font-semibold text-slate-600">Documento</th>
+                    <th className="text-left p-3 font-semibold text-slate-600">Tags</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {filteredExpenses.map((expense) => (
+                    <tr key={expense.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                      <td className="p-3 text-slate-700 whitespace-nowrap">
+                        {new Date(expense.fecha).toLocaleDateString("es-ES", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </td>
+                      <td className="p-3">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                          <span className="font-medium text-slate-700 truncate max-w-[200px]">{expense.proveedor}</span>
+                        </div>
+                      </td>
+                      {/* Item 3: Estado ahora visible sin scroll */}
+                      <td className="p-3 text-center">
+                        <Badge
+                          style={{
+                            backgroundColor: `${STATUS_COLORS[expense.status]}20`,
+                            color: STATUS_COLORS[expense.status],
+                          }}
+                        >
+                          {STATUS_LABELS[expense.status] || expense.status}
+                        </Badge>
+                      </td>
+                      <td className="p-3 text-right font-semibold text-[#364f6b] whitespace-nowrap">
+                        {formatCurrency(expense.total_amount)}
+                      </td>
+                      <td className="p-3 text-slate-600 whitespace-nowrap">
+                        {expense.due_date ? (
+                          <span
+                            className={
+                              new Date(expense.due_date) < new Date() && expense.status !== "partial"
+                                ? "text-red-500 font-medium"
+                                : ""
+                            }
+                          >
+                            {new Date(expense.due_date).toLocaleDateString("es-ES", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                            })}
+                          </span>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                      <td className="p-3 text-slate-600">{expense.categoria_nombre}</td>
+                      <td className="p-3 text-slate-600">{expense.document_number || "-"}</td>
+                      <td className="p-3">
+                        <div className="flex flex-wrap gap-1">
+                          {expense.tags?.map((tag, index) => {
+                            let tagObj: { name: string; normalized_name: string } | null = null
+                            if (typeof tag === "string") {
+                              try {
+                                tagObj = JSON.parse(tag)
+                              } catch {
+                                tagObj = null
+                              }
+                            } else if (typeof tag === "object" && tag !== null) {
+                              tagObj = tag as { name: string; normalized_name: string }
+                            }
+                            const tagName = tagObj?.name || String(tag)
+                            const isNonOp = isNonOperationalTag(tagName)
+                            return (
+                              <Badge
+                                key={tagObj?.normalized_name || index}
+                                variant="secondary"
+                                className={`text-xs ${isNonOp ? "border border-dashed border-slate-300 italic" : ""}`}
+                                style={
+                                  isNonOp
+                                    ? { backgroundColor: "#f1f5f9", color: "#94a3b8" }
+                                    : {
+                                        backgroundColor: `${BRAND_COLORS.primary}20`,
+                                        color: BRAND_COLORS.primary,
+                                      }
+                                }
+                              >
+                                {isNonOp && <span className="mr-0.5 text-[8px] font-bold">N/O</span>}
+                                {tagName}
+                              </Badge>
+                            )
+                          })}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         ) : (
           <div className="text-center py-12 text-slate-500">
             <Receipt className="w-12 h-12 mx-auto mb-3 opacity-50" />

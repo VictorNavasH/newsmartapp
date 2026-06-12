@@ -9,6 +9,23 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 ## [Unreleased]
 
 ### Añadido
+- **Adaptación móvil (fase 3): card view en las tablas principales** (las entradas por vista están debajo):
+  - `TreasuryMovimientosTab` — tabla de movimientos a `hidden md:block`; tarjetas en móvil con descripción + importe coloreado, fecha, cuenta con logo y el selector de categorización a ancho completo (extraído a `renderCategorySelect`, compartido tabla/tarjeta, conserva colores por método regla/IA/manual). Paginación apilada en móvil.
+  - `FacturacionPage` — tabla de facturas a `hidden md:block`; tarjetas con nº de factura + importe, fecha y badge VeriFactu idéntico al de la tabla. La tarjeta abre el detalle (mismo Sheet). Se omiten Mesa y Método. Paginación apilada.
+  - Resto de tablas convertidas: ver entradas de Gastos, Ingresos/Operativa, Compras y Conexiones bancarias a continuación. Quedan con scroll horizontal (uso menor en móvil): Dashboard, Agent, Settings y Cuadre de Facturación.
+- **Gastos — vista de tarjetas para móvil en Categoría y Proveedor:**
+  - `ExpensesCategoriaTab` — la tabla "Detalle de Gastos" pasa a `hidden md:block`; en `< md` se renderiza una lista de tarjetas (`md:hidden`) con proveedor + importe, fecha, badge de estado, vencimiento (rojo si vencido) y categoría. Se omiten las columnas Documento y Tags.
+  - `ExpensesProveedorTab` — la tabla "Detalle por Proveedor" pasa a `hidden md:block`; tarjetas con ranking (medallas top 3) + proveedor + total, y pares facturas / pagado / pendiente / vencido con los mismos colores de estado. Se omite la columna % Total.
+  - Mismos estados de loading/vacío que las tablas (ya compartidos fuera del contenedor `overflow-x-auto`).
+- **Ingresos y Operativa — vista de tarjetas para móvil en sus tablas:**
+  - `IncomePage` — la tabla "Métricas Detalladas por Mesa" pasa a `hidden md:block`; en `< md` se renderiza una lista de tarjetas (`md:hidden`) con medalla/ranking + nombre de mesa, total facturado, facturas, propinas y avg/factura. La tarjeta entera selecciona la mesa (mismo handler y resaltado que la fila).
+  - `OperationsPage` — "Ranking Productos por Tiempo": tarjetas con producto + t. medio (semáforo `getTimeColor`), badge de categoría, pedidos y máximo; se omite la columna Mediana. "Items con Retraso (>30 min)": tarjetas con producto + tiempo, fecha · hora, mesa y badge de severidad, con el mismo scroll `max-h-[300px]` que la tabla.
+- **Compras — vista de tarjetas para móvil en Pedidos y Análisis:**
+  - `ComprasPedidosTab` — la tabla de pedidos pasa a `hidden md:block`; en `< md` se renderiza una lista de tarjetas (`md:hidden`) con proveedor + nº pedido, importe, fecha, estado (con aviso de pedido sin albarán) e icono de validación; línea extra con albarán (ref · fecha · importe) cuando existe. La tarjeta entera abre el detalle (`onViewDetail`).
+  - `ComprasAnalisisTab` — tablas de Productos y Análisis de Proveedores con tarjetas en móvil: producto/proveedor + importe, cantidad y precio/unidad (productos), facturas/docs, badge de sin facturar y barra de fiabilidad (proveedores). Mismos estados de vacío que las tablas.
+- **Conexiones bancarias — vista de tarjetas para móvil en Movimientos:**
+  - `BankMovimientosTab` — la tabla de movimientos pasa a `hidden md:block`; en `< md` se renderiza una lista de tarjetas (`md:hidden`) con descripción + contraparte, importe coloreado, fecha y cuenta con logo del banco. Mismos estados de loading/vacío que la tabla. La columna Saldo se omite en la tarjeta.
+  - Paginación apilada en móvil (`flex-col sm:flex-row`).
 - **Adaptación móvil (fase 2): grids, headers y anchos fijos:**
   - `ProductsPage` — los 4 grids fijos colapsan en móvil: KPIs `grid-cols-1 md:2 xl:4`, gráficos+tabla `grid-cols-1 lg:3` (con `col-span` responsive), Categorías `grid-cols-1 lg:2`, totales del Buscador `grid-cols-1 sm:3`.
   - `PageHeader` — apila título y acciones en `< md`; el título ya no se trunca (ancho natural) y las acciones envuelven con `flex-wrap`. Padding `px-4 sm:px-6`.
