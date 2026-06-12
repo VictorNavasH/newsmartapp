@@ -17,7 +17,8 @@ app/layout.tsx                    # Layout raíz: fonts, <Analytics />, <Toaster
         │   └── !user → <LoginScreen />
         │
         └── Autenticado:
-            ├── <Sidebar />       # Navegación lateral (usa navigate())
+            ├── <MobileHeader />  # Cabecera móvil con hamburguesa + drawer (< md, oculta en escritorio)
+            ├── <Sidebar />       # Navegación lateral de escritorio (oculta en < md)
             ├── <ErrorBoundary>   # Captura errores de render en vistas
             │   └── <Suspense>    # Loading fallback para lazy imports
             │       └── <main>    # Vista activa según currentPath
@@ -49,6 +50,25 @@ La app **no usa** el file-based routing de Next.js para las vistas principales. 
 - Persistencia del path al recargar la pagina
 
 **Excepción:** La ruta `/api/chat` sí usa el router de Next.js (es una API route).
+
+---
+
+## Responsive y PWA
+
+### Navegación adaptativa
+- **Escritorio (≥ 768px / `md`):** `<Sidebar>` lateral fijo (256px expandido / 80px colapsado).
+- **Móvil (< 768px):** el sidebar se oculta y `<MobileHeader>` muestra una cabecera con logo + botón hamburguesa que abre un drawer lateral (`Sheet` de shadcn, `side="left"`). Al navegar, el drawer se cierra solo.
+- Ambos comparten los subcomponentes internos `NavList` y `UserFooter` en `components/layout/Sidebar.tsx`.
+- El shell de `app/page.tsx` es `flex flex-col md:flex-row`.
+
+### Hook de detección
+- `hooks/useIsMobile.ts`: devuelve `true` si el viewport es < 768px (alineado con el breakpoint `md` de Tailwind). SSR-safe. Útil para renderizar alternativas móviles (p. ej., card view en lugar de tabla).
+
+### PWA
+- `app/manifest.ts` genera `/manifest.webmanifest` (instalable en pantalla de inicio, `display: standalone`).
+- Iconos: `public/icon-192.png` y `public/icon-512.png` (generados desde `favicon.png`).
+- `app/layout.tsx` exporta `viewport` (`width=device-width, initial-scale=1, viewport-fit=cover` para safe-areas de iOS) y `appleWebApp` en metadata.
+- Pendiente (fase posterior): service worker para caché offline.
 
 ---
 

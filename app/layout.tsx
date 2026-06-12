@@ -1,5 +1,5 @@
 import type React from "react"
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Toaster } from "sonner"
 import { QueryProvider } from "@/components/providers/QueryProvider"
 
@@ -26,10 +26,24 @@ export const metadata: Metadata = {
   title: "NÜA Smart App",
   description: "Dashboard inteligente para gestión de restaurantes",
   generator: "v0.app",
+  manifest: "/manifest.webmanifest",
   icons: {
     icon: "/favicon.png",
-    apple: "/favicon.png",
+    apple: "/apple-icon.png",
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "NÜA Smart App",
+  },
+}
+
+// viewport-fit=cover para respetar el notch/safe-areas de iOS
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#ffffff",
 }
 
 export default function RootLayout({

@@ -8,6 +8,15 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 
 ## [Unreleased]
 
+### Añadido
+- **Adaptación móvil (fase 1): PWA + navegación responsive:**
+  - `app/manifest.ts` — manifest PWA (`/manifest.webmanifest`): la app ya se puede **instalar en la pantalla de inicio** del móvil (`display: standalone`). Iconos nuevos `public/icon-192.png` / `icon-512.png` generados desde `favicon.png`.
+  - `app/layout.tsx` — export `viewport` (antes no existía: el móvil renderizaba sin `width=device-width`), `viewport-fit=cover` para safe-areas de iOS, y metadata `appleWebApp`.
+  - `components/layout/Sidebar.tsx` — refactor: navegación y footer extraídos a `NavList`/`UserFooter` compartidos. El sidebar de escritorio se oculta en `< md`; nuevo `MobileHeader` (logo + hamburguesa) que abre la navegación en un drawer `Sheet` lateral y se cierra al navegar.
+  - `app/page.tsx` — shell `flex flex-col md:flex-row`: cabecera arriba en móvil, sidebar a la izquierda en escritorio.
+  - `hooks/useIsMobile.ts` — hook de detección de viewport móvil (< 768px, breakpoint `md`), para futuras vistas alternativas (card view en tablas).
+  - Pendiente (fases siguientes): grids fijos de ProductsPage, drawers `w-[450px]`, card view para tablas, service worker.
+
 ### Corregido
 - **Navegación — la pestaña "Agent" no abría al hacer clic:**
   - `useAppRouter` tenía `VALID_PATHS` **hardcodeada a mano** y le faltaba `/agent`, así que `navigate("/agent")` caía a `/` (el clic en el menú no hacía nada).

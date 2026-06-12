@@ -4,7 +4,7 @@ import { lazy, Suspense, useState, useEffect } from "react"
 import { useAuth } from "@/hooks/useAuth"
 import { useAppRouter } from "@/hooks/useAppRouter"
 import { LoginScreen } from "@/components/features/LoginScreen"
-import { Sidebar } from "@/components/layout/Sidebar"
+import { Sidebar, MobileHeader } from "@/components/layout/Sidebar"
 import { SmartAssistant } from "@/components/features/SmartAssistant"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 
@@ -123,7 +123,16 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen w-full bg-[#f8fafc] overflow-hidden font-sans text-slate-600">
+    <div className="flex flex-col md:flex-row h-screen w-full bg-[#f8fafc] overflow-hidden font-sans text-slate-600">
+      {/* Cabecera móvil con hamburguesa (oculta en >= md) */}
+      <MobileHeader
+        currentPath={currentPath}
+        onNavigate={navigate}
+        userName={user?.user_metadata?.full_name}
+        userEmail={user?.email}
+        onSignOut={signOut}
+      />
+      {/* Sidebar de escritorio (oculto en < md) */}
       <Sidebar
         collapsed={collapsed}
         toggle={() => setCollapsed(!collapsed)}
@@ -135,7 +144,7 @@ export default function App() {
       />
       <ErrorBoundary onReset={() => navigate("/")}>
         <Suspense fallback={<ViewLoadingFallback />}>
-          <main className="flex-1 overflow-auto h-full w-full relative">
+          <main className="flex-1 min-h-0 overflow-auto w-full relative">
             {renderContent()}
           </main>
         </Suspense>
