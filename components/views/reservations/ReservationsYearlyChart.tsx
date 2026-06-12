@@ -8,6 +8,7 @@ import {
 } from "lucide-react"
 import { CHART_CONFIG, BRAND_COLORS } from "@/constants"
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts"
+import { ChartScroll } from "@/components/ui/ChartScroll"
 import { formatNumber } from "@/lib/utils"
 import type { YearlyTrendInsight } from "@/types"
 import { YEAR_COLORS, type YearlyMetric, type YearlyTurno } from "./constants"
@@ -182,6 +183,7 @@ export function ReservationsYearlyChart({
         </div>
       ) : yearlyChartData.length > 0 ? (
         <>
+          <ChartScroll minWidth={600}>
           <ResponsiveContainer width="100%" height={400}>
             <LineChart data={yearlyChartData}>
               <CartesianGrid {...CHART_CONFIG.grid} />
@@ -291,8 +293,9 @@ export function ReservationsYearlyChart({
               ))}
             </LineChart>
           </ResponsiveContainer>
+          </ChartScroll>
 
-          <div className="flex items-center justify-center gap-6 mt-4">
+          <div className="flex items-center justify-center flex-wrap gap-4 sm:gap-6 mt-4">
             {availableYears.map((year) => (
               <div key={year} className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: YEAR_COLORS[year] || "#64748b" }} />

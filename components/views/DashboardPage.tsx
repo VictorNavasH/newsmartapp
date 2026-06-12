@@ -31,6 +31,7 @@ import {
 import { PageHeader } from "@/components/layout/PageHeader"
 import { PageContent } from "@/components/layout/PageContent"
 import { KPIProgressBar } from "@/components/ui/KPIProgressBar"
+import { ChartScroll } from "@/components/ui/ChartScroll"
 import { loadKPITargets, calculateProgress } from "@/lib/kpiTargets"
 import type { KPITargets } from "@/types/kpiTargets"
 import { ExportButton } from "@/components/ui/ExportButton"
@@ -650,7 +651,7 @@ export function DashboardPage({ demoMode = false }: { demoMode?: boolean }) {
           </div>
 
           {laborChartData.length > 0 ? (
-            <div className="h-[300px]">
+            <ChartScroll minWidth={560} className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={laborChartData} margin={{ top: 20, right: 60, bottom: 20, left: 20 }}>
                   <CartesianGrid {...CHART_CONFIG.grid} />
@@ -704,7 +705,7 @@ export function DashboardPage({ demoMode = false }: { demoMode?: boolean }) {
                   />
                 </ComposedChart>
               </ResponsiveContainer>
-            </div>
+            </ChartScroll>
           ) : (
             <div className="text-center py-8 text-slate-400">
               <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
@@ -767,7 +768,7 @@ export function DashboardPage({ demoMode = false }: { demoMode?: boolean }) {
             </div>
           </div>
           {weekRevenueChartData.length > 0 ? (
-            <div className="h-[300px]">
+            <ChartScroll minWidth={560} className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={weekRevenueChartData} margin={{ top: 20, right: 60, bottom: 20, left: 20 }}>
                   <CartesianGrid {...CHART_CONFIG.grid} />
@@ -822,7 +823,7 @@ export function DashboardPage({ demoMode = false }: { demoMode?: boolean }) {
                   />
                 </ComposedChart>
               </ResponsiveContainer>
-            </div>
+            </ChartScroll>
           ) : (
             <div className="text-center py-8 text-slate-400">
               <TrendingUp className="w-12 h-12 mx-auto mb-3 opacity-30" />

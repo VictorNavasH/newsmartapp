@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 import { CHART_CONFIG, CARD_TOOLTIPS, BRAND_COLORS } from "@/constants"
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts"
+import { ChartScroll } from "@/components/ui/ChartScroll"
 import { formatNumber } from "@/lib/utils"
 import type { DailyCompleteMetrics, ComparisonResult } from "@/types"
 
@@ -185,6 +186,7 @@ export function ReservationsKPISection({
 
         <div className="mt-6">
           {historyData.length > 0 ? (
+            <ChartScroll minWidth={600}>
             <ResponsiveContainer width="100%" height={350}>
               <ComposedChart data={historyData}>
                 <CartesianGrid {...CHART_CONFIG.grid} />
@@ -260,6 +262,7 @@ export function ReservationsKPISection({
                 />
               </ComposedChart>
             </ResponsiveContainer>
+            </ChartScroll>
           ) : (
             <div className="h-[350px] flex items-center justify-center text-slate-400">Cargando datos...</div>
           )}

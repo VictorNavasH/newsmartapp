@@ -15,6 +15,7 @@ interface ExportButtonProps {
 /**
  * Botón de exportación con dropdown para CSV y PDF.
  * Se usa en las vistas principales del dashboard para exportar datos.
+ * Oculto en móvil (< md): exportar archivos no es un flujo de móvil y libera espacio del header.
  */
 export function ExportButton({ onExportCSV, onExportPDF, size = "sm", className = "" }: ExportButtonProps) {
   const [open, setOpen] = useState(false)
@@ -33,7 +34,7 @@ export function ExportButton({ onExportCSV, onExportPDF, size = "sm", className 
   const btnSize = size === "sm" ? "h-8 px-3 text-xs" : "h-9 px-4 text-sm"
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative hidden md:block ${className}`}>
       <button
         onClick={() => setOpen(!open)}
         disabled={exporting}

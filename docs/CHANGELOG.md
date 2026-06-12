@@ -8,6 +8,13 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 
 ## [Unreleased]
 
+### Cambiado
+- **Móvil — operatividad: menos cromo, más pantalla (feedback de iPhone):**
+  - `ExportButton` — oculto en `< md` en todas las vistas (exportar archivos no es flujo de móvil).
+  - `PageHeader` — campana de notificaciones solo en escritorio, y el header **deja de ser sticky en móvil**: se va con el scroll y libera pantalla (en escritorio sigue fijo).
+  - `components/ui/ChartScroll.tsx` (nuevo) — envuelve gráficos densos: en móvil mantienen un ancho mínimo legible (560-600px) y se desplazan con el dedo dentro de la tarjeta. Aplicado a: Evolución Costes Laborales y Previsión Facturación Semanal (Dashboard), gráfico 30 días y Comparativa Anual (Reservas).
+  - Leyenda de años de la Comparativa Anual con `flex-wrap`.
+
 ### Añadido
 - **Adaptación móvil (fase 4): offline y pulido táctil:**
   - `public/sw.js` + `components/ServiceWorkerRegister.tsx` — service worker (solo producción): red primero con caché de assets estáticos del mismo origen como respaldo; nunca intercepta Supabase ni `/api/`. La PWA instalada carga el shell más rápido y resiste cortes breves de red.
