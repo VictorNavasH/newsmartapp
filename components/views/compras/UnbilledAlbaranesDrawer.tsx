@@ -26,7 +26,7 @@ export function UnbilledAlbaranesDrawer({
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent side="right" className="w-[500px] sm:max-w-[500px] p-0 flex flex-col">
+            <SheetContent side="right" className="w-full sm:w-[500px] sm:max-w-[500px] p-0 flex flex-col">
                 <SheetHeader className="p-6 border-b border-slate-100">
                     <SheetTitle className="flex items-center gap-2 text-[#364f6b]">
                         <AlertCircle className="h-5 w-5 text-[#ffcb77]" />

@@ -138,7 +138,7 @@ export function SmartAssistant({ currentPath }: SmartAssistantProps) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="fixed right-6 bottom-24 w-[400px] max-h-[600px] bg-white rounded-2xl shadow-xl border border-slate-200/60 z-50 flex flex-col overflow-hidden"
+              className="fixed inset-x-3 bottom-24 w-auto max-h-[70vh] sm:inset-x-auto sm:right-6 sm:w-[400px] sm:max-h-[600px] bg-white rounded-2xl shadow-xl border border-slate-200/60 z-50 flex flex-col overflow-hidden"
             >
               {/* Header con gradiente sutil */}
               <div

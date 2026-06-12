@@ -2,6 +2,8 @@
 
 Documentación detallada de las 15 vistas principales. Cada vista se carga con `React.lazy()` y se renderiza desde `app/page.tsx` mediante un `switch(currentPath)`. La navegación usa hash-based routing via el hook `useAppRouter`. Las Conexiones Bancarias están embebidas como tab dentro de Tesorería.
 
+> **Responsive (jun 2026):** todas las vistas son usables en móvil (< 768px): los headers (`PageHeader`) apilan título y acciones, los grids de KPIs colapsan a 1-2 columnas, los drawers `Sheet` ocupan el ancho completo y la navegación pasa a menú hamburguesa + drawer. Las tablas anchas mantienen scroll horizontal interno (card view pendiente, fase 3).
+
 ---
 
 ## Índice

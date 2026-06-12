@@ -9,6 +9,15 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 ## [Unreleased]
 
 ### Añadido
+- **Adaptación móvil (fase 2): grids, headers y anchos fijos:**
+  - `ProductsPage` — los 4 grids fijos colapsan en móvil: KPIs `grid-cols-1 md:2 xl:4`, gráficos+tabla `grid-cols-1 lg:3` (con `col-span` responsive), Categorías `grid-cols-1 lg:2`, totales del Buscador `grid-cols-1 sm:3`.
+  - `PageHeader` — apila título y acciones en `< md`; el título ya no se trunca (ancho natural) y las acciones envuelven con `flex-wrap`. Padding `px-4 sm:px-6`.
+  - `PageContent` — padding reducido en móvil (`px-4 sm:px-6 py-4 sm:py-6`).
+  - Drawers `Sheet` a ancho completo en móvil: detalle de pedido (ComprasPage), detalle de factura (FacturacionPage) y albaranes sin facturar (`w-full sm:w-[450/500px]`).
+  - `SmartAssistant` — el panel de chat ocupa el ancho de pantalla con márgenes en móvil (`inset-x-3`, `max-h-[70vh]`) y mantiene 400px en escritorio.
+  - Contenedores de acciones de Expenses/Treasury/Facturación/Products con `flex-wrap`.
+  - Verificado: las 14 vistas sin overflow horizontal a 375px.
+
 - **Adaptación móvil (fase 1): PWA + navegación responsive:**
   - `app/manifest.ts` — manifest PWA (`/manifest.webmanifest`): la app ya se puede **instalar en la pantalla de inicio** del móvil (`display: standalone`). Iconos nuevos `public/icon-192.png` / `icon-512.png` generados desde `favicon.png`.
   - `app/layout.tsx` — export `viewport` (antes no existía: el móvil renderizaba sin `width=device-width`), `viewport-fit=cover` para safe-areas de iOS, y metadata `appleWebApp`.

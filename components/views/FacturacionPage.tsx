@@ -517,7 +517,7 @@ export default function FacturacionPage() {
         subtitle={`Control de facturas y cumplimiento fiscal · ${periodSubtitle}`}
         icon={Receipt}
         actions={
-          <div className="flex items-center gap-3">
+          <div className="flex items-center flex-wrap gap-3">
             <Tabs value={selectedPeriod} onValueChange={setPeriod}>
               <TabsList className="bg-white border border-slate-200 shadow-sm">
                 <TabsTrigger value="yesterday" className={activeTabStyle}>
@@ -957,7 +957,7 @@ export default function FacturacionPage() {
 
       {/* Factura Detalle Sheet */}
       <Sheet open={!!facturaDetalle} onOpenChange={(open) => !open && setFacturaDetalle(null)}>
-        <SheetContent side="right" className="w-[450px] sm:w-[500px] p-0 overflow-y-auto">
+        <SheetContent side="right" className="w-full sm:w-[500px] sm:max-w-[500px] p-0 overflow-y-auto">
           <SheetHeader className="px-6 pt-6 pb-4 border-b border-slate-100">
             <SheetTitle className="text-lg font-bold text-[#364f6b]">Detalle de Factura</SheetTitle>
             {facturaDetalle && <p className="text-sm text-slate-500">{facturaDetalle.cuentica_identifier}</p>}

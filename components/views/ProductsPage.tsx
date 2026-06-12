@@ -566,7 +566,7 @@ export default function ProductsPage() {
         title="Mix de Producto"
         subtitle="Análisis de ventas por producto, categoría y opciones"
         actions={
-          <div className="flex items-center gap-4">
+          <div className="flex items-center flex-wrap gap-3 sm:gap-4">
             <Select value={selectedTurno} onValueChange={setSelectedTurno}>
               <SelectTrigger className="w-[140px] bg-white">
                 <SelectValue placeholder="Turno" />
@@ -638,7 +638,7 @@ export default function ProductsPage() {
 
       <PageContent>
         {/* KPIs con comparativa media 4 semanas */}
-        <div className="grid grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
           <MetricGroupCard
             title="Facturación Total"
             total={{
@@ -818,7 +818,7 @@ export default function ProductsPage() {
             </div>
 
             {/* Charts and Table */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               {/* Top 10 Chart */}
               <TremorCard className="col-span-1 p-4">
                 <TremorTitle>Top 10 por Facturación</TremorTitle>
@@ -858,7 +858,7 @@ export default function ProductsPage() {
               </TremorCard>
 
               {/* Products Table */}
-              <TremorCard className="col-span-2 p-4">
+              <TremorCard className="col-span-1 lg:col-span-2 p-4">
                 <TremorTitle>Detalle de Productos</TremorTitle>
                 <div className="mt-4 max-h-[400px] overflow-auto">
                   <Table>
@@ -921,7 +921,7 @@ export default function ProductsPage() {
 
         {/* TAB: Categorías */}
         {mainView === "Categorías" && (
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Pie Chart */}
             <TremorCard className="p-4">
               <TremorTitle>Distribución por Categoría</TremorTitle>
@@ -1250,7 +1250,7 @@ export default function ProductsPage() {
 
             {/* Search Totals Summary */}
             {!searchLoading && searchQuery.length >= 2 && searchResults.length > 0 && (
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <TremorCard className="p-4 text-center">
                   <p className="text-sm text-slate-500 mb-1">Total Unidades</p>
                   <p className="text-2xl font-bold" style={{ color: BRAND_COLORS.primary }}>

@@ -869,7 +869,7 @@ export default function TreasuryPage() {
         title="Tesorería"
         subtitle="Control de cuentas bancarias y movimientos"
         actions={
-          <div className="flex items-center gap-3">
+          <div className="flex items-center flex-wrap gap-3">
             <ExportButton onExportCSV={handleTreasuryExportCSV} onExportPDF={handleTreasuryExportPDF} />
             <DateRangePickerExpenses
               from={dateRange.from}

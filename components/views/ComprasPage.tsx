@@ -590,7 +590,7 @@ export default function ComprasPage() {
 
       {/* Sheet de detalle de pedido */}
       <Sheet open={!!pedidoDetalle} onOpenChange={() => setPedidoDetalle(null)}>
-        <SheetContent side="right" className="w-[450px] sm:max-w-[450px] overflow-y-auto p-0">
+        <SheetContent side="right" className="w-full sm:w-[450px] sm:max-w-[450px] overflow-y-auto p-0">
           <SheetHeader className="border-b border-slate-100 pb-4 px-6 pt-6">
             <SheetTitle className="text-lg font-bold text-[#364f6b]">Detalle Pedido</SheetTitle>
           </SheetHeader>

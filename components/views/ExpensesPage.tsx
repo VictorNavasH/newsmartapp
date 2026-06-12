@@ -546,7 +546,7 @@ export default function ExpensesPage() {
         title="Gastos"
         subtitle={`Analisis de gastos: ${dateRange.from.toLocaleDateString("es-ES")} - ${dateRange.to.toLocaleDateString("es-ES")}`}
         actions={
-          <div className="flex items-center gap-3">
+          <div className="flex items-center flex-wrap gap-3">
             <ExportButton onExportCSV={handleExpensesExportCSV} onExportPDF={handleExpensesExportPDF} />
             <DateRangePickerExpenses from={dateRange.from} to={dateRange.to} onChange={handleDateChange} />
           </div>
