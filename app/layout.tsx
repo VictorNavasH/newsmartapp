@@ -2,6 +2,7 @@ import type React from "react"
 import type { Metadata, Viewport } from "next"
 import { Toaster } from "sonner"
 import { QueryProvider } from "@/components/providers/QueryProvider"
+import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister"
 
 import "./globals.css"
 
@@ -64,6 +65,7 @@ export default function RootLayout({
         <QueryProvider>
           {children}
         </QueryProvider>
+        <ServiceWorkerRegister />
         <Toaster position="bottom-right" richColors closeButton />
       </body>
     </html>

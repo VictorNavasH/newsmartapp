@@ -8,6 +8,13 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 
 ## [Unreleased]
 
+### Añadido
+- **Adaptación móvil (fase 4): offline y pulido táctil:**
+  - `public/sw.js` + `components/ServiceWorkerRegister.tsx` — service worker (solo producción): red primero con caché de assets estáticos del mismo origen como respaldo; nunca intercepta Supabase ni `/api/`. La PWA instalada carga el shell más rápido y resiste cortes breves de red.
+  - `SmartAssistant` — botón flotante y panel respetan la safe-area inferior de iOS (home indicator) en PWA instalada.
+  - `sheet.tsx` — botón de cierre de los drawers con área táctil ampliada (~36px, antes ~16px).
+  - `globals.css` — sin flash gris al tocar (`-webkit-tap-highlight-color`) y sin auto-zoom de texto en iOS.
+
 ### Corregido
 - **Móvil — scroll lateral con datos reales y header gigante (feedback de iPhone en producción):**
   - `app/page.tsx` — `overflow-x-hidden` en `<main>`: ningún elemento interno puede volver a desplazar lateralmente la app entera ("la app desaparecía" al hacer scroll lateral).

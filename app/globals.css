@@ -179,3 +179,9 @@
 .live-badge {
   animation: live-pulse 4s ease-in-out infinite;
 }
+
+/* Pulido móvil: sin flash gris al tocar y sin auto-zoom de texto en iOS */
+html {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+}

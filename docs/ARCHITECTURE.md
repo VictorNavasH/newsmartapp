@@ -68,7 +68,7 @@ La app **no usa** el file-based routing de Next.js para las vistas principales. 
 - `app/manifest.ts` genera `/manifest.webmanifest` (instalable en pantalla de inicio, `display: standalone`).
 - Iconos: `public/icon-192.png` y `public/icon-512.png` (generados desde `favicon.png`).
 - `app/layout.tsx` exporta `viewport` (`width=device-width, initial-scale=1, viewport-fit=cover` para safe-areas de iOS) y `appleWebApp` en metadata.
-- Pendiente (fase posterior): service worker para caché offline.
+- Service worker: `public/sw.js` (red primero, caché de assets estáticos del mismo origen como respaldo; nunca intercepta Supabase ni `/api/`). Se registra solo en producción vía `components/ServiceWorkerRegister.tsx` (montado en `app/layout.tsx`).
 
 ---
 

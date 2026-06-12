@@ -108,7 +108,8 @@ export function SmartAssistant({ currentPath }: SmartAssistantProps) {
 
   return (
     <>
-      <div className="fixed bottom-6 right-6 z-50">
+      {/* Respeta la safe-area inferior de iOS (home indicator) en PWA instalada */}
+      <div className="fixed right-6 z-50" style={{ bottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}>
         <MovingBorderButton
           borderRadius="1rem"
           containerClassName="h-14 w-14"
@@ -138,7 +139,8 @@ export function SmartAssistant({ currentPath }: SmartAssistantProps) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="fixed inset-x-3 bottom-24 w-auto max-h-[70vh] sm:inset-x-auto sm:right-6 sm:w-[400px] sm:max-h-[600px] bg-white rounded-2xl shadow-xl border border-slate-200/60 z-50 flex flex-col overflow-hidden"
+              className="fixed inset-x-3 w-auto max-h-[70vh] sm:inset-x-auto sm:right-6 sm:w-[400px] sm:max-h-[600px] bg-white rounded-2xl shadow-xl border border-slate-200/60 z-50 flex flex-col overflow-hidden"
+              style={{ bottom: "calc(6rem + env(safe-area-inset-bottom, 0px))" }}
             >
               {/* Header con gradiente sutil */}
               <div
