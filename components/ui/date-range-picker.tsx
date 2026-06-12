@@ -71,7 +71,7 @@ export function DateRangePicker({ from, to, onChange, className }: DateRangePick
   }
 
   return (
-    <div className={cn("flex items-center gap-2", className)}>
+    <div className={cn("flex flex-wrap items-center gap-2", className)}>
       {/* Desde */}
       <div className="flex items-center gap-1.5">
         <span className="text-xs text-slate-500 font-medium">Desde</span>

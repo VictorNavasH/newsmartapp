@@ -121,7 +121,7 @@ export function DateRangePickerExpenses({ from, to, onChange, className }: DateR
         ))}
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {/* Desde */}
         <div className="flex items-center gap-1">
           <span className="text-xs text-slate-500 font-medium">Desde:</span>

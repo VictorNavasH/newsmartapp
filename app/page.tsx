@@ -144,7 +144,8 @@ export default function App() {
       />
       <ErrorBoundary onReset={() => navigate("/")}>
         <Suspense fallback={<ViewLoadingFallback />}>
-          <main className="flex-1 min-h-0 overflow-auto w-full relative">
+          {/* overflow-x-hidden: ningún elemento interno puede desplazar lateralmente la app entera */}
+          <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden w-full relative">
             {renderContent()}
           </main>
         </Suspense>

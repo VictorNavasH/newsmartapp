@@ -35,10 +35,10 @@ export function ReservationsYearlyChart({
 }: ReservationsYearlyChartProps) {
   return (
     <TremorCard>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center flex-wrap justify-between gap-3 mb-6">
         <TremorTitle>Comparativa Anual</TremorTitle>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center flex-wrap gap-3 sm:gap-4">
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-500">Metrica:</span>
             <div className="flex bg-slate-100 rounded-lg p-1">

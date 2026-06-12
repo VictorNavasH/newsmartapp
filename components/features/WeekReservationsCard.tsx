@@ -37,7 +37,7 @@ export const WeekReservationsCard: React.FC = () => {
 
   return (
     <TremorCard className="h-full flex flex-col">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center flex-wrap justify-between gap-2 mb-4">
         <div className="flex items-center gap-2">
           <CalendarDays className="w-5 h-5 text-[#02b1c4]" />
           <div>
@@ -48,7 +48,7 @@ export const WeekReservationsCard: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center flex-wrap gap-2">
           {/* Navigation Controls */}
           <div className="flex bg-slate-100 rounded-md p-0.5 mr-2">
             <button
@@ -86,7 +86,8 @@ export const WeekReservationsCard: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex-1 grid grid-cols-7 gap-2">
+      {/* En móvil los 7 días se desplazan horizontalmente dentro de la tarjeta (scroll propio) */}
+      <div className="flex-1 flex overflow-x-auto gap-2 pb-1 md:grid md:grid-cols-7 md:overflow-visible md:pb-0">
         {days.map((day) => {
           const dateObj = new Date(day.date)
           const dayName = dateObj.toLocaleDateString("es-ES", { weekday: "short" }).replace(".", "").toUpperCase()
@@ -98,7 +99,7 @@ export const WeekReservationsCard: React.FC = () => {
           return (
             <div
               key={day.date}
-              className={`relative flex flex-col gap-2 rounded-xl p-3 border transition-all ${
+              className={`relative flex flex-col gap-2 rounded-xl p-3 border transition-all min-w-[120px] shrink-0 md:min-w-0 md:shrink ${
                 isToday ? "bg-white border-[#02b1c4] shadow-md ring-1 ring-[#02b1c4]" : "bg-white border-slate-200"
               }`}
             >

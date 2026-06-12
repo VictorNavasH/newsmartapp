@@ -8,6 +8,16 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 
 ## [Unreleased]
 
+### Corregido
+- **Móvil — scroll lateral con datos reales y header gigante (feedback de iPhone en producción):**
+  - `app/page.tsx` — `overflow-x-hidden` en `<main>`: ningún elemento interno puede volver a desplazar lateralmente la app entera ("la app desaparecía" al hacer scroll lateral).
+  - `DateRangePicker` (normal y expenses) — los pares Desde/Hasta envuelven (`flex-wrap`); eran más anchos que la pantalla y causaban el overflow en Reservas.
+  - `ReservationsKPISection` (barra de capacidad) y `ReservationsYearlyChart` (selectores Métrica/Turno) — filas con `flex-wrap`.
+  - `PageHeader` — compacto en móvil: menos padding, título `text-lg`, subtítulo oculto en `< md`.
+  - `DashboardPage` — fecha y "Última actualización" ocultos en `< lg` (saturaban el header); leyendas de los gráficos con altura 60px en móvil (se solapaban con el plot) y ejes Y más estrechos (38px).
+  - `WeekReservationsCard` — los 7 días pasan a scroll horizontal propio dentro de la tarjeta (min 120px/día, legibles) en vez de 7 columnas aplastadas; cabecera de la tarjeta con wrap.
+  - Verificado a 430px (iPhone Pro Max): 14 rutas con `scrollWidth` exacto al viewport y sin elementos anchos fuera de contenedores con scroll propio.
+
 ### Añadido
 - **Adaptación móvil (fase 3): card view en las tablas principales** (las entradas por vista están debajo):
   - `TreasuryMovimientosTab` — tabla de movimientos a `hidden md:block`; tarjetas en móvil con descripción + importe coloreado, fecha, cuenta con logo y el selector de categorización a ancho completo (extraído a `renderCategorySelect`, compartido tabla/tarjeta, conserva colores por método regla/IA/manual). Paginación apilada en móvil.

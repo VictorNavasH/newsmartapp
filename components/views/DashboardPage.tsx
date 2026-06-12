@@ -6,6 +6,7 @@ import { MetricGroupCard } from "@/components/ui/MetricGroupCard"
 import { TremorCard, TremorTitle } from "@/components/ui/TremorCard"
 import { fetchRealTimeData, fetchFinancialKPIs, fetchLaborCostAnalysis, fetchWeekRevenue, fetchFoodCostAverage, fetchConciliacionResumen } from "@/lib/dataService"
 import { useAlerts } from "@/hooks/useAlerts"
+import { useIsMobile } from "@/hooks/useIsMobile"
 import type { AlertContext } from "@/lib/alertEngine"
 import type { RealTimeData, FinancialKPIs, LaborCostDay, WeekRevenueDay, RechartsTooltipProps } from "@/types"
 import {
@@ -62,6 +63,7 @@ import {
 } from "recharts"
 
 export function DashboardPage({ demoMode = false }: { demoMode?: boolean }) {
+  const isMobile = useIsMobile()
   const [liveData, setLiveData] = useState<RealTimeData | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -459,7 +461,8 @@ export function DashboardPage({ demoMode = false }: { demoMode?: boolean }) {
               <span>{refreshing ? "Actualizando..." : "Actualizar"}</span>
             </button>
 
-            <div className="flex items-center gap-2 text-slate-600 text-sm">
+            {/* Fecha y última actualización: solo escritorio (en móvil saturaban el header) */}
+            <div className="hidden lg:flex items-center gap-2 text-slate-600 text-sm">
               <div className="w-2 h-2 rounded-full bg-[#02b1c4]" />
               <span>{formatDateLong(new Date())}</span>
             </div>
@@ -471,7 +474,7 @@ export function DashboardPage({ demoMode = false }: { demoMode?: boolean }) {
               </span>
             </div>
 
-            <div className="flex items-center gap-2 text-slate-400 text-sm">
+            <div className="hidden lg:flex items-center gap-2 text-slate-400 text-sm">
               <Clock className="w-4 h-4" />
               <span className="text-xs">Última actualización: {formatTime(lastUpdate)}</span>
             </div>
@@ -663,7 +666,7 @@ export function DashboardPage({ demoMode = false }: { demoMode?: boolean }) {
                     tick={{ fontSize: 11, fill: "#64748b" }}
                     axisLine={false}
                     tickLine={false}
-                    width={50}
+                    width={isMobile ? 38 : 50}
                   />
                   <YAxis
                     yAxisId="right"
@@ -672,13 +675,13 @@ export function DashboardPage({ demoMode = false }: { demoMode?: boolean }) {
                     tick={{ fontSize: 11, fill: "#64748b" }}
                     axisLine={false}
                     tickLine={false}
-                    width={50}
+                    width={isMobile ? 38 : 50}
                     domain={[0, 50]}
                   />
                   <Tooltip content={<LaborCostTooltip />} />
                   <Legend
                     verticalAlign="top"
-                    height={36}
+                    height={isMobile ? 60 : 36}
                     formatter={(value) => {
                       const labels: Record<string, string> = {
                         ventas_netas: "Ventas netas",
@@ -780,7 +783,7 @@ export function DashboardPage({ demoMode = false }: { demoMode?: boolean }) {
                     tick={{ fontSize: 11, fill: "#64748b" }}
                     axisLine={false}
                     tickLine={false}
-                    width={50}
+                    width={isMobile ? 38 : 50}
                   />
                   <YAxis
                     yAxisId="right"
@@ -789,13 +792,13 @@ export function DashboardPage({ demoMode = false }: { demoMode?: boolean }) {
                     tick={{ fontSize: 11, fill: "#64748b" }}
                     axisLine={false}
                     tickLine={false}
-                    width={50}
+                    width={isMobile ? 38 : 50}
                     domain={[0, 150]}
                   />
                   <Tooltip content={<WeekRevenueTooltip />} />
                   <Legend
                     verticalAlign="top"
-                    height={36}
+                    height={isMobile ? 60 : 36}
                     formatter={(value) => {
                       const labels: Record<string, string> = {
                         facturadoReal: "Facturado",

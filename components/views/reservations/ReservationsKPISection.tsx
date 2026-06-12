@@ -46,9 +46,9 @@ export function ReservationsKPISection({
   return (
     <>
       {/* Barra de capacidad */}
-      <div className="bg-white border border-slate-200 rounded-lg px-6 py-4 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-8">
+      <div className="bg-white border border-slate-200 rounded-lg px-4 sm:px-6 py-4 shadow-sm">
+        <div className="flex items-center flex-wrap justify-between gap-3">
+          <div className="flex items-center flex-wrap gap-4 sm:gap-8">
             <div>
               <div className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Por Turno</div>
               <div className="flex items-center gap-4">
@@ -64,7 +64,7 @@ export function ReservationsKPISection({
               </div>
             </div>
 
-            <div className="h-12 w-px bg-slate-200" />
+            <div className="hidden sm:block h-12 w-px bg-slate-200" />
 
             <div>
               <div className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Por Dia</div>
