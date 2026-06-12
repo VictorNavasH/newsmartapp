@@ -8,6 +8,12 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 
 ## [Unreleased]
 
+### Corregido
+- **"Algo salió mal — Failed to load chunk" tras cada deploy:**
+  - Causa: los clientes con una versión anterior abierta intentaban cargar chunks (`React.lazy`) que el nuevo deploy ya había sustituido en Vercel.
+  - `ErrorBoundary` — detecta errores de chunk obsoleto y **recarga automáticamente** (máx. 1 vez/minuto para evitar bucles); si no puede, muestra "Hay una versión nueva de la app" con botón **Recargar** (antes "Volver al Dashboard", que no arreglaba nada).
+  - `public/sw.js` — si un asset estático devuelve 404 (chunk de un deploy anterior), sirve la copia cacheada para que los clientes viejos sigan funcionando hasta que recarguen.
+
 ### Cambiado
 - **Móvil — operatividad: menos cromo, más pantalla (feedback de iPhone):**
   - `ExportButton` — oculto en `< md` en todas las vistas (exportar archivos no es flujo de móvil).

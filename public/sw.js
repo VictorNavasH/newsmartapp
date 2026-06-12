@@ -32,10 +32,17 @@ self.addEventListener("fetch", (event) => {
 
   event.respondWith(
     fetch(request)
-      .then((response) => {
+      .then(async (response) => {
         if (response.ok && isStaticAsset) {
           const copy = response.clone()
           caches.open(CACHE_NAME).then((cache) => cache.put(request, copy))
+          return response
+        }
+        // Chunk de un deploy anterior que ya no existe (404): servir la copia
+        // cacheada para que los clientes con la versión vieja sigan funcionando
+        if (!response.ok && isStaticAsset) {
+          const cached = await caches.match(request)
+          if (cached) return cached
         }
         return response
       })
