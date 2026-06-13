@@ -56,6 +56,7 @@ import {
   confirmarCuadre,
   marcarPendiente,
   fetchCosteTicket,
+  fetchCostesTickets,
 } from "@/lib/facturacionService"
 import type {
   CosteTicket,
@@ -79,6 +80,10 @@ const BRAND_COLORS = {
   danger: "#fe6d73",
   dark: "#364f6b",
 }
+
+// Color de marca según el food cost: ≤30% verde, ≤35% amarillo, >35% rojo
+const foodCostColor = (pct: number): string =>
+  pct <= 30 ? BRAND_COLORS.secondary : pct <= 35 ? BRAND_COLORS.accent : BRAND_COLORS.danger
 
 const facturacionMenuItems = [
   {
@@ -157,6 +162,8 @@ export default function FacturacionPage() {
   // Coste real de mercancía / food cost del ticket abierto (vista vw_coste_ticket)
   const [costeTicket, setCosteTicket] = useState<CosteTicket | null>(null)
   const [costeTicketLoading, setCosteTicketLoading] = useState(false)
+  // Coste/food cost de los tickets del listado (para la columna Food Cost)
+  const [costesMap, setCostesMap] = useState<Record<string, CosteTicket>>({})
 
   // Al abrir el detalle de una factura, cargar su coste real y food cost
   useEffect(() => {
@@ -294,6 +301,14 @@ export default function FacturacionPage() {
       setListado(data)
       setTotalCount(count)
       setLoading(false)
+
+      // Cargar coste/food cost de los tickets de la página (columna Food Cost)
+      const txIds = data.map((d) => d.transaction_id).filter(Boolean)
+      if (txIds.length > 0) {
+        fetchCostesTickets(txIds).then(setCostesMap)
+      } else {
+        setCostesMap({})
+      }
     }
     loadListado()
   }, [dateRange, currentPage, pageSize])
@@ -697,7 +712,24 @@ export default function FacturacionPage() {
                         <span className="shrink-0 text-sm font-semibold">{formatCurrency(item.importe_total)}</span>
                       </div>
                       <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
-                        <span>{formatDateES(item.fecha)}</span>
+                        <span className="flex items-center gap-2">
+                          {formatDateES(item.fecha)}
+                          {(() => {
+                            const c = costesMap[item.transaction_id]
+                            if (!c) return null
+                            const color = foodCostColor(Number(c.food_cost_pct))
+                            return (
+                              <span
+                                className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[11px] font-semibold"
+                                style={{ color, backgroundColor: `${color}1a` }}
+                                title={c.coste_parcial ? "Coste parcial: incluye poke/producto sin coste mapeado" : undefined}
+                              >
+                                FC {Number(c.food_cost_pct).toLocaleString("es-ES", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
+                                {c.coste_parcial && <span>*</span>}
+                              </span>
+                            )
+                          })()}
+                        </span>
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
                             item.verifactu_estado === "accepted"
@@ -735,6 +767,7 @@ export default function FacturacionPage() {
                       <th className="text-left py-3 px-4 font-medium text-slate-600">Nº Factura</th>
                       <th className="text-left py-3 px-4 font-medium text-slate-600">Mesa</th>
                       <th className="text-right py-3 px-4 font-medium text-slate-600">Importe</th>
+                      <th className="text-center py-3 px-4 font-medium text-slate-600">Food Cost</th>
                       <th className="text-left py-3 px-4 font-medium text-slate-600">Método</th>
                       <th className="text-center py-3 px-4 font-medium text-slate-600">VeriFactu</th>
                       {/* Added column Ver */}
@@ -748,6 +781,23 @@ export default function FacturacionPage() {
                         <td className="py-3 px-4 font-medium">{item.numero_completo}</td>
                         <td className="py-3 px-4">{item.mesa || "-"}</td>
                         <td className="py-3 px-4 text-right font-medium">{formatCurrency(item.importe_total)}</td>
+                        <td className="py-3 px-4 text-center">
+                          {(() => {
+                            const c = costesMap[item.transaction_id]
+                            if (!c) return <span className="text-xs text-slate-300">—</span>
+                            const color = foodCostColor(Number(c.food_cost_pct))
+                            return (
+                              <span
+                                className="inline-flex items-center gap-0.5 px-2 py-1 rounded-full text-xs font-semibold"
+                                style={{ color, backgroundColor: `${color}1a` }}
+                                title={c.coste_parcial ? "Coste parcial: incluye poke/producto sin coste mapeado, el real es mayor" : undefined}
+                              >
+                                {Number(c.food_cost_pct).toLocaleString("es-ES", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
+                                {c.coste_parcial && <span>*</span>}
+                              </span>
+                            )
+                          })()}
+                        </td>
                         <td className="py-3 px-4">{item.metodo_pago_nombre}</td>
                         <td className="py-3 px-4 text-center">
                           <span

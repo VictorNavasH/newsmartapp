@@ -46,6 +46,27 @@ export async function fetchCosteTicket(transactionId: string): Promise<CosteTick
   return data as CosteTicket | null
 }
 
+// Coste/food cost de varios tickets a la vez (para la columna del listado).
+// Devuelve un mapa transaction_id → CosteTicket.
+export async function fetchCostesTickets(transactionIds: string[]): Promise<Record<string, CosteTicket>> {
+  if (!transactionIds || transactionIds.length === 0) return {}
+  const { data, error } = await supabase
+    .from("vw_coste_ticket")
+    .select("*")
+    .in("transaction_id", transactionIds)
+
+  if (error) {
+    console.error("Error fetching costes tickets:", error)
+    return {}
+  }
+
+  const map: Record<string, CosteTicket> = {}
+  for (const row of (data || []) as CosteTicket[]) {
+    map[row.transaction_id] = row
+  }
+  return map
+}
+
 export async function fetchFacturacionListado(
   startDate?: string,
   endDate?: string,

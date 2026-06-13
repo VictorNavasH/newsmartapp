@@ -10,6 +10,7 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 
 ### Añadido
 - **Coste real y food cost por ticket en Facturación:** al abrir el detalle de una factura (drawer), nueva sección **"Coste y margen"** con coste de mercancía, food cost % (sobre base imponible, coloreado por umbral) y margen bruto. Si el ticket incluye productos sin coste base mapeado (p. ej. poke "crea tu"), muestra aviso **"coste parcial"**.
+  - **Columna "Food Cost" en el listado de facturas** (tabla y cards móvil): % por ticket con color de marca (verde ≤30%, amarillo ≤35%, rojo >35%) y `*` si es coste parcial. Carga por lote vía `fetchCostesTickets()`.
   - Nueva vista de BD `vw_coste_ticket` (coste real por ticket = `products.cost_price` + `SUM(product_options.cost_price_option)` sobre líneas `is_paid=true`, unidas por `linked_transaction_id`; food cost sobre base imponible; flags `coste_parcial` y `cuadra_factura`). Ver `scripts/create_vw_coste_ticket.sql`. Validado: 30 días → 405 tickets, coste medio 14,1€/ticket, food cost 19,4%.
   - Índices `ix_soi_linked_tx` y `ix_sio_item` para la búsqueda por ticket.
   - `lib/facturacionService.ts` → `fetchCosteTicket(transactionId)`; tipo `CosteTicket`.
