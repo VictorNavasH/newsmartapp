@@ -4,11 +4,11 @@ import { WeatherCard } from "@/components/features/WeatherCard"
 import { WeekReservationsCard } from "@/components/features/WeekReservationsCard"
 import { MetricGroupCard } from "@/components/ui/MetricGroupCard"
 import { TremorCard, TremorTitle } from "@/components/ui/TremorCard"
-import { fetchRealTimeData, fetchFinancialKPIs, fetchLaborCostAnalysis, fetchWeekRevenue, fetchFoodCostAverage, fetchConciliacionResumen } from "@/lib/dataService"
+import { fetchRealTimeData, fetchFinancialKPIs, fetchLaborCostAnalysis, fetchWeekRevenue, fetchFoodCostAverage, fetchFoodCostReal, fetchConciliacionResumen } from "@/lib/dataService"
 import { useAlerts } from "@/hooks/useAlerts"
 import { useIsMobile } from "@/hooks/useIsMobile"
 import type { AlertContext } from "@/lib/alertEngine"
-import type { RealTimeData, FinancialKPIs, LaborCostDay, WeekRevenueDay, RechartsTooltipProps } from "@/types"
+import type { RealTimeData, FinancialKPIs, LaborCostDay, WeekRevenueDay, RechartsTooltipProps, FoodCostReal } from "@/types"
 import {
   Banknote,
   Receipt,
@@ -32,7 +32,7 @@ import { PageHeader } from "@/components/layout/PageHeader"
 import { PageContent } from "@/components/layout/PageContent"
 import { KPIProgressBar } from "@/components/ui/KPIProgressBar"
 import { ChartScroll } from "@/components/ui/ChartScroll"
-import { loadKPITargets, calculateProgress } from "@/lib/kpiTargets"
+import { loadKPITargets, calculateProgress, calculateBreakEven, monthPaceFraction } from "@/lib/kpiTargets"
 import type { KPITargets } from "@/types/kpiTargets"
 import { ExportButton } from "@/components/ui/ExportButton"
 import { exportToCSV, exportToPDF } from "@/lib/exportUtils"
@@ -79,6 +79,7 @@ export function DashboardPage({ demoMode = false }: { demoMode?: boolean }) {
   const [weekOffset, setWeekOffset] = useState<number>(0)
   const [kpiTargets, setKpiTargets] = useState<KPITargets | null>(null)
   const [foodCostAvg, setFoodCostAvg] = useState<number>(0)
+  const [foodCostReal, setFoodCostReal] = useState<FoodCostReal | null>(null)
   const [conciliacionResumen, setConciliacionResumen] = useState<{
     totalPendientes: number;
     autoSinConfirmar: number;
@@ -95,12 +96,13 @@ export function DashboardPage({ demoMode = false }: { demoMode?: boolean }) {
         const endDate = new Date()
         const startDate = new Date()
         startDate.setDate(startDate.getDate() - laborCostDays)
-        const [data, kpis, laborCost, weekRevenue, foodCost, concResumen] = await Promise.all([
+        const [data, kpis, laborCost, weekRevenue, foodCost, foodCostRealData, concResumen] = await Promise.all([
           fetchRealTimeData(),
           fetchFinancialKPIs(),
           fetchLaborCostAnalysis(startDate.toISOString().split("T")[0], endDate.toISOString().split("T")[0]),
           fetchWeekRevenue(weekOffset),
           fetchFoodCostAverage(),
+          fetchFoodCostReal(),
           fetchConciliacionResumen(),
         ])
         setLiveData(data)
@@ -108,6 +110,7 @@ export function DashboardPage({ demoMode = false }: { demoMode?: boolean }) {
         setLaborCostData(laborCost)
         setWeekRevenueData(weekRevenue)
         setFoodCostAvg(foodCost)
+        setFoodCostReal(foodCostRealData)
         setConciliacionResumen(concResumen)
         setDbConnected(true)
         setLastUpdate(new Date())
@@ -131,6 +134,11 @@ export function DashboardPage({ demoMode = false }: { demoMode?: boolean }) {
       setWeekRevenueData(getDemoWeekRevenueData())
       setKpiTargets(DEMO_KPI_TARGETS)
       setFoodCostAvg(DEMO_FOOD_COST_AVG)
+      setFoodCostReal({
+        global: { tipo: "Global", food_cost_pct: DEMO_FOOD_COST_AVG, venta_neta: 48000, coste_mercancia: Math.round(48000 * DEMO_FOOD_COST_AVG / 100), unidades: 3700 },
+        comida: { tipo: "Comida", food_cost_pct: DEMO_FOOD_COST_AVG, venta_neta: 44000, coste_mercancia: Math.round(44000 * DEMO_FOOD_COST_AVG / 100), unidades: 2700 },
+        bebida: { tipo: "Bebida", food_cost_pct: 18, venta_neta: 4000, coste_mercancia: 720, unidades: 1000 },
+      })
       setConciliacionResumen(DEMO_CONCILIACION)
       setDbConnected(true)
       setLoading(false)
@@ -153,16 +161,36 @@ export function DashboardPage({ demoMode = false }: { demoMode?: boolean }) {
     return weekRevenueData.reduce((sum, d) => sum + (d.facturadoReal || 0), 0)
   }, [weekRevenueData])
 
-  // Target semanal calculado = costes fijos / semanas del mes actual
+  // Food cost REAL ponderado por mix de ventas (global). Fallback a la media simple de la carta.
+  const foodCostRealPct = useMemo(() => {
+    return foodCostReal?.global?.food_cost_pct ?? foodCostAvg
+  }, [foodCostReal, foodCostAvg])
+
+  // Punto de equilibrio REAL: costes fijos / margen de contribución (con gastos variables)
+  const breakEven = useMemo(() => {
+    if (!kpiTargets) return null
+    return calculateBreakEven(kpiTargets.breakEvenTarget, foodCostRealPct, kpiTargets.otherVariableCostPct)
+  }, [kpiTargets, foodCostRealPct])
+
+  // Ritmo del mes en curso (fracción transcurrida) para objetivos acumulados
+  const monthPace = useMemo(() => monthPaceFraction(), [])
+
+  // Objetivo de facturación semanal = facturación necesaria para el equilibrio, por semana
   const weeklyRevenueTarget = useMemo(() => {
-    if (!kpiTargets) return 0
+    if (!breakEven) return 0
     const now = new Date()
-    const year = now.getFullYear()
-    const month = now.getMonth()
-    const daysInMonth = new Date(year, month + 1, 0).getDate()
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
     const weeksInMonth = daysInMonth / 7
-    return Math.round(kpiTargets.breakEvenTarget / weeksInMonth)
-  }, [kpiTargets])
+    return Math.round(breakEven.breakEvenRevenue / weeksInMonth)
+  }, [breakEven])
+
+  // Ritmo de la semana en curso (fracción transcurrida lun→dom) para facturación semanal
+  const weekPace = useMemo(() => {
+    if (weekOffset !== 0) return undefined // solo aplica a la semana actual
+    const now = new Date()
+    const dow = now.getDay() === 0 ? 7 : now.getDay() // lunes=1 … domingo=7
+    return dow / 7
+  }, [weekOffset])
 
   // Ticket medio comensal (últimos 30 días, ya viene de la vista)
   const ticketComensal30d = liveData?.prevision?.ticket_comensal_30d || 0
@@ -1014,7 +1042,7 @@ export function DashboardPage({ demoMode = false }: { demoMode?: boolean }) {
                 <TrendingUp className="w-5 h-5 text-[#02b1c4]" />
                 <div>
                   <TremorTitle>Progreso vs Objetivos</TremorTitle>
-                  <p className="text-xs text-slate-400">Rendimiento actual vs metas configuradas</p>
+                  <p className="text-xs text-slate-400">La marca vertical en cada barra indica el ritmo esperado a estas alturas</p>
                 </div>
               </div>
               <span className="text-xs text-slate-400">
@@ -1022,27 +1050,33 @@ export function DashboardPage({ demoMode = false }: { demoMode?: boolean }) {
               </span>
             </div>
 
-            {/* Sección 1: Ingresos (3 columnas) */}
+            {/* Bloque 1: Este mes (con ritmo) */}
             <div className="mb-4">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Ingresos</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">
+                Este mes · vas por el {Math.round(monthPace * 100)}% del periodo
+              </p>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 <KPIProgressBar
-                  label="Facturación Semanal"
-                  progress={calculateProgress(weeklyRevenue, weeklyRevenueTarget)}
-                  suffix="€"
-                  icon={<CalendarDays className="w-4 h-4" />}
-                />
-                <KPIProgressBar
-                  label="Ticket Comensal"
-                  progress={calculateProgress(ticketComensal30d, kpiTargets.ticketComensalTarget)}
-                  suffix="€"
-                  icon={<Receipt className="w-4 h-4" />}
-                />
-                <KPIProgressBar
-                  label="Ingresos Mensuales"
-                  progress={calculateProgress(currentKPIs?.ingresos || 0, kpiTargets.monthlyRevenueTarget)}
+                  label="Ingresos del mes"
+                  periodLabel="Mes · acumulado"
+                  progress={calculateProgress(currentKPIs?.ingresos || 0, kpiTargets.monthlyRevenueTarget, false, monthPace)}
                   suffix="€"
                   icon={<Target className="w-4 h-4" />}
+                />
+                <KPIProgressBar
+                  label="Punto de Equilibrio"
+                  periodLabel="Mes · cubrir costes"
+                  progress={calculateProgress(currentKPIs?.ingresos || 0, breakEven?.breakEvenRevenue ?? 0, false, monthPace)}
+                  suffix="€"
+                  icon={<ShieldCheck className="w-4 h-4" />}
+                />
+                <KPIProgressBar
+                  label="Coste Laboral"
+                  periodLabel="Mes · % sobre ventas"
+                  progress={calculateProgress(laborCostMonthlyAvg, kpiTargets.laborCostTarget, true)}
+                  suffix="%"
+                  isLowerBetter
+                  icon={<Users className="w-4 h-4" />}
                 />
               </div>
             </div>
@@ -1050,32 +1084,44 @@ export function DashboardPage({ demoMode = false }: { demoMode?: boolean }) {
             {/* Separador */}
             <div className="border-t border-slate-100 my-4" />
 
-            {/* Sección 2: Costes y Rentabilidad (3 columnas) */}
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Costes y Rentabilidad</p>
+            {/* Bloque 2: Tendencia (últimos 30 días) */}
+            <div className="mb-4">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Tendencia · últimos 30 días</p>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 <KPIProgressBar
                   label="Food Cost"
-                  progress={calculateProgress(foodCostAvg, kpiTargets.foodCostTarget, true)}
+                  periodLabel="30 días · ponderado por ventas"
+                  progress={calculateProgress(foodCostRealPct, kpiTargets.foodCostTarget, true)}
                   suffix="%"
                   isLowerBetter
                   icon={<UtensilsCrossed className="w-4 h-4" />}
                 />
                 <KPIProgressBar
-                  label="Coste Laboral"
-                  progress={calculateProgress(laborCostMonthlyAvg, kpiTargets.laborCostTarget, true)}
-                  suffix="%"
-                  isLowerBetter
-                  icon={<Users className="w-4 h-4" />}
+                  label="Ticket Comensal"
+                  periodLabel="30 días · gasto medio/cliente"
+                  progress={calculateProgress(ticketComensal30d, kpiTargets.ticketComensalTarget)}
+                  suffix="€"
+                  icon={<Receipt className="w-4 h-4" />}
                 />
                 <KPIProgressBar
-                  label="Punto de Equilibrio"
-                  progress={calculateProgress(currentKPIs?.ingresos || 0, kpiTargets.breakEvenTarget)}
+                  label="Facturación Semanal"
+                  periodLabel="Semana en curso"
+                  progress={calculateProgress(weeklyRevenue, weeklyRevenueTarget, false, weekPace)}
                   suffix="€"
-                  icon={<ShieldCheck className="w-4 h-4" />}
+                  icon={<CalendarDays className="w-4 h-4" />}
                 />
               </div>
             </div>
+
+            {/* Pie: desglose del punto de equilibrio (transparencia del cálculo) */}
+            {breakEven && (
+              <div className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-[11px] text-slate-500 leading-relaxed">
+                <span className="font-bold text-[#364f6b]">Punto de equilibrio</span> = costes fijos{" "}
+                {kpiTargets.breakEvenTarget.toLocaleString("es-ES")}€ ÷ margen de contribución{" "}
+                {breakEven.contributionMarginPct}% (food cost {foodCostRealPct.toFixed(1)}% + otros variables{" "}
+                {kpiTargets.otherVariableCostPct}%) = <span className="font-bold text-[#364f6b]">{breakEven.breakEvenRevenue.toLocaleString("es-ES")}€/mes</span> para no perder dinero.
+              </div>
+            )}
           </TremorCard>
         )}
 

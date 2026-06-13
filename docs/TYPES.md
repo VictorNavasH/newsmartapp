@@ -670,6 +670,43 @@ FacturaAdyacente: { factura_id, transaction_id, cuentica_identifier,
     food_cost_promedio: number }[] }
 ```
 
+### FoodCostRealRow / FoodCostReal
+Food cost **real ponderado por mix de ventas** (vista `vw_food_cost_real`, 30 días).
+```typescript
+FoodCostRealRow = { tipo: "Comida"|"Bebida"|"Global";
+  food_cost_pct, venta_neta, coste_mercancia: number; unidades: number }
+FoodCostReal = { global, comida, bebida: FoodCostRealRow|null }
+```
+
+### KPITargets (`types/kpiTargets.ts`)
+Objetivos configurables. Persistidos en tabla `kpi_targets`.
+```typescript
+{ dailyRevenueTarget, weeklyRevenueTarget, monthlyRevenueTarget: number;
+  ticketMedioTarget, ticketComensalTarget: number;
+  foodCostTarget, laborCostTarget: number;        // %
+  breakEvenTarget: number;                          // costes fijos mensuales (€)
+  otherVariableCostPct: number;                     // % otros costes variables (comisiones, consumibles)
+  lunchOccupancyTarget, dinnerOccupancyTarget: number;
+  averageRatingTarget, dailyReservationsTarget: number }
+```
+
+### KPIProgress
+Resultado de `calculateProgress()`. Campos de **ritmo** opcionales (solo en métricas acumuladas con `paceFraction`).
+```typescript
+{ current, target, percentage: number;
+  status: 'on-track'|'at-risk'|'behind';
+  delta, deltaPercentage: number;
+  pacePercentage?: number;    // % del periodo transcurrido (marca del ritmo)
+  expectedToDate?: number }   // valor esperado a estas alturas
+```
+
+### BreakEvenResult
+Resultado de `calculateBreakEven()` (punto de equilibrio real).
+```typescript
+{ fixedCosts: number; variableCostPct: number;
+  contributionMarginPct: number; breakEvenRevenue: number }
+```
+
 ---
 
 ## 15. Compras

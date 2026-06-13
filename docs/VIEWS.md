@@ -37,7 +37,7 @@ Documentación detallada de las 15 vistas principales. Cada vista se carga con `
 | **Servicio(s)** | `dataService.ts`, `alertEngine.ts`, `exportUtils.ts`, `kpiTargets.ts` |
 | **Export** | Named export `DashboardPage` |
 | **Hooks** | `useAlerts(alertContext)` — Evalúa alertas automáticas sobre métricas |
-| **KPI Progress** | Sección "Progreso vs Objetivos" con barras de progreso comparando datos reales vs objetivos configurados en Ajustes |
+| **KPI Progress** | Sección "Progreso vs Objetivos" reorganizada por periodos: **Este mes** (Ingresos del mes, Punto de Equilibrio, Coste Laboral — con marca de **ritmo/pace**) y **Tendencia 30 días** (Food Cost real ponderado, Ticket Comensal, Facturación Semanal). El Punto de Equilibrio usa `calculateBreakEven()` (margen de contribución con gastos variables) y se muestra su desglose. Food Cost vía `fetchFoodCostReal()`. |
 | **Exportación** | CSV/PDF de KPIs financieros, facturación en vivo y costes laborales vía `ExportButton` |
 
 ### Datos que consume
@@ -48,6 +48,9 @@ Documentación detallada de las 15 vistas principales. Cada vista se carga con `
 | `fetchFinancialKPIs()` | Vista `vw_dashboard_financiero` | `FinancialKPIs[]` |
 | `fetchLaborCostAnalysis(start, end)` | Vista `vw_labor_cost_analysis` | `LaborCostDay[]` |
 | `fetchWeekRevenue(weekOffset)` | RPC `rpc_facturacion_semana` | `WeekRevenueDay[]` |
+| `fetchFoodCostAverage()` | Vista `vw_food_cost` | `number` (media simple, fallback) |
+| `fetchFoodCostReal()` | Vista `vw_food_cost_real` | `FoodCostReal` (ponderado por ventas) |
+| `fetchConciliacionResumen()` | Vista `vw_compras_facturas_pendientes` | resumen alertas |
 
 ### Sistema de Alertas
 

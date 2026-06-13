@@ -10,7 +10,8 @@ export interface KPITargets {
   // Costs
   foodCostTarget: number            // Objetivo food cost (%)
   laborCostTarget: number           // Objetivo coste laboral (%)
-  breakEvenTarget: number           // Costes fijos mensuales para break-even (€)
+  breakEvenTarget: number           // Costes fijos mensuales (€) — alquiler, personal fijo, suministros base, seguros, préstamos…
+  otherVariableCostPct: number      // Otros costes variables sobre ventas (%) aparte del food cost: comisiones TPV/delivery, consumibles…
 
   // Occupancy
   lunchOccupancyTarget: number      // Objetivo ocupación comida (%)
@@ -33,6 +34,7 @@ export const DEFAULT_KPI_TARGETS: KPITargets = {
   foodCostTarget: 30,
   laborCostTarget: 33,
   breakEvenTarget: 33500,
+  otherVariableCostPct: 3,
   lunchOccupancyTarget: 75,
   dinnerOccupancyTarget: 85,
   averageRatingTarget: 4.5,
@@ -43,8 +45,11 @@ export const DEFAULT_KPI_TARGETS: KPITargets = {
 export interface KPIProgress {
   current: number
   target: number
-  percentage: number          // 0-100+
-  status: 'on-track' | 'at-risk' | 'behind'  // >90% = on-track, 70-90% = at-risk, <70% = behind
+  percentage: number          // 0-100+ (avance sobre el objetivo del periodo completo)
+  status: 'on-track' | 'at-risk' | 'behind'
   delta: number              // Diferencia absoluta
   deltaPercentage: number    // Diferencia en %
+  // ─── Ritmo (pace): solo para métricas acumuladas de un periodo en curso (mes) ───
+  pacePercentage?: number    // % del periodo ya transcurrido (0-100). Marca dónde "deberías ir"
+  expectedToDate?: number    // Valor que deberías llevar a estas alturas del periodo
 }

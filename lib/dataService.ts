@@ -28,6 +28,8 @@ import type {
   ComparisonResult,
   FoodCostProduct,
   FoodCostSummary,
+  FoodCostReal,
+  FoodCostRealRow,
   PeriodComparisonAggregate,
 } from "../types"
 import { supabase } from "./supabase" // Corregida importación para usar el cliente correcto
@@ -1688,6 +1690,38 @@ export async function fetchFoodCostAverage(): Promise<number> {
   } catch (err) {
     console.error("[fetchFoodCostAverage] Exception:", err)
     return 0
+  }
+}
+
+// Food cost REAL ponderado por mix de ventas (últimos 30 días), desde vw_food_cost_real.
+// Devuelve desglose comida / bebida / global. Más fiable que la media simple de la carta.
+export async function fetchFoodCostReal(): Promise<FoodCostReal> {
+  try {
+    const { data, error } = await supabase
+      .from("vw_food_cost_real")
+      .select("tipo, food_cost_pct, venta_neta, coste_mercancia, unidades")
+
+    if (error) {
+      console.error("[fetchFoodCostReal] Error:", error.message)
+      return { global: null, comida: null, bebida: null }
+    }
+
+    const rows = (data || []).map((r: any): FoodCostRealRow => ({
+      tipo: r.tipo,
+      food_cost_pct: Number.parseFloat(r.food_cost_pct) || 0,
+      venta_neta: Number.parseFloat(r.venta_neta) || 0,
+      coste_mercancia: Number.parseFloat(r.coste_mercancia) || 0,
+      unidades: Number.parseInt(r.unidades, 10) || 0,
+    }))
+
+    return {
+      global: rows.find((r) => r.tipo === "Global") || null,
+      comida: rows.find((r) => r.tipo === "Comida") || null,
+      bebida: rows.find((r) => r.tipo === "Bebida") || null,
+    }
+  } catch (err) {
+    console.error("[fetchFoodCostReal] Exception:", err)
+    return { global: null, comida: null, bebida: null }
   }
 }
 

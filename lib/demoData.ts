@@ -224,6 +224,7 @@ export const DEMO_KPI_TARGETS: KPITargets = {
   foodCostTarget: 30,
   laborCostTarget: 32,
   breakEvenTarget: 65000,
+  otherVariableCostPct: 3,
   lunchOccupancyTarget: 75,
   dinnerOccupancyTarget: 85,
   averageRatingTarget: 4.5,

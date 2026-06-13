@@ -42,7 +42,8 @@ import {
   type RestaurantCapacity,
   type SyncLogEntry,
 } from "@/lib/settingsService"
-import { loadKPITargets, saveKPITargets } from "@/lib/kpiTargets"
+import { loadKPITargets, saveKPITargets, calculateBreakEven } from "@/lib/kpiTargets"
+import { fetchFoodCostReal } from "@/lib/dataService"
 import { DEFAULT_KPI_TARGETS } from "@/types/kpiTargets"
 import type { KPITargets } from "@/types/kpiTargets"
 
@@ -200,6 +201,7 @@ export default function SettingsPage({ userName, userEmail }: SettingsPageProps)
   const [theme, setTheme] = useState<"light" | "dark" | "system">("light")
   const [kpiTargets, setKpiTargets] = useState<KPITargets>(DEFAULT_KPI_TARGETS)
   const [kpiSaved, setKpiSaved] = useState(false)
+  const [foodCostRealPct, setFoodCostRealPct] = useState<number>(DEFAULT_KPI_TARGETS.foodCostTarget)
 
   const loadData = useCallback(async () => {
     try {
@@ -225,6 +227,9 @@ export default function SettingsPage({ userName, userEmail }: SettingsPageProps)
 
     // Cargar objetivos KPI desde Supabase (con fallback a localStorage)
     loadKPITargets().then(setKpiTargets)
+    fetchFoodCostReal().then((r) => {
+      if (r.global?.food_cost_pct) setFoodCostRealPct(r.global.food_cost_pct)
+    })
 
     loadData().then(() => setLoading(false))
   }, [loadData])
@@ -758,11 +763,11 @@ export default function SettingsPage({ userName, userEmail }: SettingsPageProps)
                           <input
                             type="text"
                             readOnly
-                            value={`${Math.round(kpiTargets.breakEvenTarget / 4.33).toLocaleString("es-ES")} €`}
+                            value={`${Math.round(calculateBreakEven(kpiTargets.breakEvenTarget, foodCostRealPct, kpiTargets.otherVariableCostPct).breakEvenRevenue / 4.33).toLocaleString("es-ES")} €`}
                             className="w-full px-3 py-2 rounded-lg border border-slate-100 bg-slate-50 text-sm text-slate-400 cursor-not-allowed"
                           />
                         </div>
-                        <p className="text-[10px] text-slate-400 mt-1">= Costes fijos ÷ semanas/mes</p>
+                        <p className="text-[10px] text-slate-400 mt-1">= Punto de equilibrio ÷ semanas/mes</p>
                       </div>
                       <div>
                         <label className="block text-xs font-medium text-slate-500 mb-1">Ticket medio comensal</label>
@@ -833,8 +838,41 @@ export default function SettingsPage({ userName, userEmail }: SettingsPageProps)
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">€</span>
                         </div>
+                        <p className="text-[10px] text-slate-400 mt-1">Alquiler, personal fijo, suministros base, seguros, préstamos…</p>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Otros costes variables</label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            value={kpiTargets.otherVariableCostPct}
+                            onChange={(e) => handleKpiChange("otherVariableCostPct", e.target.value)}
+                            className="w-full px-3 py-2 pr-8 rounded-lg border border-slate-200 text-sm text-[#364f6b] focus:outline-none focus:border-[#02b1c4] focus:ring-1 focus:ring-[#02b1c4]"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">%</span>
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-1">Comisiones TPV/delivery, consumibles… (aparte del food cost)</p>
                       </div>
                     </div>
+
+                    {/* Previsualización del punto de equilibrio real */}
+                    {(() => {
+                      const be = calculateBreakEven(kpiTargets.breakEvenTarget, foodCostRealPct, kpiTargets.otherVariableCostPct)
+                      return (
+                        <div className="mt-4 rounded-lg bg-[#02b1c4]/5 border border-[#02b1c4]/20 px-4 py-3">
+                          <p className="text-xs font-bold text-[#364f6b] mb-1">Punto de equilibrio real</p>
+                          <p className="text-[11px] text-slate-500 leading-relaxed">
+                            Costes fijos <span className="font-semibold">{kpiTargets.breakEvenTarget.toLocaleString("es-ES")}€</span> ÷ margen de contribución{" "}
+                            <span className="font-semibold">{be.contributionMarginPct}%</span> (food cost real{" "}
+                            <span className="font-semibold">{foodCostRealPct.toFixed(1)}%</span> + otros variables{" "}
+                            <span className="font-semibold">{kpiTargets.otherVariableCostPct}%</span>)
+                          </p>
+                          <p className="text-lg font-bold text-[#02b1c4] mt-1">
+                            {be.breakEvenRevenue.toLocaleString("es-ES")} €/mes <span className="text-xs font-medium text-slate-400">para no perder dinero</span>
+                          </p>
+                        </div>
+                      )
+                    })()}
                   </div>
 
                   {/* Ocupación */}

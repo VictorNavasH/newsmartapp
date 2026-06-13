@@ -12,6 +12,8 @@ interface KPIProgressBarProps {
   isLowerBetter?: boolean
   /** Icono lucide-react para identificar visualmente el KPI */
   icon?: ReactNode
+  /** Periodo de la métrica (ej: "Mes", "30 días", "Semana") — chip aclaratorio */
+  periodLabel?: string
 }
 
 export function KPIProgressBar({
@@ -20,6 +22,7 @@ export function KPIProgressBar({
   suffix = "",
   isLowerBetter = false,
   icon,
+  periodLabel,
 }: KPIProgressBarProps) {
   const statusColors = {
     'on-track': { bar: 'bg-[#17c3b2]', text: 'text-[#17c3b2]', bg: 'bg-[#17c3b2]/10' },
@@ -36,6 +39,8 @@ export function KPIProgressBar({
   const colors = statusColors[progress.status]
   const cappedPercentage = Math.min(100, progress.percentage)
   const deltaColor = progress.delta > 0 ? 'text-[#17c3b2]' : 'text-[#fe6d73]'
+  const hasPace = progress.pacePercentage !== undefined
+  const pacePos = hasPace ? Math.min(100, Math.max(0, progress.pacePercentage as number)) : 0
 
   return (
     <div className="p-4 rounded-xl border border-slate-200 bg-white">
@@ -47,7 +52,12 @@ export function KPIProgressBar({
               <div className={colors.text}>{icon}</div>
             </div>
           )}
-          <span className="text-sm font-bold text-[#364f6b]">{label}</span>
+          <div className="flex flex-col">
+            <span className="text-sm font-bold text-[#364f6b] leading-tight">{label}</span>
+            {periodLabel && (
+              <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">{periodLabel}</span>
+            )}
+          </div>
         </div>
         <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${colors.bg} ${colors.text}`}>
           {statusLabel[progress.status]}
@@ -64,18 +74,28 @@ export function KPIProgressBar({
         </span>
       </div>
 
-      {/* Fila 3: barra de progreso */}
-      <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden mb-2">
+      {/* Fila 3: barra de progreso (con marcador de ritmo si aplica) */}
+      <div className="relative h-2.5 bg-slate-100 rounded-full overflow-hidden mb-2">
         <div
           className={`h-full rounded-full transition-all duration-700 ease-out ${colors.bar}`}
           style={{ width: `${cappedPercentage}%` }}
         />
+        {hasPace && (
+          // Marca dónde "deberías ir" a estas alturas del periodo
+          <div
+            className="absolute top-[-2px] bottom-[-2px] w-0.5 bg-[#364f6b]"
+            style={{ left: `${pacePos}%` }}
+            title="Ritmo esperado a estas alturas del periodo"
+          />
+        )}
       </div>
 
-      {/* Fila 4: porcentaje + delta */}
+      {/* Fila 4: porcentaje/ritmo + delta */}
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-slate-400">
-          {progress.percentage}% del objetivo
+          {hasPace
+            ? `${progress.percentage}% · esperado ${(progress.expectedToDate ?? 0).toLocaleString('es-ES')}${suffix}`
+            : `${progress.percentage}% del objetivo`}
         </span>
         {progress.delta !== 0 && (
           <span className={`text-xs font-bold ${deltaColor}`}>

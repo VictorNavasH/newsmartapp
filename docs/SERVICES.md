@@ -121,7 +121,8 @@ Servicio principal. Contiene funciones para dashboard en tiempo real, reservas, 
 |---------|-----------|---------|----------------|
 | `fetchBenchmarks(inicio, fin)` | `fechaInicio, fechaFin: string` | `Promise<BenchmarkResumen>` | RPC `get_benchmarks_resumen` → `{p_fecha_inicio, p_fecha_fin}` |
 | `fetchLaborCostAnalysis(start, end)` | `startDate, endDate: string` | `Promise<LaborCostDay[]>` | Vista `vw_labor_cost_analysis` |
-| `fetchFoodCostAverage()` | — | `Promise<number>` | Vista `vw_food_cost` → `.select("food_cost_pct")` → promedio redondeado a 1 decimal. Usado por Dashboard KPI. |
+| `fetchFoodCostAverage()` | — | `Promise<number>` | Vista `vw_food_cost` → `.select("food_cost_pct")` → promedio simple (media de la carta). Legacy, usado como fallback. |
+| `fetchFoodCostReal()` | — | `Promise<FoodCostReal>` | Vista `vw_food_cost_real` → food cost **ponderado por mix de ventas** (30 días), desglose comida/bebida/global. Usado por Dashboard (objetivos) y Ajustes (preview break-even). |
 | `fetchFoodCostProducts()` | — | `Promise<FoodCostSummary>` | Vista `vw_food_cost` → `.select("*").order("food_cost_pct", desc)` |
 | `updateManualPrice(sku, variantId, price)` | `sku: string, variantId?: string, newPrice: number` | `Promise<{success, error?}>` | RPC `update_manual_price` o `update_variant_manual_price` |
 | `clearManualPrice(sku, variantId)` | `sku: string, variantId?: string` | `Promise<{success, error?}>` | RPC `clear_manual_price` o update con null |
@@ -796,3 +797,24 @@ Lectura del dashboard del agente NÜA (Hermes). Cliente Supabase, rol `authentic
 | `fetchHermesAnalytics(days=30)` | `hermes_analytics_daily` | Analítica diaria de consumo, orden cronológico. |
 
 Hooks React Query en `hooks/queries/useHermesData.ts` (auto-refresh: estado 60s, sesiones/cron 2 min). Todas las funciones devuelven `null`/`[]` ante error o tablas vacías.
+
+---
+
+## 15. kpiTargets.ts — Objetivos KPI y cálculos
+
+Carga/guardado de objetivos (tabla `kpi_targets`, fallback `localStorage`) y cálculos de progreso, ritmo y punto de equilibrio.
+
+### Carga / guardado
+
+| Función | Retorna | Descripción |
+|---------|---------|-------------|
+| `loadKPITargets()` | `Promise<KPITargets>` | Lee de `kpi_targets` (por `restaurant_id`); fallback a `localStorage` y luego a `DEFAULT_KPI_TARGETS`. |
+| `saveKPITargets(targets)` | `Promise<void>` | `upsert` en Supabase + caché en `localStorage`. |
+
+### Cálculos
+
+| Función | Firma | Descripción |
+|---------|-------|-------------|
+| `calculateProgress(current, target, isLowerBetter?, paceFraction?)` | `→ KPIProgress` | Progreso vs objetivo. Si se pasa `paceFraction` (0-1), el **estado se mide vs el ritmo esperado** a estas alturas del periodo (no vs el total), y rellena `pacePercentage` y `expectedToDate`. Para `isLowerBetter` (food/labor cost) usa fórmula espejo. |
+| `monthPaceFraction(lastDataDate?)` | `→ number` (0-1) | Fracción del mes en curso transcurrida según el día actual (o la última fecha con datos). |
+| `calculateBreakEven(fixedCosts, foodCostPct, otherVariableCostPct)` | `→ BreakEvenResult` | **Punto de equilibrio real**: `Costes fijos ÷ (Margen de contribución/100)`, con `Margen de contribución % = 100 − (foodCostPct + otherVariableCostPct)`. Devuelve `{fixedCosts, variableCostPct, contributionMarginPct, breakEvenRevenue}`. |

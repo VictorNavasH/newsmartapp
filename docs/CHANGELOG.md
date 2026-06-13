@@ -8,6 +8,28 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 
 ## [Unreleased]
 
+### Añadido
+- **Punto de equilibrio REAL con margen de contribución (gastos variables):**
+  - Antes el "Punto de Equilibrio" comparaba las ventas del mes directamente contra los costes fijos, asumiendo margen del 100% (cada euro facturado = beneficio). Indicaba rentabilidad mucho antes de lo real.
+  - Nueva fórmula correcta: `Punto de equilibrio (€) = Costes fijos ÷ Margen de contribución`, donde `Margen de contribución % = 100 − (food cost real + otros costes variables)`.
+  - `lib/kpiTargets.ts` → `calculateBreakEven()` y tipo `BreakEvenResult`.
+  - Nuevo campo configurable `otherVariableCostPct` (comisiones TPV/delivery, consumibles…) en Objetivos KPI. Columna `kpi_targets.other_variable_cost_pct` (default 3).
+  - El Dashboard y Ajustes muestran el desglose del cálculo de forma transparente.
+- **Food cost REAL ponderado por mix de ventas (vista `vw_food_cost_real`):**
+  - Antes el food cost era la media simple del food_cost_pct de toda la carta (un plato que se vende 500 veces pesaba igual que uno que se vende 2). Ahora se pondera por unidades vendidas reales (últimos 30 días), con desglose comida/bebida/global.
+  - Nueva vista de BD `vw_food_cost_real` (une `sales_order_items` × `vw_food_cost` por SKU; ver `scripts/create_vw_food_cost_real.sql`).
+  - `lib/dataService.ts` → `fetchFoodCostReal()`; tipos `FoodCostReal` y `FoodCostRealRow`.
+- **Indicador de "ritmo" (pace) en objetivos del mes:**
+  - "Ingresos del mes" y "Punto de Equilibrio" ya no salen siempre en rojo a principio de mes. El estado se mide vs lo que se debería llevar a estas alturas del periodo (no vs el total). `calculateProgress()` acepta `paceFraction`; helper `monthPaceFraction()`.
+  - `KPIProgressBar` dibuja una marca vertical del ritmo esperado y muestra el valor esperado a fecha.
+
+### Cambiado
+- **Tarjeta "Progreso vs Objetivos" del Dashboard reorganizada por periodos** (antes mezclaba diario/semanal/mensual/30 días sin indicarlo):
+  - Bloque **"Este mes"** (con ritmo): Ingresos del mes, Punto de Equilibrio, Coste Laboral.
+  - Bloque **"Tendencia · últimos 30 días"**: Food Cost (real ponderado), Ticket Comensal, Facturación Semanal.
+  - Cada barra etiquetada con su periodo y base de cálculo.
+  - El objetivo de facturación semanal pasa a derivarse del punto de equilibrio real (÷ semanas/mes), no de los costes fijos.
+
 ### Corregido
 - **Icono de la PWA en iOS mostraba el logo de V0 al añadir a pantalla de inicio:**
   - Causa: `public/apple-icon.png` seguía siendo el icono por defecto de V0 (nunca se actualizó al rebrand). Safari iOS usa ese archivo (`apple-touch-icon`) para la pantalla de inicio, no el `manifest` ni el `favicon` — por eso en Chrome sí salía el logo correcto.

@@ -17,6 +17,21 @@ export interface FoodCostProduct {
   precioManual: boolean // indica si el precio fue editado manualmente
 }
 
+/** Food cost REAL ponderado por mix de ventas (últimos 30 días), de vw_food_cost_real */
+export interface FoodCostRealRow {
+  tipo: "Comida" | "Bebida" | "Global"
+  food_cost_pct: number
+  venta_neta: number
+  coste_mercancia: number
+  unidades: number
+}
+
+export interface FoodCostReal {
+  global: FoodCostRealRow | null
+  comida: FoodCostRealRow | null
+  bebida: FoodCostRealRow | null
+}
+
 export interface FoodCostSummary {
   productos: FoodCostProduct[]
   kpis: {
