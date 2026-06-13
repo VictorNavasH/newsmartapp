@@ -42,15 +42,15 @@ Config en Ajustes → Objetivos KPI (con preview en vivo del break-even).
   en `option_recipe_map` (`gstock_product` + `portion`).
 - **Menús compuestos** (Burger/Poke/Crea-tu-Menú): decisión pendiente — ¿la receta del menú
   ya incluye los componentes o se suman? (riesgo de doble conteo).
-- **Taquitos / Baos (combinatorios)** (✅ pestaña RESUELTA): cada combo (cantidad + sabor, identificado
+- **Taquitos / Baos (combinatorios)** (✅ RESUELTO completo): cada combo (cantidad + sabor, identificado
   por sus 2 opciones `-C-{2T/3T/4T}` + `-C-{P/CP/CD/S}`) se resuelve a su **receta GStock real** vía la
-  vista `vw_taquitos_baos_combos`; la pestaña sobrescribe coste y receta por variante (antes: CTE cableado
-  que infravaloraba y referenciaba siempre "POLLO"). Ver `scripts/create_vw_taquitos_baos_combos.sql`.
-  - PENDIENTE (mayor): **coste real por ticket** usando esas 2 opciones de `sales_item_options`
-    (`vw_food_cost_real`/`vw_coste_ticket` aún usan el combo más barato por SKU vía `DISTINCT ON`).
-  - PENDIENTE: **desajuste de PVP base** — `products.price` dice NST 11,50 / NSB 16,50, pero `vw_food_cost`
-    cablea 10,90 / 17 (y el TPV mostraba 10,5). Decidir la fuente correcta del PVP.
-  - NOTA del usuario: los **taquitos de solomillo ya no se sirven** (siguen `is_active` en TPV) — gestionar visibilidad.
+  vista `vw_taquitos_baos_combos`. La pestaña sobrescribe coste/PVP/receta por variante; y
+  **`vw_coste_ticket` + `vw_food_cost_real` resuelven el coste real por ticket** por esas 2 opciones
+  (antes: combo más barato por SKU). PVP corregido al precio real cobrado (`price_total`): taquitos 10,50
+  base, baos 7,50/8,00 (el catálogo decía 17 → baos mentían ~7 %). Impacto food cost 30d: Global 21,0→21,5 %,
+  Comida 20,5→21,2 %. Ver `scripts/create_vw_taquitos_baos_combos.sql` / `_food_cost_real.sql` / `_coste_ticket.sql`.
+  - PENDIENTE (aparte): la fuente de PVP del TPV (`products.price` 11,50/16,50) está **desincronizada** con lo cobrado — revisar el sync GStock/TPV.
+  - NOTA del usuario: los **taquitos de solomillo ya no se sirven** (siguen `is_active` en TPV, solo 1 venta en 90d) — gestionar visibilidad.
 - **Visibilidad de platos fuera de carta** (✅ RESUELTO — opción b): la pestaña Food Cost oculta por
   defecto los platos **sin ventas en 60 días** vía la vista `vw_productos_vendidos_60d` (campo
   `soldRecently`), con toggle "Ver también sin ventas" + chip "Sin ventas 60d" + contador de ocultos.

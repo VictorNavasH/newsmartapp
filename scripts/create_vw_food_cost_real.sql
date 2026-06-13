@@ -6,22 +6,21 @@
 --   1) pondera cada producto por las UNIDADES realmente vendidas
 --      (sales_order_items × vw_food_cost por SKU), y
 --   2) suma el coste DINÁMICO de los modificadores/opciones que eligió el
---      cliente (sales_item_options → product_options.cost_price_option):
---      destilados premium en combinados, suplementos, ingredientes de pokes…
+--      cliente (sales_item_options → product_options.cost_price_option).
+--
+-- COMBINATORIOS (taquitos/baos, RST-SFC-NST / RST-SFC-NSB): el coste y el PVP
+-- neto se resuelven por la COMBINACIÓN real (cantidad + sabor) vía las 2 opciones
+-- de cada línea contra vw_taquitos_baos_combos (coste GStock real + PVP real
+-- cobrado). Antes se usaba el combo más barato por SKU (DISTINCT ON), que
+-- infravaloraba (p. ej. todo taquito contaba como Pollo 2ud ~1,84 €).
 --
 -- IMPORTANTE — deduplicación (fix doble conteo): vw_food_cost contiene filas
--- "fantasma" por variante (RST-SFC-NST taquitos ×12, RST-SFC-NSB baos ×4, ~8
--- platos ×2 por la fila 'con patatas/helado'). Sin deduplicar, el JOIN por sku
--- multiplicaba cada venta por el nº de filas e inflaba venta_neta/unidades
--- ~50-60%. El CTE fc_dedup toma una fila por SKU (la de menor coste = base sin
--- guarnición, que además evita la constante cableada +0.47/+0.41 de la variante).
+-- "fantasma" por variante. El CTE fc_dedup toma una fila por SKU (la de menor
+-- coste). Para los combinatorios, combo_item sobrescribe ese valor con el real.
 --
--- NOTA denominador: usa solo la venta neta BASE (pvp_neto, sin IVA). NO suma aún
--- la venta de las opciones de pago, porque muchos costes de opción (pokes "crea
--- tu") siguen sin mapear en GStock/n8n; sumar venta sin coste infravaloraría el
--- food cost. Se añadirá cuando esos costes estén mapeados (Plan Food Cost Dinámico).
+-- NOTA denominador: venta neta (pvp_neto, sin IVA). Para combinatorios usa el
+-- pvp_neto del combo real; para el resto, el de vw_food_cost.
 --
--- Base de venta neta (pvp_neto, sin IVA) — estándar en hostelería.
 -- Devuelve 3 filas: Comida, Bebida y Global.
 -- Consumida por: lib/dataService.ts → fetchFoodCostReal()
 -- ============================================================================
@@ -32,21 +31,32 @@ WITH item_option_cost AS (
   LEFT JOIN product_options po ON po.option_sku = sio.option_sku
   GROUP BY sio.item_id
 ),
+combo_item AS (
+  SELECT soi.item_id, tbc.coste AS combo_cost, tbc.pvp_neto AS combo_pvp_neto
+  FROM sales_order_items soi
+  JOIN sales_item_options a ON a.item_id = soi.item_id
+  JOIN sales_item_options b ON b.item_id = soi.item_id AND b.option_sku <> a.option_sku
+  JOIN vw_taquitos_baos_combos tbc ON tbc.cantidad_sku = a.option_sku AND tbc.sabor_sku = b.option_sku
+  WHERE soi.product_sku IN ('RST-SFC-NST', 'RST-SFC-NSB')
+),
 fc_dedup AS (
   SELECT DISTINCT ON (sku) sku, tipo, coste_escandallo, pvp_neto
   FROM vw_food_cost
   ORDER BY sku, coste_escandallo ASC
 )
 SELECT
-  COALESCE(fc.tipo, 'Global')                                                              AS tipo,
-  ROUND(100.0 * SUM(soi.quantity * (fc.coste_escandallo + COALESCE(ioc.option_cost, 0)))
-        / NULLIF(SUM(soi.quantity * fc.pvp_neto), 0), 1)                                   AS food_cost_pct,
-  SUM(soi.quantity * fc.pvp_neto)::numeric(12,2)                                           AS venta_neta,
-  SUM(soi.quantity * (fc.coste_escandallo + COALESCE(ioc.option_cost, 0)))::numeric(12,2)  AS coste_mercancia,
-  SUM(soi.quantity)::bigint                                                                AS unidades
+  COALESCE(fc.tipo, 'Global')                                                               AS tipo,
+  ROUND(100.0 * SUM(soi.quantity * (COALESCE(ci.combo_cost, fc.coste_escandallo)
+        + CASE WHEN ci.item_id IS NULL THEN COALESCE(ioc.option_cost, 0) ELSE 0 END))
+        / NULLIF(SUM(soi.quantity * COALESCE(ci.combo_pvp_neto, fc.pvp_neto)), 0), 1)        AS food_cost_pct,
+  SUM(soi.quantity * COALESCE(ci.combo_pvp_neto, fc.pvp_neto))::numeric(12,2)                AS venta_neta,
+  SUM(soi.quantity * (COALESCE(ci.combo_cost, fc.coste_escandallo)
+        + CASE WHEN ci.item_id IS NULL THEN COALESCE(ioc.option_cost, 0) ELSE 0 END))::numeric(12,2) AS coste_mercancia,
+  SUM(soi.quantity)::bigint                                                                  AS unidades
 FROM sales_order_items soi
 JOIN fc_dedup fc ON fc.sku = soi.product_sku
 LEFT JOIN item_option_cost ioc ON ioc.item_id = soi.item_id
+LEFT JOIN combo_item ci ON ci.item_id = soi.item_id
 WHERE soi.confirmed_at >= (now() - interval '30 days')
   AND soi.cancelled_at IS NULL
 GROUP BY GROUPING SETS ((fc.tipo), ());

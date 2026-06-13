@@ -1748,7 +1748,9 @@ export async function fetchFoodCostProducts(): Promise<FoodCostSummary> {
         .eq("is_active", true),
       supabase.from("option_recipe_map").select("product_sku, option_name, source_type"),
       supabase.from("vw_productos_vendidos_60d").select("product_sku"),
-      supabase.from("vw_taquitos_baos_combos").select("sku, nombre_producto, coste, food_cost_pct, recipe_name, recipe_cost"),
+      supabase
+        .from("vw_taquitos_baos_combos")
+        .select("sku, nombre_producto, pvp, pvp_neto, coste, food_cost_pct, recipe_name, recipe_cost"),
     ])
 
     if (fcRes.error) {
@@ -1845,8 +1847,8 @@ export async function fetchFoodCostProducts(): Promise<FoodCostSummary> {
         producto: nombre,
         categoria: row.categoria || "Sin categoría",
         tipo: row.tipo || "Comida",
-        pvp: Number.parseFloat(row.pvp) || 0,
-        pvp_neto: Number.parseFloat(row.pvp_neto) || 0,
+        pvp: combo ? Number.parseFloat(combo.pvp) || 0 : Number.parseFloat(row.pvp) || 0,
+        pvp_neto: combo ? Number.parseFloat(combo.pvp_neto) || 0 : Number.parseFloat(row.pvp_neto) || 0,
         coste: combo ? Number.parseFloat(combo.coste) || 0 : Number.parseFloat(row.coste_escandallo) || 0,
         food_cost_pct: combo ? Number.parseFloat(combo.food_cost_pct) || 0 : Number.parseFloat(row.food_cost_pct) || 0,
         tiene_patatas: row.tiene_patatas === true,

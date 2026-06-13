@@ -3,7 +3,9 @@
 -- Coste real de mercancía y food cost POR TICKET (factura).
 --
 -- Calcula, para cada ticket, el coste real combinatorio:
---   coste = SUM(products.cost_price) + SUM(product_options.cost_price_option)
+--   coste = SUM(coste_base) + SUM(product_options.cost_price_option)
+--   donde coste_base = combo real (taquitos/baos, resuelto por las 2 opciones
+--   cantidad+sabor vía vw_taquitos_baos_combos) o products.cost_price para el resto.
 -- sobre las líneas pagadas (is_paid = true), uniendo:
 --   sales_order_items.linked_transaction_id = v_facturas_listado.transaction_id
 --   sales_item_options.item_id              = sales_order_items.item_id
@@ -22,12 +24,21 @@
 -- Índices necesarios: ver final del fichero.
 -- ============================================================================
 CREATE OR REPLACE VIEW vw_coste_ticket AS
-WITH lineas AS (
+WITH combo_item AS (
+  SELECT soi.item_id, tbc.coste AS combo_cost
+  FROM sales_order_items soi
+  JOIN sales_item_options a ON a.item_id = soi.item_id
+  JOIN sales_item_options b ON b.item_id = soi.item_id AND b.option_sku <> a.option_sku
+  JOIN vw_taquitos_baos_combos tbc ON tbc.cantidad_sku = a.option_sku AND tbc.sabor_sku = b.option_sku
+  WHERE soi.product_sku IN ('RST-SFC-NST', 'RST-SFC-NSB')
+),
+lineas AS (
   SELECT soi.linked_transaction_id AS transaction_id, soi.item_id, soi.price_total,
-         COALESCE(p.cost_price, 0) AS coste_base,
-         (p.sku IS NOT NULL AND COALESCE(p.cost_price, 0) = 0) AS base_sin_coste
+         COALESCE(ci.combo_cost, p.cost_price, 0) AS coste_base,
+         (p.sku IS NOT NULL AND COALESCE(ci.combo_cost, p.cost_price, 0) = 0) AS base_sin_coste
   FROM sales_order_items soi
   LEFT JOIN products p ON p.sku = soi.product_sku
+  LEFT JOIN combo_item ci ON ci.item_id = soi.item_id
   WHERE soi.is_paid = true AND soi.linked_transaction_id IS NOT NULL
 ),
 opciones AS (
