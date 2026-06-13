@@ -42,11 +42,15 @@ Config en Ajustes → Objetivos KPI (con preview en vivo del break-even).
   en `option_recipe_map` (`gstock_product` + `portion`).
 - **Menús compuestos** (Burger/Poke/Crea-tu-Menú): decisión pendiente — ¿la receta del menú
   ya incluye los componentes o se suman? (riesgo de doble conteo).
-- **Taquitos / Baos (combinatorios)**: coste = cantidad × coste-por-unidad-del-sabor (NO aditivo).
-  GStock tiene las 12 combinaciones y el coste por unidad. Necesitan lógica específica
-  (resolver cantidad+sabor → receta de combo), no sirve el `option_recipe_map` aditivo.
-  **No requiere cambiar el TPV**: la cantidad y el sabor quedan registrados en `sales_item_options`
-  por ticket, así que la combinación se resuelve en el cálculo de coste.
+- **Taquitos / Baos (combinatorios)** (✅ pestaña RESUELTA): cada combo (cantidad + sabor, identificado
+  por sus 2 opciones `-C-{2T/3T/4T}` + `-C-{P/CP/CD/S}`) se resuelve a su **receta GStock real** vía la
+  vista `vw_taquitos_baos_combos`; la pestaña sobrescribe coste y receta por variante (antes: CTE cableado
+  que infravaloraba y referenciaba siempre "POLLO"). Ver `scripts/create_vw_taquitos_baos_combos.sql`.
+  - PENDIENTE (mayor): **coste real por ticket** usando esas 2 opciones de `sales_item_options`
+    (`vw_food_cost_real`/`vw_coste_ticket` aún usan el combo más barato por SKU vía `DISTINCT ON`).
+  - PENDIENTE: **desajuste de PVP base** — `products.price` dice NST 11,50 / NSB 16,50, pero `vw_food_cost`
+    cablea 10,90 / 17 (y el TPV mostraba 10,5). Decidir la fuente correcta del PVP.
+  - NOTA del usuario: los **taquitos de solomillo ya no se sirven** (siguen `is_active` en TPV) — gestionar visibilidad.
 - **Visibilidad de platos fuera de carta** (✅ RESUELTO — opción b): la pestaña Food Cost oculta por
   defecto los platos **sin ventas en 60 días** vía la vista `vw_productos_vendidos_60d` (campo
   `soldRecently`), con toggle "Ver también sin ventas" + chip "Sin ventas 60d" + contador de ocultos.

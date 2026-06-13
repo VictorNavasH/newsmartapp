@@ -1738,8 +1738,8 @@ export async function fetchFoodCostProducts(): Promise<FoodCostSummary> {
   }
 
   try {
-    // Lecturas en paralelo: base + mapeo receta + opciones activas + origen de coste de opciones + ventas 60d
-    const [fcRes, mapRes, optRes, ormRes, soldRes] = await Promise.all([
+    // Lecturas en paralelo: base + mapeo receta + opciones activas + origen de coste de opciones + ventas 60d + combos taquitos/baos
+    const [fcRes, mapRes, optRes, ormRes, soldRes, comboRes] = await Promise.all([
       supabase.from("vw_food_cost").select("*").order("food_cost_pct", { ascending: false }),
       supabase.from("product_recipe_map").select("product_sku, recipe_name, recipe_cost, confidence, reviewed"),
       supabase
@@ -1748,6 +1748,7 @@ export async function fetchFoodCostProducts(): Promise<FoodCostSummary> {
         .eq("is_active", true),
       supabase.from("option_recipe_map").select("product_sku, option_name, source_type"),
       supabase.from("vw_productos_vendidos_60d").select("product_sku"),
+      supabase.from("vw_taquitos_baos_combos").select("sku, nombre_producto, coste, food_cost_pct, recipe_name, recipe_cost"),
     ])
 
     if (fcRes.error) {
@@ -1758,11 +1759,19 @@ export async function fetchFoodCostProducts(): Promise<FoodCostSummary> {
     if (optRes.error) console.error("[fetchFoodCostProducts] Error product_options:", optRes.error.message)
     if (ormRes.error) console.error("[fetchFoodCostProducts] Error option_recipe_map:", ormRes.error.message)
     if (soldRes.error) console.error("[fetchFoodCostProducts] Error vw_productos_vendidos_60d:", soldRes.error.message)
+    if (comboRes.error) console.error("[fetchFoodCostProducts] Error vw_taquitos_baos_combos:", comboRes.error.message)
 
     // SKUs vendidos en los últimos 60 días (señal "en carta"). Si la lectura falla, no ocultamos nada.
     const soldRows = soldRes.data || []
     const soldSkus = new Set<string>(soldRows.map((r: any) => r.product_sku))
     const soldDataAvailable = !soldRes.error && soldRows.length > 0
+
+    // Combos taquitos/baos: coste real GStock + receta por variante (sustituye al CTE cableado de vw_food_cost).
+    // Indexado por sku|nombre (= rowId), que es como se enumeran los combos en vw_food_cost.
+    const comboByRow = new Map<string, any>()
+    for (const c of comboRes.data || []) {
+      comboByRow.set(`${c.sku}|${c.nombre_producto}`, c)
+    }
 
     // Mapeo de receta por SKU (origen GStock)
     const mapBySku = new Map<string, any>()
@@ -1826,6 +1835,10 @@ export async function fetchFoodCostProducts(): Promise<FoodCostSummary> {
         mappingStatus = "ok"
       }
 
+      // Combos taquitos/baos: sobrescribir coste y receta con la combinación real GStock por variante
+      // (vw_food_cost los calcula con un CTE cableado y siempre referencia la receta "POLLO").
+      const combo = comboByRow.get(rowId)
+
       productos.push({
         rowId,
         sku,
@@ -1834,13 +1847,17 @@ export async function fetchFoodCostProducts(): Promise<FoodCostSummary> {
         tipo: row.tipo || "Comida",
         pvp: Number.parseFloat(row.pvp) || 0,
         pvp_neto: Number.parseFloat(row.pvp_neto) || 0,
-        coste: Number.parseFloat(row.coste_escandallo) || 0,
-        food_cost_pct: Number.parseFloat(row.food_cost_pct) || 0,
+        coste: combo ? Number.parseFloat(combo.coste) || 0 : Number.parseFloat(row.coste_escandallo) || 0,
+        food_cost_pct: combo ? Number.parseFloat(combo.food_cost_pct) || 0 : Number.parseFloat(row.food_cost_pct) || 0,
         tiene_patatas: row.tiene_patatas === true,
         tiene_helado: row.tiene_helado === true,
         tiene_ensalada: row.tiene_ensalada === true,
-        recipeName: map?.recipe_name ?? null,
-        recipeCost: map?.recipe_cost != null ? Number.parseFloat(map.recipe_cost) : null,
+        recipeName: combo ? combo.recipe_name : map?.recipe_name ?? null,
+        recipeCost: combo
+          ? Number.parseFloat(combo.recipe_cost) || 0
+          : map?.recipe_cost != null
+            ? Number.parseFloat(map.recipe_cost)
+            : null,
         confidence,
         reviewed,
         mappingStatus,
