@@ -9,6 +9,10 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 ## [Unreleased]
 
 ### Corregido
+- **Icono de la PWA en iOS mostraba el logo de V0 al añadir a pantalla de inicio:**
+  - Causa: `public/apple-icon.png` seguía siendo el icono por defecto de V0 (nunca se actualizó al rebrand). Safari iOS usa ese archivo (`apple-touch-icon`) para la pantalla de inicio, no el `manifest` ni el `favicon` — por eso en Chrome sí salía el logo correcto.
+  - Regenerado `public/apple-icon.png` (180×180) a partir de `public/icon-512.png` (logo NÜA), **aplanado sobre fondo blanco** porque las esquinas transparentes hacían que iOS pusiera fondo negro.
+  - Nota: iOS cachea el icono; hay que **eliminar y volver a añadir** la app a la pantalla de inicio tras el deploy para verlo.
 - **"Algo salió mal — Failed to load chunk" tras cada deploy:**
   - Causa: los clientes con una versión anterior abierta intentaban cargar chunks (`React.lazy`) que el nuevo deploy ya había sustituido en Vercel.
   - `ErrorBoundary` — detecta errores de chunk obsoleto y **recarga automáticamente** (máx. 1 vez/minuto para evitar bucles); si no puede, muestra "Hay una versión nueva de la app" con botón **Recargar** (antes "Volver al Dashboard", que no arreglaba nada).
