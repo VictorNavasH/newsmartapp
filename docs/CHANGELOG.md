@@ -9,6 +9,13 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 ## [Unreleased]
 
 ### Añadido
+- **Sincronización fiable de costes GStock → productos (puente receta↔SKU):** los costes base de la app (`products.cost_price`, que alimentan todo el food cost) estaban desincronizados con las recetas reales de GStock. Solución (DB, ver `scripts/create_product_recipe_map.sql`):
+  - Tabla puente `product_recipe_map` (SKU ↔ receta GStock, con `confidence` y `reviewed` para bloqueo manual).
+  - Función `fn_refresh_food_costs()` idempotente: refresca coste desde GStock, autodescubre recetas reactivadas/nuevas por nombre exacto, y aplica a `products.cost_price` **solo si es plausible** (>0 y ≤ PVP) — una receta con error de cantidades (p. ej. 299 €) nunca entra.
+  - Cron diario `refresh-food-costs` a las 06:30 (tras el sync de recetas de GStock de las 06:00) → autocorrección continua.
+  - 1ª pasada: 38 platos corregidos con su coste real (poke, menús, mangotella, pulpo, kids…). Reversible (el puente guarda el coste anterior).
+
+
 - **Coste real y food cost por ticket en Facturación:** al abrir el detalle de una factura (drawer), nueva sección **"Coste y margen"** con coste de mercancía, food cost % (sobre base imponible, coloreado por umbral) y margen bruto. Si el ticket incluye productos sin coste base mapeado (p. ej. poke "crea tu"), muestra aviso **"coste parcial"**.
   - **Columna "Food Cost" en el listado de facturas** (tabla y cards móvil): % por ticket con color de marca (verde ≤30%, amarillo ≤35%, rojo >35%) y `*` si es coste parcial. Carga por lote vía `fetchCostesTickets()`.
   - **Barra de reparto coste vs margen** en la sección "Coste y margen" del detalle: visualiza qué % de la venta neta es coste de mercancía (coloreado por umbral) y qué % es margen bruto.
