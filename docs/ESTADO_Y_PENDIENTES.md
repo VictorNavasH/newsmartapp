@@ -42,6 +42,9 @@ Config en Ajustes → Objetivos KPI (con preview en vivo del break-even).
   en `option_recipe_map` (`gstock_product` + `portion`).
 - **Menús compuestos** (Burger/Poke/Crea-tu-Menú): decisión pendiente — ¿la receta del menú
   ya incluye los componentes o se suman? (riesgo de doble conteo).
+- **Taquitos / Baos (combinatorios)**: coste = cantidad × coste-por-unidad-del-sabor (NO aditivo).
+  GStock tiene las 12 combinaciones y el coste por unidad. Necesitan lógica específica
+  (resolver cantidad+sabor → receta de combo), no sirve el `option_recipe_map` aditivo.
 - **Vino "Botella"**: copa hecha; falta el delta de botella.
 - **Side kids** (patatas vs ensalada): base fijada a "con patatas"; delta ensalada ~0,52 € (impacto mínimo).
 - **Remolacha (hummus)**: corregida en GStock; entra sola al re-sync (guarda de plausibilidad la bloquea mientras esté alta).

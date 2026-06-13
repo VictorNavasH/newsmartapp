@@ -98,7 +98,8 @@ SELECT fn_refresh_all_costs();
 - **NÜA Smart Hummus**: 1 sabor elegido → receta de RACIÓN INDIVIDUAL (`SMART HUMMUS DE *`).
   `Hummus Smart Mix` = degustación de los 3 → receta `HUMMUS SMART MIX` (raciones pequeñas, NO la individual).
 - **Menús kids**: base con patatas/ensalada (comida); agua = 0 €, refresco = botella; el +0,50 € es PRECIO no coste; helado = `HELADO KIDS EDICION` (0,34 € medio).
-- **Poke "crea tu" / NÜA Smart Hummus**: platos dinámicos, su coste vive en las opciones.
+- **Poke "crea tu" / NÜA Smart Hummus**: platos dinámicos, su coste vive en las opciones (aditivo: base + Σ opciones).
+- **Taquitos / Baos (combinatorios)**: 1 producto + 2 grupos de opción (cantidad + sabor) que **interactúan** → el coste es `cantidad × coste-por-unidad-del-sabor`, **NO aditivo**. La capa `option_recipe_map` (aditiva) NO los cubre. GStock tiene el coste de TODAS las combinaciones (ej. `NÜA SMART TAQUITOS DE SOLOMILLO 3UD` = 7,56 €) y por unidad (`SMART TAQUITO DE *`: Pollo 0,57 € / Cochinita 1,18 € / Carrillera 1,26 € / Solomillo 2,57 €). Requiere lógica específica: resolver (cantidad+sabor)→receta de combo, o `nº × coste/ud del sabor`. Pendiente.
 
 ## 7. Qué debe respetar Hermes / el pipeline n8n
 

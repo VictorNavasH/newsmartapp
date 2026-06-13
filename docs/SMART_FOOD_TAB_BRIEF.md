@@ -52,6 +52,15 @@
 6. **Limpiar** el código muerto (variant_id / precio_manual / food_cost_peor_pct / badge "PVP Manual")
    salvo que se decida exponer el precio manual de verdad (usar `COALESCE(manual_price, price)`).
 
+## 5b. Platos combinatorios (taquitos / baos) — caso especial
+- Taquitos (`RST-SFC-NST`) = 1 producto + 2 grupos de opción (cantidad 2/3/4 + sabor
+  Pollo/Cochinita/Carrillera/Solomillo) que **interactúan**: coste = `cantidad × coste/ud del sabor`.
+  NO es aditivo → la capa `option_recipe_map` no lo cubre. GStock tiene las 12 combinaciones
+  costeadas y el coste por unidad (`SMART TAQUITO DE *`). En el tab: o 1 card con selector de
+  combinación (resuelve a la receta de combo), o aceptar las 12 filas-combo de `vw_food_cost`.
+- Nota sobre `vw_food_cost`: dedup por **sku+nombre** (no solo sku) para no fusionar combos distintos
+  que comparten SKU (taquitos 2/3/4 ud, croquets…).
+
 ## 6. Recordatorios
 - Food cost siempre sobre base imponible (sin IVA). GStock costes sin IVA; PVP con IVA.
 - Pendiente upstream: gramajes del poke (CSV `docs/poke_gramajes_cocina.csv`), menús compuestos.
