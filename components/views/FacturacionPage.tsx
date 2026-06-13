@@ -55,8 +55,10 @@ import {
   eliminarAjuste,
   confirmarCuadre,
   marcarPendiente,
+  fetchCosteTicket,
 } from "@/lib/facturacionService"
 import type {
+  CosteTicket,
   FacturacionListadoItem,
   FacturacionTipoIngreso,
   FacturacionAlerta,
@@ -152,6 +154,30 @@ export default function FacturacionPage() {
 
   // Added state for factura detalle
   const [facturaDetalle, setFacturaDetalle] = useState<FacturacionListadoItem | null>(null)
+  // Coste real de mercancía / food cost del ticket abierto (vista vw_coste_ticket)
+  const [costeTicket, setCosteTicket] = useState<CosteTicket | null>(null)
+  const [costeTicketLoading, setCosteTicketLoading] = useState(false)
+
+  // Al abrir el detalle de una factura, cargar su coste real y food cost
+  useEffect(() => {
+    if (!facturaDetalle?.transaction_id) {
+      setCosteTicket(null)
+      return
+    }
+    let cancelled = false
+    setCosteTicketLoading(true)
+    setCosteTicket(null)
+    fetchCosteTicket(facturaDetalle.transaction_id)
+      .then((data) => {
+        if (!cancelled) setCosteTicket(data)
+      })
+      .finally(() => {
+        if (!cancelled) setCosteTicketLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [facturaDetalle?.transaction_id])
 
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(50)
@@ -1063,6 +1089,54 @@ export default function FacturacionPage() {
                     </span>
                   </div>
                 </div>
+              </div>
+
+              {/* Coste y margen (vw_coste_ticket) */}
+              <div className="border-t border-slate-100 pt-4">
+                <h4 className="text-sm font-semibold text-slate-700 mb-3">Coste y margen</h4>
+                {costeTicketLoading ? (
+                  <p className="text-sm text-slate-400">Calculando coste…</p>
+                ) : costeTicket ? (
+                  (() => {
+                    const fc = Number(costeTicket.food_cost_pct)
+                    const fcColor = fc <= 30 ? "#17c3b2" : fc <= 35 ? "#ffcb77" : "#fe6d73"
+                    return (
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-slate-500">Coste de mercancía</span>
+                          <span className="text-sm font-medium text-slate-700">
+                            {formatCurrencyES(costeTicket.coste_mercancia)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-slate-500">Food cost</span>
+                          <span className="text-sm font-bold" style={{ color: fcColor }}>
+                            {fc.toLocaleString("es-ES", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
+                          </span>
+                        </div>
+                        <div className="flex justify-between pt-2 border-t border-slate-100">
+                          <span className="text-sm font-semibold text-slate-700">Margen bruto</span>
+                          <span className="text-sm font-bold text-[#17c3b2]">
+                            {formatCurrencyES(costeTicket.margen_bruto)}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-400 pt-1">
+                          Food cost sobre base imponible (sin IVA).
+                        </p>
+                        {costeTicket.coste_parcial && (
+                          <div className="mt-1 rounded-lg bg-[#ffcb77]/10 border border-[#ffcb77]/30 px-3 py-2">
+                            <p className="text-[11px] text-[#946200] leading-snug">
+                              <span className="font-bold">Coste parcial:</span> este ticket incluye productos cuyo coste de
+                              ingredientes aún no está mapeado (p. ej. poke "crea tu"). El food cost real es algo mayor.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()
+                ) : (
+                  <p className="text-sm text-slate-400">Coste no disponible para este ticket.</p>
+                )}
               </div>
 
               {/* Estado VeriFactu */}

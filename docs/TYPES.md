@@ -564,6 +564,18 @@ Category: { id, name, type: string; icon: string|null; subcategories: TreasurySu
   table_id: string|null; order_numbers, webhook_payload: string|null }
 ```
 
+### CosteTicket
+Coste real de mercancía y food cost de un ticket (vista `vw_coste_ticket`).
+```typescript
+{ transaction_id, fecha, numero_completo: string;
+  importe_total, base_imponible, propinas: number;
+  coste_mercancia: number;   // base + opciones mapeadas, líneas is_paid
+  food_cost_pct: number;     // coste_mercancia / base_imponible * 100
+  margen_bruto: number;      // base_imponible - coste_mercancia
+  coste_parcial: boolean;    // ticket con poke/producto sin coste base mapeado
+  cuadra_factura: boolean; num_lineas: number }
+```
+
 ### CuadreListadoItem
 ```typescript
 { fecha, zreport_id, zreport_documento: string;

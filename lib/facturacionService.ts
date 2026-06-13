@@ -13,6 +13,7 @@ import type {
   FacturaAdyacente,
   AjusteCuadre,
   CrearAjusteParams,
+  CosteTicket,
 } from "@/types"
 
 export async function fetchFacturacionResumen(): Promise<FacturacionResumenGlobal | null> {
@@ -24,6 +25,25 @@ export async function fetchFacturacionResumen(): Promise<FacturacionResumenGloba
   }
 
   return data
+}
+
+// Coste real de mercancía y food cost de un ticket concreto (vista vw_coste_ticket).
+// Se llama al abrir el detalle de una factura. Devuelve null si no hay coste calculado
+// (p.ej. ticket sin líneas pagadas mapeadas).
+export async function fetchCosteTicket(transactionId: string): Promise<CosteTicket | null> {
+  if (!transactionId) return null
+  const { data, error } = await supabase
+    .from("vw_coste_ticket")
+    .select("*")
+    .eq("transaction_id", transactionId)
+    .maybeSingle()
+
+  if (error) {
+    console.error("Error fetching coste ticket:", error)
+    return null
+  }
+
+  return data as CosteTicket | null
 }
 
 export async function fetchFacturacionListado(

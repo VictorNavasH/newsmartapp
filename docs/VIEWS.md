@@ -416,12 +416,14 @@ Sala:   bueno ≤ 8min, advertencia ≤ 15min, alerta > 15min
 | **Archivo** | `components/views/FacturacionPage.tsx` |
 | **Servicio(s)** | `facturacionService.ts` |
 | **Export** | Default export |
+| **Detalle de factura** | Drawer (`<Sheet>`) con info general, importes, **"Coste y margen"** (coste de mercancía, food cost % y margen bruto vía `fetchCosteTicket` → `vw_coste_ticket`; aviso "coste parcial" si el ticket lleva poke/producto sin coste mapeado), estado VeriFactu y detalle de consumo (líneas del `webhook_payload`). |
 
 ### Datos que consume
 
 | Función | Fuente Supabase | Tipo retorno |
 |---------|----------------|--------------|
 | `fetchFacturacionListado(start, end, filters, page)` | Vista `v_facturas_listado` | `{data, count}` |
+| `fetchCosteTicket(transactionId)` | Vista `vw_coste_ticket` | `CosteTicket \| null` (al abrir detalle) |
 | `fetchFacturacionKPIs(start, end)` | Vista `v_facturas_listado` (agr.) | KPIs calculados |
 | `fetchTiposIngreso()` | Vista `v_ingresos_por_categoria` | `FacturacionTipoIngreso[]` |
 | `fetchFacturacionAlertas()` | Vista `v_facturas_alertas` | `FacturacionAlerta[]` |

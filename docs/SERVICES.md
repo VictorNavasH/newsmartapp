@@ -237,6 +237,7 @@ Módulo que contiene todos los datos mock, constantes de demo y generadores de d
 | Función | Parámetros | Retorna | Fuente Supabase |
 |---------|-----------|---------|----------------|
 | `fetchFacturacionResumen()` | — | `Promise<FacturacionResumenGlobal \| null>` | Vista `v_facturacion_resumen_global` → `.single()` |
+| `fetchCosteTicket(transactionId)` | `transactionId: string` | `Promise<CosteTicket \| null>` | Vista `vw_coste_ticket` → coste real de mercancía y food cost del ticket. Usado al abrir el detalle de una factura. |
 | `fetchFacturacionListado(start?, end?, filters?, page?)` | opcionales | `Promise<{data, count}>` | Vista `v_facturas_listado` → `.select("*", {count: "exact"}).order("fecha", desc)` + paginación |
 | `fetchFacturacionKPIs(start, end)` | `startDate, endDate: string` | `Promise<KPIs calculados>` | Vista `v_facturas_listado` — selección parcial → agregación client-side |
 | `fetchCuadreDiario(start?, end?)` | opcionales | `Promise<FacturacionCuadreDiario[]>` | Vista `v_facturas_cuadre_diario` |

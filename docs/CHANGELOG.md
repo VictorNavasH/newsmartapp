@@ -8,6 +8,12 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 
 ## [Unreleased]
 
+### Añadido
+- **Coste real y food cost por ticket en Facturación:** al abrir el detalle de una factura (drawer), nueva sección **"Coste y margen"** con coste de mercancía, food cost % (sobre base imponible, coloreado por umbral) y margen bruto. Si el ticket incluye productos sin coste base mapeado (p. ej. poke "crea tu"), muestra aviso **"coste parcial"**.
+  - Nueva vista de BD `vw_coste_ticket` (coste real por ticket = `products.cost_price` + `SUM(product_options.cost_price_option)` sobre líneas `is_paid=true`, unidas por `linked_transaction_id`; food cost sobre base imponible; flags `coste_parcial` y `cuadra_factura`). Ver `scripts/create_vw_coste_ticket.sql`. Validado: 30 días → 405 tickets, coste medio 14,1€/ticket, food cost 19,4%.
+  - Índices `ix_soi_linked_tx` y `ix_sio_item` para la búsqueda por ticket.
+  - `lib/facturacionService.ts` → `fetchCosteTicket(transactionId)`; tipo `CosteTicket`.
+
 ### Corregido
 - **Doble conteo en `vw_food_cost_real` (food cost del Dashboard):** `vw_food_cost` contiene filas duplicadas por SKU (variantes-fantasma: taquitos ×12, baos ×4, ~8 platos ×2). El JOIN por SKU multiplicaba cada venta → `venta_neta` y `unidades` infladas ~50-60% (49.346€ → 21.418€ reales; 3.827 → 2.177 unidades). Se deduplica a una fila por SKU (la base, menor coste). El food cost % apenas cambia (20,8% → 20,2%) porque numerador y denominador se inflaban a la par, pero los absolutos ya son correctos. Detectado por auditoría multi-agente del Plan de Food Cost Dinámico.
 

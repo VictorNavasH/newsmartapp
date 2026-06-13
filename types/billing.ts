@@ -49,6 +49,22 @@ export interface FacturacionListadoItem {
   webhook_payload: string | null
 }
 
+/** Coste real de mercancía y food cost de un ticket (vista vw_coste_ticket) */
+export interface CosteTicket {
+  transaction_id: string
+  fecha: string
+  numero_completo: string
+  importe_total: number
+  base_imponible: number
+  propinas: number
+  coste_mercancia: number // coste real (base + opciones mapeadas)
+  food_cost_pct: number // coste_mercancia / base_imponible * 100
+  margen_bruto: number // base_imponible - coste_mercancia
+  coste_parcial: boolean // true si el ticket lleva poke/producto sin coste base mapeado (infravalorado)
+  cuadra_factura: boolean
+  num_lineas: number
+}
+
 export interface CuadreListadoItem {
   fecha: string // ISO date
   zreport_id: string // UUID
