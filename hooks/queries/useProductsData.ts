@@ -6,6 +6,7 @@ import {
   fetchCategoryMix,
   fetchOptionMix,
   fetchFoodCostProducts,
+  fetchFoodCostReal,
 } from "@/lib/dataService"
 
 // --- Mix de productos por rango de fechas y filtros ---
@@ -54,6 +55,15 @@ export function useFoodCostProducts() {
     queryKey: ["foodCostProducts"],
     queryFn: fetchFoodCostProducts,
     // Datos de escandallos cambian poco
+    staleTime: 30 * 60 * 1000,
+  })
+}
+
+// --- Food cost REAL ponderado por ventas 30d (Global / Comida / Bebida) ---
+export function useFoodCostReal() {
+  return useQuery({
+    queryKey: ["foodCostReal"],
+    queryFn: fetchFoodCostReal,
     staleTime: 30 * 60 * 1000,
   })
 }

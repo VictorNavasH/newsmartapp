@@ -241,18 +241,20 @@ Click en un KPI activa/desactiva el filtro global que se sincroniza con el filtr
 ### Secciones (MenuBar con 3 tabs)
 
 1. **Recetas** — iframe embebido de SmartFood (`smartfood.nuasmartrestaurant.com`)
-2. **Food Cost** — Componente `<FoodCostTab />`
-   - Consume `fetchFoodCostProducts()` → Vista `vw_food_cost`
-   - Lista de productos con SKU, coste, PVP, margen, food cost %
-   - Edición de precio manual con `updateManualPrice()` / `clearManualPrice()`
+2. **Food Cost** — Componente `<FoodCostTab />` (rehecho 2026-06)
+   - **Cabecera**: food cost **real ponderado por ventas 30d** (Global / Comida / Bebida) vía `fetchFoodCostReal()` → `vw_food_cost_real`. Sustituye a la media simple anterior.
+   - **Tabla por plato** vía `fetchFoodCostProducts()` (compone `vw_food_cost` + `product_recipe_map` + `product_options` + `option_recipe_map`): PVP (solo lectura), coste, food cost % coloreado por umbral de marca (verde ≤30% / ámbar ≤35% / rojo >35%). Agrupado por categoría, toggle Comida/Bebida.
+   - **Receta GStock origen** por plato (de `product_recipe_map`) + chip de estado de mapeo (`Coste parcial` / `Sin receta` / `Sin revisar`).
+   - **Platos dinámicos** (poke "crea tu", hummus, vinos, kids…): badge "Dinámico" + desglose expandible de opciones con su coste y un **estimador** (marcas opciones → coste y food cost resultante). Opciones sin coste mapeado se marcan "sin mapear".
+   - Sin edición de PVP (eliminado el precio manual, que era código muerto).
 3. **Benchmarks** — Componente `<BenchmarksTab />`
    - Consume `fetchBenchmarks(fechaInicio, fechaFin)` → RPC `get_benchmarks_resumen`
    - Comparación vs sector: food cost, labor cost, prime cost, ratio gastos
 
 ### Filtros
 
-- Período cerrado: `mes | trimestre | semestre | año` con selector de período específico
-- Filtros de food cost: búsqueda por producto, ordenación
+- Período cerrado: `mes | trimestre | semestre | año` con selector de período específico (tab Benchmarks)
+- Food Cost: toggle `Comida | Bebida` + filtro por categoría
 
 ### Datos externos
 

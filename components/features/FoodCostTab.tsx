@@ -1,8 +1,6 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useEffect, useMemo } from "react"
+import { useState, useMemo } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { TremorCard } from "@/components/ui/TremorCard"
 import {
@@ -14,14 +12,14 @@ import {
   ChefHat,
   Wine,
   UtensilsCrossed,
-  Pencil,
-  RotateCcw,
-  Check,
-  X,
-  Loader2,
+  Sparkles,
+  ChevronDown,
+  ChevronUp,
+  HelpCircle,
+  Eye,
 } from "lucide-react"
-import { fetchFoodCostProducts, updateManualPrice, clearManualPrice } from "@/lib/dataService"
-import type { FoodCostSummary, FoodCostProduct } from "@/types"
+import { useFoodCostProducts, useFoodCostReal } from "@/hooks/queries"
+import type { FoodCostProduct, FoodCostMappingStatus, FoodCostRealRow } from "@/types"
 import { formatCurrency } from "@/lib/utils"
 import { BRAND_COLORS } from "@/constants"
 
@@ -42,38 +40,49 @@ const CATEGORY_COLORS: Record<string, string> = {
 const COMIDA_CATEGORIES = ["Smart Poke", "Smart Food", "Compartir", "Kids", "Dulce"]
 const BEBIDA_CATEGORIES = ["Coffee, Tea & Licores", "Drinks Con Alcohol", "Drinks Sin Alcohol", "Mojitos & Cocktails"]
 
+// Umbrales de marca: verde ≤30% · ámbar ≤35% · rojo >35%
 function getFoodCostColor(pct: number): string {
-  if (pct > 30) return BRAND_COLORS.error
-  if (pct >= 20) return BRAND_COLORS.warning
+  if (pct > 35) return BRAND_COLORS.error
+  if (pct > 30) return BRAND_COLORS.warning
   return BRAND_COLORS.success
 }
 
 function getFoodCostBg(pct: number): string {
-  if (pct > 30) return "bg-[#fe6d73]/10"
-  if (pct >= 20) return "bg-[#ffcb77]/10"
+  if (pct > 35) return "bg-[#fe6d73]/10"
+  if (pct > 30) return "bg-[#ffcb77]/10"
   return "bg-[#17c3b2]/10"
 }
 
+// Configuración visual del estado de mapeo (chip). "ok" no muestra chip.
+const STATUS_CONFIG: Record<
+  Exclude<FoodCostMappingStatus, "ok">,
+  { label: string; color: string; bg: string; tip: string }
+> = {
+  parcial: {
+    label: "Coste parcial",
+    color: "#b45309",
+    bg: "bg-[#ffcb77]/20",
+    tip: "Plato configurable con costes de opciones pendientes (p. ej. poke sin gramajes, vino por botella).",
+  },
+  sin_receta: {
+    label: "Sin receta",
+    color: "#be123c",
+    bg: "bg-[#fe6d73]/15",
+    tip: "No hay receta GStock activa mapeada para este plato.",
+  },
+  sin_revisar: {
+    label: "Sin revisar",
+    color: "#475569",
+    bg: "bg-slate-100",
+    tip: "Emparejado automático de confianza baja/media, aún sin revisar a mano.",
+  },
+}
+
 export function FoodCostTab() {
-  const [data, setData] = useState<FoodCostSummary | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { data, isLoading } = useFoodCostProducts()
+  const { data: real } = useFoodCostReal()
   const [selectedTipo, setSelectedTipo] = useState<"Comida" | "Bebida">("Comida")
   const [selectedCategory, setSelectedCategory] = useState("TODOS")
-
-  const loadData = async () => {
-    setLoading(true)
-    const result = await fetchFoodCostProducts()
-    setData(result)
-    setLoading(false)
-  }
-
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  useEffect(() => {
-    setSelectedCategory("TODOS")
-  }, [selectedTipo])
 
   const filteredProducts = useMemo(() => {
     if (!data) return []
@@ -84,21 +93,15 @@ export function FoodCostTab() {
     return filtered
   }, [data, selectedTipo, selectedCategory])
 
-  const filteredKpis = useMemo(() => {
-    if (!data)
-      return { food_cost_promedio: 0, total_productos: 0, productos_criticos: 0, productos_warning: 0, productos_ok: 0 }
-    const tipoProducts = data.productos.filter((p) => p.tipo === selectedTipo)
-    const total = tipoProducts.length
-    const criticos = tipoProducts.filter((p) => p.food_cost_pct > 30).length
-    const warning = tipoProducts.filter((p) => p.food_cost_pct >= 20 && p.food_cost_pct <= 30).length
-    const ok = tipoProducts.filter((p) => p.food_cost_pct < 20).length
-    const promedio = total > 0 ? tipoProducts.reduce((sum, p) => sum + p.food_cost_pct, 0) / total : 0
+  const tipoStats = useMemo(() => {
+    if (!data) return { total: 0, criticos: 0, warning: 0, ok: 0, dinamicos: 0 }
+    const tp = data.productos.filter((p) => p.tipo === selectedTipo)
     return {
-      food_cost_promedio: promedio,
-      total_productos: total,
-      productos_criticos: criticos,
-      productos_warning: warning,
-      productos_ok: ok,
+      total: tp.length,
+      criticos: tp.filter((p) => p.food_cost_pct > 35).length,
+      warning: tp.filter((p) => p.food_cost_pct > 30 && p.food_cost_pct <= 35).length,
+      ok: tp.filter((p) => p.food_cost_pct <= 30).length,
+      dinamicos: tp.filter((p) => p.isDynamic).length,
     }
   }, [data, selectedTipo])
 
@@ -116,7 +119,7 @@ export function FoodCostTab() {
 
   const availableCategories = selectedTipo === "Comida" ? COMIDA_CATEGORIES : BEBIDA_CATEGORIES
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -147,9 +150,16 @@ export function FoodCostTab() {
 
   return (
     <div className="space-y-6">
+      {/* Cabecera — Food Cost REAL ponderado por ventas (30 días) */}
+      <RealHeader real={real ?? null} />
+
+      {/* Toggle Comida / Bebida */}
       <div className="flex gap-2 bg-white rounded-xl p-2 border border-slate-200 w-fit">
         <button
-          onClick={() => setSelectedTipo("Comida")}
+          onClick={() => {
+            setSelectedTipo("Comida")
+            setSelectedCategory("TODOS")
+          }}
           className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${
             selectedTipo === "Comida"
               ? "bg-[#02b1c4] text-white shadow-md"
@@ -165,7 +175,10 @@ export function FoodCostTab() {
           </span>
         </button>
         <button
-          onClick={() => setSelectedTipo("Bebida")}
+          onClick={() => {
+            setSelectedTipo("Bebida")
+            setSelectedCategory("TODOS")
+          }}
           className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${
             selectedTipo === "Bebida"
               ? "bg-[#8b5cf6] text-white shadow-md"
@@ -182,61 +195,15 @@ export function FoodCostTab() {
         </button>
       </div>
 
-      {/* KPIs Header - filtrados por tipo */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <TremorCard className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500 mb-1">Food Cost Promedio</p>
-              <p className="text-4xl font-bold" style={{ color: getFoodCostColor(filteredKpis.food_cost_promedio) }}>
-                {filteredKpis.food_cost_promedio.toFixed(1)}%
-              </p>
-            </div>
-            <div
-              className="p-3 rounded-xl"
-              style={{ backgroundColor: `${getFoodCostColor(filteredKpis.food_cost_promedio)}20` }}
-            >
-              <TrendingDown className="h-8 w-8" style={{ color: getFoodCostColor(filteredKpis.food_cost_promedio) }} />
-            </div>
-          </div>
-        </TremorCard>
-
-        <TremorCard className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500 mb-1">Total Productos</p>
-              <p className="text-4xl font-bold text-[#364f6b]">{filteredKpis.total_productos}</p>
-            </div>
-            <div className="p-3 rounded-xl bg-[#02b1c4]/10">
-              <Package className="h-8 w-8 text-[#02b1c4]" />
-            </div>
-          </div>
-        </TremorCard>
-
-        <TremorCard className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500 mb-1">Productos Críticos (&gt;30%)</p>
-              <p className="text-4xl font-bold text-[#fe6d73]">{filteredKpis.productos_criticos}</p>
-              <div className="flex gap-4 mt-2 text-xs">
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-[#ffcb77]" />
-                  {filteredKpis.productos_warning} warning
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-[#17c3b2]" />
-                  {filteredKpis.productos_ok} ok
-                </span>
-              </div>
-            </div>
-            <div className="p-3 rounded-xl bg-[#fe6d73]/10">
-              <AlertTriangle className="h-8 w-8 text-[#fe6d73]" />
-            </div>
-          </div>
-        </TremorCard>
+      {/* Stats compactas del tipo seleccionado */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatChip icon={Package} color={BRAND_COLORS.primary} label="Productos" value={tipoStats.total} />
+        <StatChip icon={CheckCircle2} color={BRAND_COLORS.success} label="Óptimos (≤30%)" value={tipoStats.ok} />
+        <StatChip icon={AlertTriangle} color={BRAND_COLORS.warning} label="Atención (30-35%)" value={tipoStats.warning} />
+        <StatChip icon={AlertCircle} color={BRAND_COLORS.error} label="Críticos (>35%)" value={tipoStats.criticos} />
       </div>
 
-      {/* Filtro de Categorías según tipo */}
+      {/* Filtro de categorías según tipo */}
       <div className="flex flex-wrap gap-2 bg-white rounded-xl p-3 border border-slate-200">
         <button
           onClick={() => setSelectedCategory("TODOS")}
@@ -249,7 +216,7 @@ export function FoodCostTab() {
           <span
             className={`text-xs px-2 py-0.5 rounded-full ${selectedCategory === "TODOS" ? "bg-white/20" : "bg-slate-200"}`}
           >
-            {filteredKpis.total_productos}
+            {tipoStats.total}
           </span>
         </button>
         {availableCategories.map((cat) => {
@@ -298,13 +265,58 @@ export function FoodCostTab() {
               </div>
 
               <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {productos.map((producto, idx) => (
-                  <ProductCard
-                    key={`${producto.sku}-${producto.variantId ?? "base"}-${idx}`}
-                    producto={producto}
-                    onPriceUpdated={loadData}
-                  />
+                {productos.map((producto) => (
+                  <ProductCard key={producto.rowId} producto={producto} />
                 ))}
+              </div>
+            </TremorCard>
+          )
+        })}
+      </div>
+
+      <p className="text-xs text-slate-400 text-center pt-2">
+        Food cost sobre base imponible (sin IVA). Costes sincronizados a diario con las recetas de GStock.
+      </p>
+    </div>
+  )
+}
+
+// ─── Cabecera: food cost real ponderado ───────────────────────────
+function RealHeader({ real }: { real: { global: FoodCostRealRow | null; comida: FoodCostRealRow | null; bebida: FoodCostRealRow | null } | null }) {
+  const cards: { key: string; label: string; row: FoodCostRealRow | null; icon: typeof TrendingDown }[] = [
+    { key: "global", label: "Global", row: real?.global ?? null, icon: TrendingDown },
+    { key: "comida", label: "Comida", row: real?.comida ?? null, icon: UtensilsCrossed },
+    { key: "bebida", label: "Bebida", row: real?.bebida ?? null, icon: Wine },
+  ]
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-2">
+        <h2 className="text-sm font-semibold text-[#364f6b]">Food Cost real ponderado</h2>
+        <span className="text-xs text-slate-400">· por ventas · últimos 30 días</span>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {cards.map(({ key, label, row, icon: Icon }) => {
+          const pct = row?.food_cost_pct ?? 0
+          const color = getFoodCostColor(pct)
+          return (
+            <TremorCard key={key} className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-slate-500 mb-1">{label}</p>
+                  <p className="text-4xl font-bold" style={{ color: row ? color : "#cbd5e1" }}>
+                    {row ? `${pct.toFixed(1)}%` : "—"}
+                  </p>
+                  {row && (
+                    <p className="text-xs text-slate-400 mt-1">
+                      {formatCurrency(row.coste_mercancia)} coste / {formatCurrency(row.venta_neta)} venta ·{" "}
+                      {row.unidades.toLocaleString("es-ES")} uds
+                    </p>
+                  )}
+                </div>
+                <div className="p-3 rounded-xl" style={{ backgroundColor: row ? `${color}20` : "#f1f5f9" }}>
+                  <Icon className="h-8 w-8" style={{ color: row ? color : "#cbd5e1" }} />
+                </div>
               </div>
             </TremorCard>
           )
@@ -314,128 +326,86 @@ export function FoodCostTab() {
   )
 }
 
-function ProductCard({ producto, onPriceUpdated }: { producto: FoodCostProduct; onPriceUpdated: () => void }) {
-  const [isEditing, setIsEditing] = useState(false)
-  const [editValue, setEditValue] = useState("")
-  const [saving, setSaving] = useState(false)
-  const [resetting, setResetting] = useState(false)
+function StatChip({
+  icon: Icon,
+  color,
+  label,
+  value,
+}: {
+  icon: typeof Package
+  color: string
+  label: string
+  value: number
+}) {
+  return (
+    <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 border border-slate-200">
+      <div className="p-2 rounded-lg" style={{ backgroundColor: `${color}1a` }}>
+        <Icon className="h-5 w-5" style={{ color }} />
+      </div>
+      <div>
+        <p className="text-xl font-bold text-[#364f6b] leading-none">{value}</p>
+        <p className="text-[11px] text-slate-500 mt-1">{label}</p>
+      </div>
+    </div>
+  )
+}
 
+// ─── Card de producto ─────────────────────────────────────────────
+function ProductCard({ producto }: { producto: FoodCostProduct }) {
+  const [expanded, setExpanded] = useState(false)
   const fcColor = getFoodCostColor(producto.food_cost_pct)
   const fcBg = getFoodCostBg(producto.food_cost_pct)
-
-  const handleEditClick = () => {
-    setEditValue(producto.pvp.toFixed(2))
-    setIsEditing(true)
-  }
-
-  const handleCancel = () => {
-    setIsEditing(false)
-    setEditValue("")
-  }
-
-  const handleSave = async () => {
-    const newPrice = Number.parseFloat(editValue)
-    if (isNaN(newPrice) || newPrice <= 0) {
-      return
-    }
-
-    setSaving(true)
-    const result = await updateManualPrice(producto.sku, producto.variantId, newPrice)
-    setSaving(false)
-
-    if (result.success) {
-      setIsEditing(false)
-      onPriceUpdated()
-    } else {
-      alert("Error al guardar: " + result.error)
-    }
-  }
-
-  const handleReset = async () => {
-    if (!confirm("¿Resetear al precio del TPV?")) return
-
-    setResetting(true)
-    const result = await clearManualPrice(producto.sku, producto.variantId)
-    setResetting(false)
-
-    if (result.success) {
-      onPriceUpdated()
-    } else {
-      alert("Error al resetear: " + result.error)
-    }
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleSave()
-    } else if (e.key === "Escape") {
-      handleCancel()
-    }
-  }
+  const status = producto.mappingStatus !== "ok" ? STATUS_CONFIG[producto.mappingStatus] : null
 
   return (
-    <div className={`p-4 rounded-xl border border-slate-200 ${fcBg} transition-all hover:shadow-md`}>
-      <div className="flex items-start justify-between mb-3">
-        <h4 className="font-semibold text-[#364f6b] leading-tight pr-2">{producto.producto}</h4>
-        {producto.tiene_patatas && (
-          <span className="text-lg" title="Incluye patatas">
-            🍟
-          </span>
-        )}
-        {producto.tiene_helado && (
-          <span className="text-lg" title="Incluye helado">
-            🍨
-          </span>
-        )}
-        {producto.tiene_ensalada && (
-          <span className="text-lg" title="Incluye ensalada">
-            🥗
-          </span>
-        )}
+    <div className={`p-4 rounded-xl border border-slate-200 ${fcBg} transition-all hover:shadow-md flex flex-col`}>
+      <div className="flex items-start justify-between mb-2 gap-2">
+        <h4 className="font-semibold text-[#364f6b] leading-tight pr-1">{producto.producto}</h4>
+        <div className="flex items-center gap-1 shrink-0">
+          {producto.tiene_patatas && (
+            <span className="text-base" title="Incluye patatas">
+              🍟
+            </span>
+          )}
+          {producto.tiene_helado && (
+            <span className="text-base" title="Incluye helado">
+              🍨
+            </span>
+          )}
+          {producto.tiene_ensalada && (
+            <span className="text-base" title="Incluye ensalada">
+              🥗
+            </span>
+          )}
+        </div>
       </div>
 
-      <div className="flex items-center gap-3 mb-3 text-sm">
-        <div className="flex items-center gap-1">
-          <span className="text-slate-500">PVP</span>
-          {isEditing ? (
-            <div className="flex items-center gap-1">
-              <input
-                type="number"
-                step="0.01"
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                onKeyDown={handleKeyDown}
-                className="w-16 px-1 py-0.5 text-sm border border-[#02b1c4] rounded focus:outline-none focus:ring-1 focus:ring-[#02b1c4]"
-                autoFocus
-              />
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="p-0.5 text-[#17c3b2] hover:bg-[#17c3b2]/20 rounded"
-                title="Guardar"
-              >
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-              </button>
-              <button
-                onClick={handleCancel}
-                className="p-0.5 text-slate-400 hover:bg-slate-200 rounded"
-                title="Cancelar"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1">
-              <span className="ml-1 font-medium text-[#364f6b]">{formatCurrency(producto.pvp)}</span>
-              <button
-                onClick={handleEditClick}
-                className="p-0.5 text-slate-400 hover:text-[#02b1c4] hover:bg-[#02b1c4]/10 rounded transition-colors"
-                title="Editar precio"
-              >
-                <Pencil className="h-3 w-3" />
-              </button>
-            </div>
+      {/* Badges: dinámico + estado de mapeo */}
+      {(producto.isDynamic || status) && (
+        <div className="flex flex-wrap items-center gap-1.5 mb-2">
+          {producto.isDynamic && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#02b1c4]/10 text-[#02b1c4]">
+              <Sparkles className="h-3 w-3" />
+              Dinámico
+            </span>
           )}
+          {status && (
+            <span
+              className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full ${status.bg}`}
+              style={{ color: status.color }}
+              title={status.tip}
+            >
+              <AlertTriangle className="h-3 w-3" />
+              {status.label}
+            </span>
+          )}
+        </div>
+      )}
+
+      <div className="flex items-center gap-3 mb-3 text-sm">
+        <div>
+          <span className="text-slate-500">PVP</span>
+          <span className="ml-1 font-medium text-[#364f6b]">{formatCurrency(producto.pvp)}</span>
         </div>
         <div className="text-slate-300">|</div>
         <div>
@@ -455,29 +425,40 @@ function ProductCard({ producto, onPriceUpdated }: { producto: FoodCostProduct; 
         <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
           <div
             className="h-full rounded-full transition-all duration-500"
-            style={{
-              width: `${Math.min(producto.food_cost_pct, 100)}%`,
-              backgroundColor: fcColor,
-            }}
+            style={{ width: `${Math.min(producto.food_cost_pct, 100)}%`, backgroundColor: fcColor }}
           />
         </div>
 
         <div className="flex justify-between text-[10px] text-slate-400">
           <span>0%</span>
-          <span className="text-[#17c3b2]">|20%</span>
-          <span className="text-[#ffcb77]">|30%</span>
+          <span className="text-[#17c3b2]">|30%</span>
+          <span className="text-[#ffcb77]">|35%</span>
           <span>50%</span>
         </div>
       </div>
 
-      <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-200/50">
+      {/* Receta GStock origen */}
+      <div className="mt-3 pt-3 border-t border-slate-200/50 text-xs text-slate-500 flex items-start gap-1.5">
+        <ChefHat className="h-3.5 w-3.5 mt-0.5 shrink-0 text-slate-400" />
+        {producto.recipeName ? (
+          <span className="leading-tight">
+            Receta GStock: <span className="text-slate-600 font-medium">{producto.recipeName}</span>
+            {producto.recipeCost != null && <> · {formatCurrency(producto.recipeCost)}</>}
+          </span>
+        ) : (
+          <span className="leading-tight italic">Sin receta GStock mapeada</span>
+        )}
+      </div>
+
+      {/* Estado óptimo / atención / crítico + toggle desglose */}
+      <div className="flex items-center justify-between mt-3">
         <div className="flex items-center gap-2">
-          {producto.food_cost_pct > 30 ? (
+          {producto.food_cost_pct > 35 ? (
             <>
               <AlertCircle className="h-4 w-4 text-[#fe6d73]" />
               <span className="text-xs text-[#fe6d73] font-medium">Crítico</span>
             </>
-          ) : producto.food_cost_pct >= 20 ? (
+          ) : producto.food_cost_pct > 30 ? (
             <>
               <AlertTriangle className="h-4 w-4 text-[#ffcb77]" />
               <span className="text-xs text-[#ffcb77] font-medium">Atención</span>
@@ -490,20 +471,120 @@ function ProductCard({ producto, onPriceUpdated }: { producto: FoodCostProduct; 
           )}
         </div>
 
-        {producto.precioManual && (
-          <div className="flex items-center gap-1">
-            <span className="text-[10px] text-[#02b1c4] font-medium">PVP Manual</span>
-            <button
-              onClick={handleReset}
-              disabled={resetting}
-              className="p-0.5 text-slate-400 hover:text-[#fe6d73] hover:bg-[#fe6d73]/10 rounded transition-colors"
-              title="Resetear al precio TPV"
-            >
-              {resetting ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
-            </button>
-          </div>
+        {producto.isDynamic && producto.options.length > 0 && (
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="inline-flex items-center gap-1 text-xs font-medium text-[#02b1c4] hover:bg-[#02b1c4]/10 rounded-md px-2 py-1 transition-colors"
+          >
+            {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            {expanded ? "Ocultar opciones" : "Desglosar opciones"}
+          </button>
         )}
       </div>
+
+      {expanded && producto.isDynamic && <DynamicEstimator producto={producto} />}
+    </div>
+  )
+}
+
+// ─── Estimador de coste dinámico (base + opciones) ─────────────────
+function DynamicEstimator({ producto }: { producto: FoodCostProduct }) {
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+
+  const ratioNet = producto.pvp > 0 ? producto.pvp_neto / producto.pvp : 1 / 1.1
+
+  const { totalCost, totalPVP, totalNet, anyUnmapped } = useMemo(() => {
+    let addCost = 0
+    let addPVP = 0
+    let unmapped = false
+    for (const o of producto.options) {
+      if (!selected.has(o.optionName)) continue
+      addCost += o.costOption
+      addPVP += o.optionPrice
+      if (!o.costed) unmapped = true
+    }
+    const tPVP = producto.pvp + addPVP
+    return {
+      totalCost: producto.coste + addCost,
+      totalPVP: tPVP,
+      totalNet: producto.pvp_neto + addPVP * ratioNet,
+      anyUnmapped: unmapped,
+    }
+  }, [producto, selected, ratioNet])
+
+  const fcPct = totalNet > 0 ? (totalCost / totalNet) * 100 : 0
+  const toggle = (name: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(name)) next.delete(name)
+      else next.add(name)
+      return next
+    })
+
+  return (
+    <div className="mt-3 pt-3 border-t border-slate-200/70 space-y-2">
+      <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+        <Eye className="h-3.5 w-3.5" />
+        Marca opciones para estimar el coste resultante
+      </div>
+
+      {/* Línea base */}
+      <div className="flex items-center justify-between text-xs px-2 py-1.5 rounded-md bg-white/70">
+        <span className="text-slate-500">Base ({producto.producto})</span>
+        <span className="font-medium text-[#364f6b]">{formatCurrency(producto.coste)}</span>
+      </div>
+
+      <div className="max-h-56 overflow-auto space-y-1 pr-1">
+        {producto.options.map((o) => {
+          const isSel = selected.has(o.optionName)
+          return (
+            <label
+              key={o.optionName}
+              className={`flex items-center justify-between gap-2 text-xs px-2 py-1.5 rounded-md cursor-pointer transition-colors ${
+                isSel ? "bg-[#02b1c4]/10" : "hover:bg-slate-50"
+              }`}
+            >
+              <span className="flex items-center gap-2 min-w-0">
+                <input
+                  type="checkbox"
+                  checked={isSel}
+                  onChange={() => toggle(o.optionName)}
+                  className="h-3.5 w-3.5 accent-[#02b1c4] shrink-0"
+                />
+                <span className="truncate text-slate-600">{o.optionName}</span>
+                {o.optionPrice > 0 && <span className="text-slate-400 shrink-0">+{formatCurrency(o.optionPrice)}</span>}
+              </span>
+              {o.costed ? (
+                <span className="font-medium text-[#364f6b] shrink-0">{formatCurrency(o.costOption)}</span>
+              ) : (
+                <span
+                  className="inline-flex items-center gap-1 text-[10px] text-slate-400 shrink-0"
+                  title="Coste de esta opción aún no mapeado"
+                >
+                  <HelpCircle className="h-3 w-3" />
+                  sin mapear
+                </span>
+              )}
+            </label>
+          )
+        })}
+      </div>
+
+      {/* Resultado */}
+      <div className="flex items-center justify-between px-2 py-2 rounded-md bg-[#364f6b]/5">
+        <div className="text-xs text-slate-600">
+          Coste estimado <span className="font-semibold text-[#364f6b]">{formatCurrency(totalCost)}</span>
+          <span className="text-slate-400"> · PVP {formatCurrency(totalPVP)}</span>
+        </div>
+        <span className="font-bold text-sm" style={{ color: getFoodCostColor(fcPct) }}>
+          {fcPct.toFixed(1)}%
+        </span>
+      </div>
+
+      <p className="text-[10px] text-slate-400 leading-snug">
+        Estimación orientativa: la composición real (sustituciones, raciones) varía por plato.
+        {anyUnmapped && " Incluye opciones sin coste mapeado, por lo que el coste real será mayor."}
+      </p>
     </div>
   )
 }

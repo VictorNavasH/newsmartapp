@@ -19,7 +19,7 @@ types/
 ├── treasury.ts            # TreasuryKPIs, TreasuryAccount, TreasuryTransaction, etc.
 ├── pool-bancario.ts       # PoolBancarioResumen, PoolBancarioPrestamo, etc.
 ├── billing.ts             # FacturacionResumenGlobal, CuadreListadoItem, BenchmarkResumen, etc.
-├── food-cost.ts           # FoodCostProduct, FoodCostSummary
+├── food-cost.ts           # FoodCostProduct, FoodCostOption, FoodCostMappingStatus, FoodCostSummary, FoodCostReal
 ├── purchases.ts           # CompraPedido, CompraKPIs, CompraFacturaConciliacion, etc.
 ├── recharts.ts            # RechartsPayloadEntry, RechartsTooltipProps
 ├── kpiTargets.ts          # KPITargets, DEFAULT_KPI_TARGETS, KPIProgress
@@ -665,12 +665,23 @@ FacturaAdyacente: { factura_id, transaction_id, cuentica_identifier,
     total_gastos, total_ventas: number } }
 ```
 
+### FoodCostMappingStatus / FoodCostOption
+```typescript
+FoodCostMappingStatus = "ok" | "parcial" | "sin_receta" | "sin_revisar"
+FoodCostOption = { optionName: string; optionPrice: number; // PVP del modificador (con IVA)
+  costOption: number; costed: boolean; // coste sin IVA; costed=false → sin mapear
+  sourceType: string|null } // recipe | gstock_product | manual (de option_recipe_map)
+```
+
 ### FoodCostProduct
 ```typescript
-{ sku: string; variantId: number|null;
-  producto, categoria, tipo: string;
-  pvp, pvp_neto, coste, food_cost_pct, food_cost_peor_pct: number;
-  tiene_patatas, tiene_helado, tiene_ensalada, precioManual: boolean }
+{ rowId: string; // clave única sku+nombre (los SKU se repiten en combos)
+  sku, producto, categoria, tipo: string;
+  pvp, pvp_neto, coste, food_cost_pct: number;
+  tiene_patatas, tiene_helado, tiene_ensalada: boolean;
+  recipeName: string|null; recipeCost: number|null; // receta GStock origen
+  confidence: string|null; reviewed: boolean; mappingStatus: FoodCostMappingStatus;
+  isDynamic: boolean; options: FoodCostOption[] } // coste dinámico de opciones
 ```
 
 ### FoodCostSummary

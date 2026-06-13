@@ -27,6 +27,8 @@ import type {
   BenchmarkResumen,
   ComparisonResult,
   FoodCostProduct,
+  FoodCostOption,
+  FoodCostMappingStatus,
   FoodCostSummary,
   FoodCostReal,
   FoodCostRealRow,
@@ -1725,63 +1727,137 @@ export async function fetchFoodCostReal(): Promise<FoodCostReal> {
   }
 }
 
+// Food cost por plato (vw_food_cost) enriquecido con: receta GStock origen (product_recipe_map),
+// estado de mapeo, y coste dinámico de opciones (product_options + option_recipe_map).
+// Los costes ya vienen sincronizados con GStock vía fn_refresh_food_costs (cron 06:30).
 export async function fetchFoodCostProducts(): Promise<FoodCostSummary> {
-  try {
-    const { data, error } = await supabase.from("vw_food_cost").select("*").order("food_cost_pct", { ascending: false })
+  const empty: FoodCostSummary = {
+    productos: [],
+    kpis: { food_cost_promedio: 0, total_productos: 0, productos_criticos: 0, productos_warning: 0, productos_ok: 0 },
+    por_categoria: [],
+  }
 
-    if (error) {
-      console.error("[fetchFoodCostProducts] Error:", error.message)
-      return {
-        productos: [],
-        kpis: {
-          food_cost_promedio: 0,
-          total_productos: 0,
-          productos_criticos: 0,
-          productos_warning: 0,
-          productos_ok: 0,
-        },
-        por_categoria: [],
-      }
+  try {
+    // Lecturas en paralelo: base + mapeo receta + opciones activas + origen de coste de opciones
+    const [fcRes, mapRes, optRes, ormRes] = await Promise.all([
+      supabase.from("vw_food_cost").select("*").order("food_cost_pct", { ascending: false }),
+      supabase.from("product_recipe_map").select("product_sku, recipe_name, recipe_cost, confidence, reviewed"),
+      supabase
+        .from("product_options")
+        .select("product_sku, option_name, option_price, cost_price_option")
+        .eq("is_active", true),
+      supabase.from("option_recipe_map").select("product_sku, option_name, source_type"),
+    ])
+
+    if (fcRes.error) {
+      console.error("[fetchFoodCostProducts] Error vw_food_cost:", fcRes.error.message)
+      return empty
+    }
+    if (mapRes.error) console.error("[fetchFoodCostProducts] Error product_recipe_map:", mapRes.error.message)
+    if (optRes.error) console.error("[fetchFoodCostProducts] Error product_options:", optRes.error.message)
+    if (ormRes.error) console.error("[fetchFoodCostProducts] Error option_recipe_map:", ormRes.error.message)
+
+    // Mapeo de receta por SKU (origen GStock)
+    const mapBySku = new Map<string, any>()
+    for (const m of mapRes.data || []) {
+      if (!mapBySku.has(m.product_sku)) mapBySku.set(m.product_sku, m)
     }
 
-    const productos: FoodCostProduct[] = (data || []).map((row: any) => ({
-      sku: row.sku || "",
-      variantId: row.variant_id ?? null,
-      precioManual: row.precio_manual === true,
-      producto: row.nombre_producto || "",
-      categoria: row.categoria || "Sin categoría",
-      tipo: row.tipo || "Comida",
-      pvp: Number.parseFloat(row.pvp) || 0,
-      pvp_neto: Number.parseFloat(row.pvp_neto) || 0,
-      coste: Number.parseFloat(row.coste_escandallo) || 0,
-      food_cost_pct: Number.parseFloat(row.food_cost_pct) || 0,
-      food_cost_peor_pct: Number.parseFloat(row.food_cost_peor_pct) || 0,
-      tiene_patatas: row.tiene_patatas === true,
-      tiene_helado: row.tiene_helado === true,
-      tiene_ensalada: row.tiene_ensalada === true,
-    }))
+    // Origen del coste de cada opción (source_type), indexado por sku|nombre
+    const sourceByKey = new Map<string, string>()
+    for (const o of ormRes.data || []) {
+      sourceByKey.set(`${o.product_sku}|${(o.option_name || "").toLowerCase()}`, o.source_type)
+    }
 
-    // Calcular KPIs
+    // Opciones activas por SKU
+    const optionsBySku = new Map<string, FoodCostOption[]>()
+    for (const o of optRes.data || []) {
+      const cost = Number.parseFloat(o.cost_price_option) || 0
+      const opt: FoodCostOption = {
+        optionName: o.option_name || "",
+        optionPrice: Number.parseFloat(o.option_price) || 0,
+        costOption: cost,
+        costed: cost > 0,
+        sourceType: sourceByKey.get(`${o.product_sku}|${(o.option_name || "").toLowerCase()}`) ?? null,
+      }
+      const arr = optionsBySku.get(o.product_sku)
+      if (arr) arr.push(opt)
+      else optionsBySku.set(o.product_sku, [opt])
+    }
+
+    // Construir productos (dedup por sku+nombre: elimina near-dups, p.ej. Kids Edition duplicado)
+    const seen = new Set<string>()
+    const productos: FoodCostProduct[] = []
+    for (const row of fcRes.data || []) {
+      const sku = row.sku || ""
+      const nombre = row.nombre_producto || ""
+      const rowId = `${sku}|${nombre}`
+      if (seen.has(rowId)) continue
+      seen.add(rowId)
+
+      const map = mapBySku.get(sku)
+      const confidence: string | null = map?.confidence ?? null
+      const reviewed = map?.reviewed === true
+      const options = (optionsBySku.get(sku) || []).slice().sort((a, b) => b.costOption - a.costOption)
+      const optionsWithCost = options.filter((o) => o.costed).length
+
+      // Configurable con coste de opciones pendiente: poke "crea tu", menús, vinos (botella)
+      const isConfigurablePending =
+        options.length > 0 && optionsWithCost === 0 && (/^crea tu|men[uú]/i.test(nombre) || sku.startsWith("RST-SDCA-W"))
+
+      const isDynamic = optionsWithCost > 0 || confidence === "dinamico" || isConfigurablePending
+
+      // Estado de mapeo (por prioridad)
+      let mappingStatus: FoodCostMappingStatus
+      if (confidence === "sin_receta" || confidence === "sin_receta_activa") {
+        mappingStatus = "sin_receta"
+      } else if (isConfigurablePending || (isDynamic && options.some((o) => !o.costed))) {
+        mappingStatus = "parcial"
+      } else if (!reviewed && (confidence === "baja" || confidence === "media")) {
+        mappingStatus = "sin_revisar"
+      } else {
+        mappingStatus = "ok"
+      }
+
+      productos.push({
+        rowId,
+        sku,
+        producto: nombre,
+        categoria: row.categoria || "Sin categoría",
+        tipo: row.tipo || "Comida",
+        pvp: Number.parseFloat(row.pvp) || 0,
+        pvp_neto: Number.parseFloat(row.pvp_neto) || 0,
+        coste: Number.parseFloat(row.coste_escandallo) || 0,
+        food_cost_pct: Number.parseFloat(row.food_cost_pct) || 0,
+        tiene_patatas: row.tiene_patatas === true,
+        tiene_helado: row.tiene_helado === true,
+        tiene_ensalada: row.tiene_ensalada === true,
+        recipeName: map?.recipe_name ?? null,
+        recipeCost: map?.recipe_cost != null ? Number.parseFloat(map.recipe_cost) : null,
+        confidence,
+        reviewed,
+        mappingStatus,
+        isDynamic,
+        options,
+      })
+    }
+
+    // KPIs (umbrales nuevos: ok ≤30, warning 30-35, crítico >35)
     const total_productos = productos.length
-    const productos_criticos = productos.filter((p) => p.food_cost_pct > 30).length
-    const productos_warning = productos.filter((p) => p.food_cost_pct >= 20 && p.food_cost_pct <= 30).length
-    const productos_ok = productos.filter((p) => p.food_cost_pct < 20).length
-
+    const productos_criticos = productos.filter((p) => p.food_cost_pct > 35).length
+    const productos_warning = productos.filter((p) => p.food_cost_pct > 30 && p.food_cost_pct <= 35).length
+    const productos_ok = productos.filter((p) => p.food_cost_pct <= 30).length
     const food_cost_promedio =
       total_productos > 0 ? productos.reduce((sum, p) => sum + p.food_cost_pct, 0) / total_productos : 0
 
     // Agrupar por categoría
     const categoriasMap = new Map<string, { productos: number; sum_food_cost: number }>()
-    productos.forEach((p) => {
-      const cat = p.categoria
-      if (!categoriasMap.has(cat)) {
-        categoriasMap.set(cat, { productos: 0, sum_food_cost: 0 })
-      }
-      const entry = categoriasMap.get(cat)!
+    for (const p of productos) {
+      const entry = categoriasMap.get(p.categoria) || { productos: 0, sum_food_cost: 0 }
       entry.productos += 1
       entry.sum_food_cost += p.food_cost_pct
-    })
-
+      categoriasMap.set(p.categoria, entry)
+    }
     const por_categoria = Array.from(categoriasMap.entries()).map(([categoria, stats]) => ({
       categoria,
       productos: stats.productos,
@@ -1790,94 +1866,12 @@ export async function fetchFoodCostProducts(): Promise<FoodCostSummary> {
 
     return {
       productos,
-      kpis: {
-        food_cost_promedio,
-        total_productos,
-        productos_criticos,
-        productos_warning,
-        productos_ok,
-      },
+      kpis: { food_cost_promedio, total_productos, productos_criticos, productos_warning, productos_ok },
       por_categoria,
     }
   } catch (err) {
     console.error("[fetchFoodCostProducts] Exception:", err)
-    return {
-      productos: [],
-      kpis: {
-        food_cost_promedio: 0,
-        total_productos: 0,
-        productos_criticos: 0,
-        productos_warning: 0,
-        productos_ok: 0,
-      },
-      por_categoria: [],
-    }
-  }
-}
-
-export async function updateManualPrice(
-  sku: string,
-  variantId: number | null,
-  newPrice: number,
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    if (variantId !== null) {
-      // Es una variante
-      const { error } = await supabase.rpc("update_variant_manual_price", {
-        p_variant_id: variantId,
-        p_manual_price: newPrice,
-      })
-      if (error) {
-        console.error("[updateManualPrice] Error variante:", error.message)
-        return { success: false, error: error.message }
-      }
-    } else {
-      // Es un producto
-      const { error } = await supabase.rpc("update_manual_price", {
-        p_sku: sku,
-        p_manual_price: newPrice,
-      })
-      if (error) {
-        console.error("[updateManualPrice] Error producto:", error.message)
-        return { success: false, error: error.message }
-      }
-    }
-    return { success: true }
-  } catch (err: any) {
-    console.error("[updateManualPrice] Exception:", err)
-    return { success: false, error: err.message || "Error desconocido" }
-  }
-}
-
-export async function clearManualPrice(
-  sku: string,
-  variantId: number | null,
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    if (variantId !== null) {
-      // Es una variante - resetear a null
-      const { error } = await supabase.rpc("update_variant_manual_price", {
-        p_variant_id: variantId,
-        p_manual_price: null,
-      })
-      if (error) {
-        console.error("[clearManualPrice] Error variante:", error.message)
-        return { success: false, error: error.message }
-      }
-    } else {
-      // Es un producto
-      const { error } = await supabase.rpc("clear_manual_price", {
-        p_sku: sku,
-      })
-      if (error) {
-        console.error("[clearManualPrice] Error producto:", error.message)
-        return { success: false, error: error.message }
-      }
-    }
-    return { success: true }
-  } catch (err: any) {
-    console.error("[clearManualPrice] Exception:", err)
-    return { success: false, error: err.message || "Error desconocido" }
+    return empty
   }
 }
 
