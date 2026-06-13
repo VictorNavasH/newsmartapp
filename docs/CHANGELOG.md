@@ -9,6 +9,17 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 ## [Unreleased]
 
 ### Añadido
+- **Pestaña Food Cost de Smart Food rehecha** (`components/features/FoodCostTab.tsx`) para reflejar el nuevo sistema de food cost:
+  - **Cabecera con food cost REAL ponderado por ventas 30d** (Global / Comida / Bebida) de `vw_food_cost_real` vía nuevo hook `useFoodCostReal()`, en lugar de la media simple de la carta.
+  - **Tabla por plato recoloreada** con los umbrales de marca (verde ≤30% / ámbar ≤35% / rojo >35%), coherente con Dashboard y Facturación.
+  - **Receta GStock origen** por plato + chip de **estado de mapeo** (`Coste parcial` / `Sin receta` / `Sin revisar`) en lugar de 0 € engañoso. `fetchFoodCostProducts()` ahora compone `vw_food_cost` + `product_recipe_map` + `product_options` + `option_recipe_map`.
+  - **Platos dinámicos** (poke "crea tu", hummus, vinos, kids): badge "Dinámico" + **desglose de opciones** con su coste y un **estimador** (marcas opciones → coste y food cost resultante); opciones sin coste mapeado marcadas "sin mapear".
+  - Corrige el agrupado: las filas que comparten SKU en `vw_food_cost` (Taquitos 2/3/4 ud, Croquets…) son combos distintos → se deduplican por `sku+nombre`.
+
+### Eliminado
+- **Código muerto de la pestaña Food Cost**: campos inexistentes en `vw_food_cost` (`variant_id`, `precio_manual`, `food_cost_peor_pct`), el badge "PVP Manual" inerte, la edición de precio manual y las funciones `updateManualPrice()` / `clearManualPrice()` (RPCs `update_manual_price` / `clear_manual_price` / `update_variant_manual_price`).
+
+### Añadido
 - **Capa de coste de OPCIONES (food cost dinámico por modificador):** segundo puente `option_recipe_map` (opción → fuente de coste: receta GStock / producto de compra) + `fn_refresh_option_costs()` que rellena `product_options.cost_price_option` con guarda de plausibilidad. Como `vw_coste_ticket` ya suma las opciones, el coste por ticket se vuelve dinámico real (suma lo que eligió el cliente). Orquestador `fn_refresh_all_costs()` (base + opciones) en el cron diario 06:30. Primer mapeo: sabores de NÜA Smart Hummus a su receta de ración individual (no la del mix). Ver `scripts/create_option_recipe_map.sql`. Pendiente (necesita ración de cocina): pokes, bebidas y postres de menús kids.
 - **Sincronización fiable de costes GStock → productos (puente receta↔SKU):** los costes base de la app (`products.cost_price`, que alimentan todo el food cost) estaban desincronizados con las recetas reales de GStock. Solución (DB, ver `scripts/create_product_recipe_map.sql`):
   - Tabla puente `product_recipe_map` (SKU ↔ receta GStock, con `confidence` y `reviewed` para bloqueo manual).

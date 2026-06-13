@@ -66,6 +66,7 @@ export {
   useCategoryMix,
   useOptionMix,
   useFoodCostProducts,
+  useFoodCostReal,
 } from "./useProductsData"
 
 // Agent (Hermes) — estado, memoria, sesiones, cron, skills, analítica

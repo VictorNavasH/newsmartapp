@@ -123,9 +123,7 @@ Servicio principal. Contiene funciones para dashboard en tiempo real, reservas, 
 | `fetchLaborCostAnalysis(start, end)` | `startDate, endDate: string` | `Promise<LaborCostDay[]>` | Vista `vw_labor_cost_analysis` |
 | `fetchFoodCostAverage()` | — | `Promise<number>` | Vista `vw_food_cost` → `.select("food_cost_pct")` → promedio simple (media de la carta). Legacy, usado como fallback. |
 | `fetchFoodCostReal()` | — | `Promise<FoodCostReal>` | Vista `vw_food_cost_real` → food cost **ponderado por mix de ventas** (30 días), desglose comida/bebida/global. Usado por Dashboard (objetivos) y Ajustes (preview break-even). |
-| `fetchFoodCostProducts()` | — | `Promise<FoodCostSummary>` | Vista `vw_food_cost` → `.select("*").order("food_cost_pct", desc)` |
-| `updateManualPrice(sku, variantId, price)` | `sku: string, variantId?: string, newPrice: number` | `Promise<{success, error?}>` | RPC `update_manual_price` o `update_variant_manual_price` |
-| `clearManualPrice(sku, variantId)` | `sku: string, variantId?: string` | `Promise<{success, error?}>` | RPC `clear_manual_price` o update con null |
+| `fetchFoodCostProducts()` | — | `Promise<FoodCostSummary>` | Compone en paralelo `vw_food_cost` (base por plato) + `product_recipe_map` (receta GStock origen + `confidence`/`reviewed`) + `product_options` (opciones activas con `cost_price_option`) + `option_recipe_map` (origen del coste de opción). Dedup por `sku+nombre`, deriva `mappingStatus` (ok/parcial/sin_receta/sin_revisar), `isDynamic` y el array de `options`. Umbrales KPI: ok ≤30, warning 30-35, crítico >35. |
 | `fetchConciliacionResumen()` | — | `Promise<{totalPendientes, autoSinConfirmar, requierenRevision}>` | Vista `vw_compras_facturas_pendientes` → agrega conteos por estado. Usado por alertas Dashboard. |
 
 ### Mock (re-exportados desde `lib/mockData.ts`)
@@ -608,6 +606,7 @@ Hooks reutilizables que envuelven las funciones de fetching existentes con TanSt
 | `useCategoryMix(start, end, turno?)` | fechas string + turno | `["categoryMix", ...]` |
 | `useOptionMix(start, end, turno?, extraPago?)` | fechas string + filtros | `["optionMix", ...]` |
 | `useFoodCostProducts()` | — | `["foodCostProducts"]` |
+| `useFoodCostReal()` | — | `["foodCostReal"]` (cabecera Food Cost: real ponderado 30d) |
 
 ### Uso típico
 
