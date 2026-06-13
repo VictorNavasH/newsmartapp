@@ -477,3 +477,19 @@ VPS Hermes ──(cron Python cada ~5 min, curl REST)──> Supabase (tablas he
 - **RLS**: lectura para `authenticated`; escritura solo con `service_role` o cabecera `x-sync-secret` (la usa el cron del VPS). Ver `supabase/migrations/20260602_create_hermes_tables.sql`.
 - **Tablas**: `hermes_status` (fila única id=1), `hermes_memory`, `hermes_sessions`, `hermes_cron_jobs`, `hermes_skills`, `hermes_analytics_daily`.
 - **Frontend**: ruta SPA `/agent` (`AgentPage`), servicio `lib/hermesService.ts`, hooks `hooks/queries/useHermesData.ts`. Auto-refresh con React Query.
+
+## Subsistema de Food Cost (sincronización GStock)
+
+`products.cost_price` y `product_options.cost_price_option` (que alimentan todo el food cost)
+se sincronizan de forma fiable con las recetas de GStock mediante dos **puentes revisables** y
+funciones idempotentes con **guarda de plausibilidad** (un coste solo se aplica si `>0` y `<= PVP`):
+
+- Puentes: `product_recipe_map` (SKU↔receta) y `option_recipe_map` (opción↔fuente de coste).
+- Funciones: `fn_refresh_food_costs()`, `fn_refresh_option_costs()`, `fn_refresh_all_costs()` (orquesta).
+- Cron pg_cron `refresh-food-costs` (diario 06:30, tras el sync de recetas de GStock).
+- Vistas de consumo: `vw_food_cost` (base por producto), `vw_food_cost_real` (ponderado por ventas 30d),
+  `vw_coste_ticket` (coste real por ticket → Facturación).
+- Platos dinámicos (poke, hummus por sabor, vinos copa/botella, menús kids): su coste vive en las opciones.
+
+**Documentación completa**: `docs/FOOD_COST_SYSTEM.md`. Scripts DDL en `scripts/create_*.sql`.
+Estado y pendientes: `docs/ESTADO_Y_PENDIENTES.md`.

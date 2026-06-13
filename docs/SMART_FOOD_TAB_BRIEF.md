@@ -1,8 +1,10 @@
-# Brief — Rehacer la pestaña "Food Cost" de Smart Food
+# Brief — Actualizar la pestaña "Food Cost" de Smart Food
 
-> Contexto para una sesión futura con Claude. Objetivo: reconstruir la pestaña de food
-> cost de Smart Food para que refleje el nuevo sistema (costes sincronizados con GStock +
-> coste dinámico de opciones + coste real por ticket). Leer junto a `docs/FOOD_COST_SYSTEM.md`.
+> NOTA: la pestaña **YA EXISTE** (`components/features/FoodCostTab.tsx`, tab "Food Cost" en
+> `CostesPage.tsx`). El objetivo es **rehacerla/actualizarla** (no crear una nueva) para que
+> refleje el nuevo sistema (costes sincronizados con GStock + coste dinámico de opciones +
+> coste real por ticket). Ya muestra los costes por producto corregidos; falta el food cost
+> real ponderado, los platos dinámicos y limpiar código muerto. Leer junto a `docs/FOOD_COST_SYSTEM.md`.
 
 ## 1. Dónde está
 - Vista Smart Food: `components/views/CostesPage.tsx` (tab "Food Cost", línea ~164 → `<FoodCostTab />`).
