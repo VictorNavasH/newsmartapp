@@ -1170,6 +1170,27 @@ export default function FacturacionPage() {
                             {formatCurrencyES(costeTicket.margen_bruto)}
                           </span>
                         </div>
+
+                        {/* Reparto visual de la venta neta: coste de mercancía vs margen bruto */}
+                        <div className="pt-2">
+                          <div className="flex h-2.5 rounded-full overflow-hidden bg-slate-100">
+                            <div
+                              style={{ width: `${Math.min(100, Math.max(0, fc))}%`, backgroundColor: fcColor }}
+                            />
+                            <div className="flex-1 bg-[#17c3b2]" />
+                          </div>
+                          <div className="flex justify-between mt-2 text-[11px] text-slate-500">
+                            <span className="flex items-center gap-1.5">
+                              <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: fcColor }} />
+                              Coste {fc.toLocaleString("es-ES", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <span className="w-2.5 h-2.5 rounded-sm bg-[#17c3b2]" />
+                              Margen {(100 - fc).toLocaleString("es-ES", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
+                            </span>
+                          </div>
+                        </div>
+
                         <p className="text-[10px] text-slate-400 pt-1">
                           Food cost sobre base imponible (sin IVA).
                         </p>
