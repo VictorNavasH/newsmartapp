@@ -681,7 +681,8 @@ FoodCostOption = { optionName: string; optionPrice: number; // PVP del modificad
   tiene_patatas, tiene_helado, tiene_ensalada: boolean;
   recipeName: string|null; recipeCost: number|null; // receta GStock origen
   confidence: string|null; reviewed: boolean; mappingStatus: FoodCostMappingStatus;
-  isDynamic: boolean; options: FoodCostOption[] } // coste dinámico de opciones
+  isDynamic: boolean; options: FoodCostOption[]; // coste dinámico de opciones
+  soldRecently: boolean } // vendido en 60d (vw_productos_vendidos_60d); false = fuera de carta
 ```
 
 ### FoodCostSummary

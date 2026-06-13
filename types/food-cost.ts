@@ -40,6 +40,8 @@ export interface FoodCostProduct {
   // --- coste dinámico (de product_options / option_recipe_map) ---
   isDynamic: boolean // el coste depende de las opciones elegidas
   options: FoodCostOption[] // opciones para el desglose / estimador
+  // --- visibilidad ---
+  soldRecently: boolean // vendido en los últimos 60 días (de vw_productos_vendidos_60d); false = fuera de carta / sin ventas
 }
 
 /** Food cost REAL ponderado por mix de ventas (últimos 30 días), de vw_food_cost_real */

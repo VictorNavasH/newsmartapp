@@ -33,7 +33,7 @@ Documentación de los 18 servicios/módulos en `lib/`. Cada servicio encapsula l
 
 | Prefijo | Vistas |
 |---------|--------|
-| `vw_` | `vw_dashboard_ventas_facturas_live`, `vw_dashboard_financiero`, `vw_dashboard_ocupacion`, `vw_metricas_diarias_base`, `vw_facturacion_mesas`, `vw_operaciones_tiempo_real`, `vw_mix_productos`, `vw_mix_categorias`, `vw_mix_opciones`, `vw_labor_cost_analysis`, `vw_food_cost`, `vw_operativa_items`, `vw_compras_pedidos`, `vw_compras_conciliacion`, `vw_compras_albaranes_para_vincular`, `vw_compras_proveedores`, `vw_compras_resumen` |
+| `vw_` | `vw_dashboard_ventas_facturas_live`, `vw_dashboard_financiero`, `vw_dashboard_ocupacion`, `vw_metricas_diarias_base`, `vw_facturacion_mesas`, `vw_operaciones_tiempo_real`, `vw_mix_productos`, `vw_mix_categorias`, `vw_mix_opciones`, `vw_labor_cost_analysis`, `vw_food_cost`, `vw_food_cost_real`, `vw_coste_ticket`, `vw_productos_vendidos_60d`, `vw_operativa_items`, `vw_compras_pedidos`, `vw_compras_conciliacion`, `vw_compras_albaranes_para_vincular`, `vw_compras_proveedores`, `vw_compras_resumen` |
 | `v_` | `v_facturacion_resumen_global`, `v_facturas_listado`, `v_facturas_cuadre_diario`, `v_ingresos_por_categoria`, `v_facturas_alertas`, `v_facturacion_mensual`, `v_pool_bancario_resumen`, `v_pool_bancario_prestamos`, `v_pool_bancario_proximos_vencimientos`, `v_pool_bancario_por_banco`, `v_pool_bancario_calendario_mensual` |
 
 ### Tablas directas (12)
@@ -123,7 +123,7 @@ Servicio principal. Contiene funciones para dashboard en tiempo real, reservas, 
 | `fetchLaborCostAnalysis(start, end)` | `startDate, endDate: string` | `Promise<LaborCostDay[]>` | Vista `vw_labor_cost_analysis` |
 | `fetchFoodCostAverage()` | — | `Promise<number>` | Vista `vw_food_cost` → `.select("food_cost_pct")` → promedio simple (media de la carta). Legacy, usado como fallback. |
 | `fetchFoodCostReal()` | — | `Promise<FoodCostReal>` | Vista `vw_food_cost_real` → food cost **ponderado por mix de ventas** (30 días), desglose comida/bebida/global. Usado por Dashboard (objetivos) y Ajustes (preview break-even). |
-| `fetchFoodCostProducts()` | — | `Promise<FoodCostSummary>` | Compone en paralelo `vw_food_cost` (base por plato) + `product_recipe_map` (receta GStock origen + `confidence`/`reviewed`) + `product_options` (opciones activas con `cost_price_option`) + `option_recipe_map` (origen del coste de opción). Dedup por `sku+nombre`, deriva `mappingStatus` (ok/parcial/sin_receta/sin_revisar), `isDynamic` y el array de `options`. Umbrales KPI: ok ≤30, warning 30-35, crítico >35. |
+| `fetchFoodCostProducts()` | — | `Promise<FoodCostSummary>` | Compone en paralelo `vw_food_cost` (base por plato) + `product_recipe_map` (receta GStock origen + `confidence`/`reviewed`) + `product_options` (opciones activas con `cost_price_option`) + `option_recipe_map` (origen del coste de opción). Dedup por `sku+nombre`, deriva `mappingStatus` (ok/parcial/sin_receta/sin_revisar), `isDynamic` y el array de `options`. También lee `vw_productos_vendidos_60d` para marcar `soldRecently` (visibilidad fuera de carta; si la lectura falla, no oculta nada). Umbrales KPI: ok ≤30, warning 30-35, crítico >35. |
 | `fetchConciliacionResumen()` | — | `Promise<{totalPendientes, autoSinConfirmar, requierenRevision}>` | Vista `vw_compras_facturas_pendientes` → agrega conteos por estado. Usado por alertas Dashboard. |
 
 ### Mock (re-exportados desde `lib/mockData.ts`)

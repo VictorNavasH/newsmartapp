@@ -1738,8 +1738,8 @@ export async function fetchFoodCostProducts(): Promise<FoodCostSummary> {
   }
 
   try {
-    // Lecturas en paralelo: base + mapeo receta + opciones activas + origen de coste de opciones
-    const [fcRes, mapRes, optRes, ormRes] = await Promise.all([
+    // Lecturas en paralelo: base + mapeo receta + opciones activas + origen de coste de opciones + ventas 60d
+    const [fcRes, mapRes, optRes, ormRes, soldRes] = await Promise.all([
       supabase.from("vw_food_cost").select("*").order("food_cost_pct", { ascending: false }),
       supabase.from("product_recipe_map").select("product_sku, recipe_name, recipe_cost, confidence, reviewed"),
       supabase
@@ -1747,6 +1747,7 @@ export async function fetchFoodCostProducts(): Promise<FoodCostSummary> {
         .select("product_sku, option_name, option_price, cost_price_option")
         .eq("is_active", true),
       supabase.from("option_recipe_map").select("product_sku, option_name, source_type"),
+      supabase.from("vw_productos_vendidos_60d").select("product_sku"),
     ])
 
     if (fcRes.error) {
@@ -1756,6 +1757,12 @@ export async function fetchFoodCostProducts(): Promise<FoodCostSummary> {
     if (mapRes.error) console.error("[fetchFoodCostProducts] Error product_recipe_map:", mapRes.error.message)
     if (optRes.error) console.error("[fetchFoodCostProducts] Error product_options:", optRes.error.message)
     if (ormRes.error) console.error("[fetchFoodCostProducts] Error option_recipe_map:", ormRes.error.message)
+    if (soldRes.error) console.error("[fetchFoodCostProducts] Error vw_productos_vendidos_60d:", soldRes.error.message)
+
+    // SKUs vendidos en los últimos 60 días (señal "en carta"). Si la lectura falla, no ocultamos nada.
+    const soldRows = soldRes.data || []
+    const soldSkus = new Set<string>(soldRows.map((r: any) => r.product_sku))
+    const soldDataAvailable = !soldRes.error && soldRows.length > 0
 
     // Mapeo de receta por SKU (origen GStock)
     const mapBySku = new Map<string, any>()
@@ -1839,6 +1846,8 @@ export async function fetchFoodCostProducts(): Promise<FoodCostSummary> {
         mappingStatus,
         isDynamic,
         options,
+        // Si la señal de ventas no está disponible, no ocultamos nada (todo cuenta como reciente)
+        soldRecently: !soldDataAvailable || soldSkus.has(sku),
       })
     }
 

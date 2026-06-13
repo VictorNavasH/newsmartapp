@@ -17,6 +17,8 @@ import {
   ChevronUp,
   HelpCircle,
   Eye,
+  EyeOff,
+  PackageX,
 } from "lucide-react"
 import { useFoodCostProducts, useFoodCostReal } from "@/hooks/queries"
 import type { FoodCostProduct, FoodCostMappingStatus, FoodCostRealRow } from "@/types"
@@ -83,27 +85,37 @@ export function FoodCostTab() {
   const { data: real } = useFoodCostReal()
   const [selectedTipo, setSelectedTipo] = useState<"Comida" | "Bebida">("Comida")
   const [selectedCategory, setSelectedCategory] = useState("TODOS")
+  const [showHidden, setShowHidden] = useState(false) // mostrar también platos sin ventas 60d (fuera de carta)
 
   const filteredProducts = useMemo(() => {
     if (!data) return []
     let filtered = data.productos.filter((p) => p.tipo === selectedTipo)
+    if (!showHidden) filtered = filtered.filter((p) => p.soldRecently)
     if (selectedCategory !== "TODOS") {
       filtered = filtered.filter((p) => p.categoria === selectedCategory)
     }
     return filtered
-  }, [data, selectedTipo, selectedCategory])
+  }, [data, selectedTipo, selectedCategory, showHidden])
 
   const tipoStats = useMemo(() => {
-    if (!data) return { total: 0, criticos: 0, warning: 0, ok: 0, dinamicos: 0 }
-    const tp = data.productos.filter((p) => p.tipo === selectedTipo)
+    if (!data) return { total: 0, criticos: 0, warning: 0, ok: 0, dinamicos: 0, hidden: 0 }
+    const allTipo = data.productos.filter((p) => p.tipo === selectedTipo)
+    const hidden = allTipo.filter((p) => !p.soldRecently).length
+    // Las stat-chips siguen lo visible (respetan el filtro de fuera de carta)
+    const tp = showHidden ? allTipo : allTipo.filter((p) => p.soldRecently)
     return {
       total: tp.length,
       criticos: tp.filter((p) => p.food_cost_pct > 35).length,
       warning: tp.filter((p) => p.food_cost_pct > 30 && p.food_cost_pct <= 35).length,
       ok: tp.filter((p) => p.food_cost_pct <= 30).length,
       dinamicos: tp.filter((p) => p.isDynamic).length,
+      hidden,
     }
-  }, [data, selectedTipo])
+  }, [data, selectedTipo, showHidden])
+
+  // Conteo por tipo respetando la visibilidad (para los toggles Comida/Bebida)
+  const countByTipo = (tipo: "Comida" | "Bebida") =>
+    data ? data.productos.filter((p) => p.tipo === tipo && (showHidden || p.soldRecently)).length : 0
 
   const groupedByCategory = useMemo(() => {
     const groups: Record<string, FoodCostProduct[]> = {}
@@ -171,7 +183,7 @@ export function FoodCostTab() {
           <span
             className={`text-xs px-2 py-0.5 rounded-full ${selectedTipo === "Comida" ? "bg-white/20" : "bg-slate-200"}`}
           >
-            {data.productos.filter((p) => p.tipo === "Comida").length}
+            {countByTipo("Comida")}
           </span>
         </button>
         <button
@@ -190,7 +202,7 @@ export function FoodCostTab() {
           <span
             className={`text-xs px-2 py-0.5 rounded-full ${selectedTipo === "Bebida" ? "bg-white/20" : "bg-slate-200"}`}
           >
-            {data.productos.filter((p) => p.tipo === "Bebida").length}
+            {countByTipo("Bebida")}
           </span>
         </button>
       </div>
@@ -202,6 +214,24 @@ export function FoodCostTab() {
         <StatChip icon={AlertTriangle} color={BRAND_COLORS.warning} label="Atención (30-35%)" value={tipoStats.warning} />
         <StatChip icon={AlertCircle} color={BRAND_COLORS.error} label="Críticos (>35%)" value={tipoStats.criticos} />
       </div>
+
+      {/* Visibilidad: platos fuera de carta (sin ventas en 60 días) */}
+      {tipoStats.hidden > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="inline-flex items-center gap-1.5 text-xs text-slate-400">
+            <PackageX className="h-3.5 w-3.5" />
+            {tipoStats.hidden} {tipoStats.hidden === 1 ? "plato" : "platos"} sin ventas en 60 días (fuera de carta)
+            {showHidden ? " mostrados" : " ocultos"}
+          </span>
+          <button
+            onClick={() => setShowHidden((v) => !v)}
+            className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors"
+          >
+            {showHidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            {showHidden ? "Ocultar fuera de carta" : "Ver también sin ventas"}
+          </button>
+        </div>
+      )}
 
       {/* Filtro de categorías según tipo */}
       <div className="flex flex-wrap gap-2 bg-white rounded-xl p-3 border border-slate-200">
@@ -222,7 +252,9 @@ export function FoodCostTab() {
         {availableCategories.map((cat) => {
           const isSelected = selectedCategory === cat
           const color = CATEGORY_COLORS[cat] || BRAND_COLORS.dark
-          const count = data.productos.filter((p) => p.tipo === selectedTipo && p.categoria === cat).length
+          const count = data.productos.filter(
+            (p) => p.tipo === selectedTipo && p.categoria === cat && (showHidden || p.soldRecently),
+          ).length
 
           return (
             <button
@@ -380,9 +412,18 @@ function ProductCard({ producto }: { producto: FoodCostProduct }) {
         </div>
       </div>
 
-      {/* Badges: dinámico + estado de mapeo */}
-      {(producto.isDynamic || status) && (
+      {/* Badges: fuera de carta + dinámico + estado de mapeo */}
+      {(producto.isDynamic || status || !producto.soldRecently) && (
         <div className="flex flex-wrap items-center gap-1.5 mb-2">
+          {!producto.soldRecently && (
+            <span
+              className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-500"
+              title="Sin ventas en los últimos 60 días (posible plato fuera de carta)"
+            >
+              <PackageX className="h-3 w-3" />
+              Sin ventas 60d
+            </span>
+          )}
           {producto.isDynamic && (
             <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#02b1c4]/10 text-[#02b1c4]">
               <Sparkles className="h-3 w-3" />

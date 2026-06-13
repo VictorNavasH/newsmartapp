@@ -47,13 +47,13 @@ Config en Ajustes → Objetivos KPI (con preview en vivo del break-even).
   (resolver cantidad+sabor → receta de combo), no sirve el `option_recipe_map` aditivo.
   **No requiere cambiar el TPV**: la cantidad y el sabor quedan registrados en `sales_item_options`
   por ticket, así que la combinación se resuelve en el cálculo de coste.
-- **Visibilidad de platos fuera de carta** (DECISIÓN PENDIENTE): hoy la Smart App muestra todo
-  producto con `products.is_active=true` (viene del TPV). Platos retirados/standby (Beef Ribs,
-  Burrata, Vegan Poke, Pulpo gallego, etc.) siguen `is_active=true` → **aparecen como cards** aunque
-  no estén en carta. NO distorsionan el food cost ponderado (sin ventas recientes = peso ~0), es solo
-  ruido visual en el listado. Como el TPV no se puede tocar fácil, opciones: (a) flag manual
-  "en_carta" en nuestra capa; (b) filtrar por ventas recientes (no vendido 30-60d → ocultar/“sin ventas”);
-  (c) usar receta GStock inactiva como señal (sirve para Burrata/Vegan Poke, no para Beef Ribs).
+- **Visibilidad de platos fuera de carta** (✅ RESUELTO — opción b): la pestaña Food Cost oculta por
+  defecto los platos **sin ventas en 60 días** vía la vista `vw_productos_vendidos_60d` (campo
+  `soldRecently`), con toggle "Ver también sin ventas" + chip "Sin ventas 60d" + contador de ocultos.
+  Se auto-mantiene (un plato reaparece al volver a venderse). Validado: hoy oculta 7 (Burrata, Croquets
+  Kids, Vegan Poke, Cervezas Artesanales, Combinado Vodka, NÜA Smart Beer, NÜA Smart Cava). Nota: el
+  filtro por ventas corrige las suposiciones — Beef Ribs y Pulpo gallego SÍ venden, así que se quedan.
+  Ver `scripts/create_vw_productos_vendidos_60d.sql`.
 - **Vino "Botella"**: copa hecha; falta el delta de botella.
 - **Side kids** (patatas vs ensalada): base fijada a "con patatas"; delta ensalada ~0,52 € (impacto mínimo).
 - **Remolacha (hummus)**: corregida en GStock; entra sola al re-sync (guarda de plausibilidad la bloquea mientras esté alta).

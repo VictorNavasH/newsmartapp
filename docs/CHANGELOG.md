@@ -9,6 +9,7 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
 ## [Unreleased]
 
 ### Añadido
+- **Filtro de platos fuera de carta en Food Cost** (decisión Q2): la pestaña oculta por defecto los platos **sin ventas en los últimos 60 días** (retirados/standby que siguen `is_active=true` en el TPV). Toggle "Ver también sin ventas / fuera de carta" para mostrarlos (con chip "Sin ventas 60d") y contador discreto de cuántos hay ocultos. Señal automática vía nueva vista `vw_productos_vendidos_60d` (SKUs distintos vendidos 60d, anon-readable; ver `scripts/create_vw_productos_vendidos_60d.sql`); `fetchFoodCostProducts()` marca cada plato `soldRecently`. La cabecera real ponderada y los umbrales no cambian. Se auto-mantiene: un plato reaparece al volver a venderse (p. ej. el pulpo standby). Hoy oculta 7 platos (Burrata, Croquets Kids, Vegan Poke, Cervezas Artesanales, Combinado Vodka, NÜA Smart Beer, NÜA Smart Cava).
 - **Pestaña Food Cost de Smart Food rehecha** (`components/features/FoodCostTab.tsx`) para reflejar el nuevo sistema de food cost:
   - **Cabecera con food cost REAL ponderado por ventas 30d** (Global / Comida / Bebida) de `vw_food_cost_real` vía nuevo hook `useFoodCostReal()`, en lugar de la media simple de la carta.
   - **Tabla por plato recoloreada** con los umbrales de marca (verde ≤30% / ámbar ≤35% / rojo >35%), coherente con Dashboard y Facturación.

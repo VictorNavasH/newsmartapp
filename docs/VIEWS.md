@@ -246,6 +246,7 @@ Click en un KPI activa/desactiva el filtro global que se sincroniza con el filtr
    - **Tabla por plato** vía `fetchFoodCostProducts()` (compone `vw_food_cost` + `product_recipe_map` + `product_options` + `option_recipe_map`): PVP (solo lectura), coste, food cost % coloreado por umbral de marca (verde ≤30% / ámbar ≤35% / rojo >35%). Agrupado por categoría, toggle Comida/Bebida.
    - **Receta GStock origen** por plato (de `product_recipe_map`) + chip de estado de mapeo (`Coste parcial` / `Sin receta` / `Sin revisar`).
    - **Platos dinámicos** (poke "crea tu", hummus, vinos, kids…): badge "Dinámico" + desglose expandible de opciones con su coste y un **estimador** (marcas opciones → coste y food cost resultante). Opciones sin coste mapeado se marcan "sin mapear".
+   - **Visibilidad fuera de carta**: oculta por defecto los platos sin ventas en 60 días (vía `vw_productos_vendidos_60d`, campo `soldRecently`). Toggle "Ver también sin ventas" + chip "Sin ventas 60d" + contador de ocultos.
    - Sin edición de PVP (eliminado el precio manual, que era código muerto).
 3. **Benchmarks** — Componente `<BenchmarksTab />`
    - Consume `fetchBenchmarks(fechaInicio, fechaFin)` → RPC `get_benchmarks_resumen`
