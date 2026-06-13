@@ -15,9 +15,11 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/
   - `lib/kpiTargets.ts` → `calculateBreakEven()` y tipo `BreakEvenResult`.
   - Nuevo campo configurable `otherVariableCostPct` (comisiones TPV/delivery, consumibles…) en Objetivos KPI. Columna `kpi_targets.other_variable_cost_pct` (default 3).
   - El Dashboard y Ajustes muestran el desglose del cálculo de forma transparente.
-- **Food cost REAL ponderado por mix de ventas (vista `vw_food_cost_real`):**
+- **Food cost REAL y DINÁMICO ponderado por mix de ventas (vista `vw_food_cost_real`):**
   - Antes el food cost era la media simple del food_cost_pct de toda la carta (un plato que se vende 500 veces pesaba igual que uno que se vende 2). Ahora se pondera por unidades vendidas reales (últimos 30 días), con desglose comida/bebida/global.
-  - Nueva vista de BD `vw_food_cost_real` (une `sales_order_items` × `vw_food_cost` por SKU; ver `scripts/create_vw_food_cost_real.sql`).
+  - **Dinámico**: suma el coste de los modificadores/opciones que eligió el cliente (`sales_item_options` → `product_options.cost_price_option`): destilados premium en combinados, suplementos, ingredientes de pokes. Numerador = escandallo base + coste de opciones.
+  - Limitación conocida (data upstream): los costes de las opciones de los pokes "crea tu" y algunos suplementos aún no están mapeados en GStock/n8n, por lo que el % mostrado es provisional-bajo hasta completarse (Hermes usa 25% como asunción de trabajo). El denominador aún no suma la venta de opción para no infravalorar; se añadirá cuando los costes estén mapeados.
+  - Nueva vista de BD `vw_food_cost_real` (`sales_order_items` × `vw_food_cost` + opciones; ver `scripts/create_vw_food_cost_real.sql`).
   - `lib/dataService.ts` → `fetchFoodCostReal()`; tipos `FoodCostReal` y `FoodCostRealRow`.
 - **Indicador de "ritmo" (pace) en objetivos del mes:**
   - "Ingresos del mes" y "Punto de Equilibrio" ya no salen siempre en rojo a principio de mes. El estado se mide vs lo que se debería llevar a estas alturas del periodo (no vs el total). `calculateProgress()` acepta `paceFraction`; helper `monthPaceFraction()`.
