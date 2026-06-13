@@ -61,6 +61,13 @@
 - Nota sobre `vw_food_cost`: dedup por **sku+nombre** (no solo sku) para no fusionar combos distintos
   que comparten SKU (taquitos 2/3/4 ud, croquets…).
 
+## 5c. Visibilidad de platos fuera de carta (decidir en el tab)
+La app muestra todo `products.is_active=true` (viene del TPV, no editable fácil). Platos retirados/
+standby (Beef Ribs, Burrata, Vegan Poke, Pulpo gallego, Croquets) tienen `is_active=true` → salen como
+cards aunque no estén en carta (no distorsionan el food cost ponderado: sin ventas = peso ~0; es ruido
+visual). Decidir cómo filtrarlos: flag manual "en_carta" en nuestra capa, y/o filtro por ventas
+recientes (no vendido 30-60d → ocultar o sección "sin ventas"), y/o señal de receta GStock inactiva.
+
 ## 6. Recordatorios
 - Food cost siempre sobre base imponible (sin IVA). GStock costes sin IVA; PVP con IVA.
 - Pendiente upstream: gramajes del poke (CSV `docs/poke_gramajes_cocina.csv`), menús compuestos.

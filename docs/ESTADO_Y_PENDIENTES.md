@@ -45,6 +45,15 @@ Config en Ajustes → Objetivos KPI (con preview en vivo del break-even).
 - **Taquitos / Baos (combinatorios)**: coste = cantidad × coste-por-unidad-del-sabor (NO aditivo).
   GStock tiene las 12 combinaciones y el coste por unidad. Necesitan lógica específica
   (resolver cantidad+sabor → receta de combo), no sirve el `option_recipe_map` aditivo.
+  **No requiere cambiar el TPV**: la cantidad y el sabor quedan registrados en `sales_item_options`
+  por ticket, así que la combinación se resuelve en el cálculo de coste.
+- **Visibilidad de platos fuera de carta** (DECISIÓN PENDIENTE): hoy la Smart App muestra todo
+  producto con `products.is_active=true` (viene del TPV). Platos retirados/standby (Beef Ribs,
+  Burrata, Vegan Poke, Pulpo gallego, etc.) siguen `is_active=true` → **aparecen como cards** aunque
+  no estén en carta. NO distorsionan el food cost ponderado (sin ventas recientes = peso ~0), es solo
+  ruido visual en el listado. Como el TPV no se puede tocar fácil, opciones: (a) flag manual
+  "en_carta" en nuestra capa; (b) filtrar por ventas recientes (no vendido 30-60d → ocultar/“sin ventas”);
+  (c) usar receta GStock inactiva como señal (sirve para Burrata/Vegan Poke, no para Beef Ribs).
 - **Vino "Botella"**: copa hecha; falta el delta de botella.
 - **Side kids** (patatas vs ensalada): base fijada a "con patatas"; delta ensalada ~0,52 € (impacto mínimo).
 - **Remolacha (hummus)**: corregida en GStock; entra sola al re-sync (guarda de plausibilidad la bloquea mientras esté alta).
