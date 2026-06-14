@@ -21,6 +21,12 @@
 -- NOTA denominador: venta neta (pvp_neto, sin IVA). Para combinatorios usa el
 -- pvp_neto del combo real; para el resto, el de vw_food_cost.
 --
+-- UNIVERSO DE VENTA = is_paid = true (lo realmente cobrado). OJO: NO filtrar por
+-- cancelled_at — en este TPV `cancelled_at` es una marca AUTOMÁTICA de cocina/curso
+-- que se pone a casi todos los platos de comida (~30 ms tras confirmar), NO una
+-- anulación. Esos platos se sirven y se cobran (están en la factura). Filtrar
+-- cancelled_at IS NULL descartaba ~10.000 €/mes de comida pagada (auditoría A4).
+--
 -- Devuelve 3 filas: Comida, Bebida y Global.
 -- Consumida por: lib/dataService.ts → fetchFoodCostReal()
 -- ============================================================================
@@ -58,7 +64,7 @@ JOIN fc_dedup fc ON fc.sku = soi.product_sku
 LEFT JOIN item_option_cost ioc ON ioc.item_id = soi.item_id
 LEFT JOIN combo_item ci ON ci.item_id = soi.item_id
 WHERE soi.confirmed_at >= (now() - interval '30 days')
-  AND soi.cancelled_at IS NULL
+  AND soi.is_paid = true
 GROUP BY GROUPING SETS ((fc.tipo), ());
 
 GRANT SELECT ON vw_food_cost_real TO anon, authenticated;
