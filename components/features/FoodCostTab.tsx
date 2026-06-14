@@ -32,6 +32,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   Compartir: "#227c9d",
   Kids: "#edadff",
   Dulce: "#fe6d73",
+  "Menús": "#ff924c",
   // Bebida
   "Coffee, Tea & Licores": "#8b5cf6",
   "Drinks Con Alcohol": "#f59e0b",
@@ -39,7 +40,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   "Mojitos & Cocktails": "#ec4899",
 }
 
-const COMIDA_CATEGORIES = ["Smart Poke", "Smart Food", "Compartir", "Kids", "Dulce"]
+const COMIDA_CATEGORIES = ["Smart Poke", "Smart Food", "Compartir", "Kids", "Dulce", "Menús"]
 const BEBIDA_CATEGORIES = ["Coffee, Tea & Licores", "Drinks Con Alcohol", "Drinks Sin Alcohol", "Mojitos & Cocktails"]
 
 // Umbrales de marca: verde ≤30% · ámbar ≤35% · rojo >35%
