@@ -66,15 +66,17 @@ El Dashboard construye un `AlertContext` con métricas relevantes y lo pasa al h
 | `laborCostPercentage` | Último día de `laborCostData` |
 | `occupancyRate` | `liveData.prevision.porcentaje_prevision_alcanzado` |
 
-### Secciones
+### Secciones (orden de tarjetas, jun 2026)
 
-1. **Cabecera con estado en tiempo real** — Indicador de conexión a DB, última actualización, botón de refresco
-2. **Tarjetas de métricas en vivo** — Facturación total del día, comensales, ticket medio, desglose comida/cena con porcentajes
-3. **KPIs financieros** — Períodos: mes, trimestre, año. Métricas: ingresos, gastos, beneficio, margen
-4. **Gráfico de facturación semanal** — BarChart con navegación por semana (weekOffset), muestra facturación diaria
-5. **Coste laboral** — Gráfico de coste laboral últimos N días (configurable: 15/30/60), línea de tendencia
-6. **Previsión meteorológica** — Componente `<WeatherCard />` con datos de AEMET
-7. **Ocupación semanal** — Componente `<WeekReservationsCard />` con reservas de la semana
+Tras la cabecera, las tarjetas se renderizan en este orden (prioridad operativa: lo live arriba, lo financiero-histórico abajo):
+
+1. **Previsión del tiempo + Reservas semana** — `<WeatherCard />` (AEMET) + `<WeekReservationsCard />`
+2. **Live: Facturación Hoy / Ticket Medio Hoy / VeriFactu** — métricas del día en tiempo real
+3. **Previsión Facturación Semanal** — BarChart con navegación por semana (weekOffset)
+4. **Progreso vs Objetivos** — KPIs vs metas (break-even real + ritmo; ver fila de la tabla)
+5. **Top Productos Hoy** — ranking del día
+6. **Resumen Financiero** — períodos mes/trimestre; ingresos, gastos, margen
+7. **Evolución Costes Laborales** — gráfico últimos N días (15/30/60) con tendencia
 
 ### Filtros
 

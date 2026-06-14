@@ -512,7 +512,7 @@ export function DashboardPage({ demoMode = false }: { demoMode?: boolean }) {
       />
 
       <PageContent>
-        {/* FILA 1: Weather + Reservas Semana */}
+        {/* Weather + Reservas Semana */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-stretch">
           <div className="lg:col-span-2">
             <WeatherCard />
@@ -521,6 +521,488 @@ export function DashboardPage({ demoMode = false }: { demoMode?: boolean }) {
             <WeekReservationsCard />
           </div>
         </div>
+
+        {/* Live: Facturación / Ticket / VeriFactu */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div
+            onClick={() => window.location.hash = '#/facturacion'}
+            className="cursor-pointer group"
+          >
+            <MetricGroupCard
+              title="Facturación Hoy"
+              live={true}
+              icon={<Banknote className="w-5 h-5 text-[#02b1c4]" />}
+              loading={loading}
+              decimals={2}
+              suffix=" €"
+              total={{ value: currentShift?.revenue || 0, previous: 0, delta: 0, trend: "neutral" }}
+            >
+              {liveData && liveData.prevision && liveData.prevision.prevision_facturacion > 0 && (
+                <div className="mb-4 pb-4 border-b border-slate-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-slate-500">Previsión del día</span>
+                    <span className="text-xs font-bold text-slate-600">
+                      {formatCurrency(liveData.prevision.prevision_facturacion)}
+                    </span>
+                  </div>
+                  <div className="relative h-3 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className="absolute left-0 top-0 h-full rounded-full transition-all duration-500"
+                      style={{
+                        width: `${Math.min(liveData.prevision.porcentaje_prevision_alcanzado, 100)}%`,
+                        backgroundColor:
+                          liveData.prevision.porcentaje_prevision_alcanzado >= 100
+                            ? "#17c3b2"
+                            : liveData.prevision.porcentaje_prevision_alcanzado >= 70
+                              ? "#ffcb77"
+                              : "#02b1c4",
+                      }}
+                    />
+                    {/* Indicador si supera el 100% */}
+                    {liveData.prevision.porcentaje_prevision_alcanzado > 100 && (
+                      <div
+                        className="absolute top-0 h-full bg-[#17c3b2]/30 rounded-r-full"
+                        style={{
+                          left: "100%",
+                          width: `${Math.min(liveData.prevision.porcentaje_prevision_alcanzado - 100, 50)}%`,
+                        }}
+                      />
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between mt-1.5">
+                    <span className="text-[10px] text-slate-400">
+                      {liveData.prevision.comensales_reservados} comensales reservados
+                    </span>
+                    <span
+                      className="text-xs font-bold"
+                      style={{
+                        color:
+                          liveData.prevision.porcentaje_prevision_alcanzado >= 100
+                            ? "#17c3b2"
+                            : liveData.prevision.porcentaje_prevision_alcanzado >= 70
+                              ? "#ffcb77"
+                              : "#02b1c4",
+                      }}
+                    >
+                      {liveData.prevision.porcentaje_prevision_alcanzado.toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+              )}
+              {/* Fin barra de progreso */}
+
+              <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-200">
+                <div className="p-3 rounded-lg bg-[#ffcb77]/20 border border-slate-100/50 flex flex-col justify-between h-full">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1.5">
+                      <SunIcon className="w-3.5 h-3.5 text-[#ffcb77]" />
+                      <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Comida</span>
+                    </div>
+                    <span className="text-xs font-bold text-slate-500">{liveData?.lunch_percentage || 0}%</span>
+                  </div>
+                  <p className="text-lg font-bold text-[#364f6b] text-right">
+                    {formatCurrency(liveData?.lunch?.revenue || 0)}
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-lg bg-[#227c9d]/15 border border-slate-100/50 flex flex-col justify-between h-full">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1.5">
+                      <MoonIcon className="w-3.5 h-3.5 text-[#227c9d]" />
+                      <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Cena</span>
+                    </div>
+                    <span className="text-xs font-bold text-slate-500">{liveData?.dinner_percentage || 0}%</span>
+                  </div>
+                  <p className="text-lg font-bold text-[#364f6b] text-right">
+                    {formatCurrency(liveData?.dinner?.revenue || 0)}
+                  </p>
+                </div>
+              </div>
+            </MetricGroupCard>
+          </div>
+
+          <div
+            onClick={() => window.location.hash = '#/facturacion'}
+            className="cursor-pointer group"
+          >
+            <MetricGroupCard
+              title="Ticket Medio Hoy"
+              live={true}
+              icon={<Receipt className="w-5 h-5 text-[#02b1c4]" />}
+              loading={loading}
+              decimals={2}
+              suffix=" €"
+              total={{ value: currentShift?.avg_ticket_transaction || 0, previous: 0, delta: 0, trend: "neutral" }}
+            >
+              <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-200">
+                <div className="p-3 rounded-lg bg-[#ffcb77]/20 border border-slate-100/50 flex flex-col justify-between h-full">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1.5">
+                      <SunIcon className="w-3.5 h-3.5 text-[#ffcb77]" />
+                      <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Comida</span>
+                    </div>
+                  </div>
+                  <p className="text-lg font-bold text-[#364f6b] text-right">
+                    {formatCurrency(liveData?.lunch?.avg_ticket_transaction || 0)}
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-lg bg-[#227c9d]/15 border border-slate-100/50 flex flex-col justify-between h-full">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1.5">
+                      <MoonIcon className="w-3.5 h-3.5 text-[#227c9d]" />
+                      <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Cena</span>
+                    </div>
+                  </div>
+                  <p className="text-lg font-bold text-[#364f6b] text-right">
+                    {formatCurrency(liveData?.dinner?.avg_ticket_transaction || 0)}
+                  </p>
+                </div>
+              </div>
+            </MetricGroupCard>
+          </div>
+
+          <TremorCard
+            className="lg:col-span-1 cursor-pointer hover:shadow-xl transition-all border-white/40 bg-white/80 backdrop-blur-sm group"
+            onClick={() => window.location.hash = '#/facturacion'}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <TremorTitle className="group-hover:text-[#02b1c4] transition-colors">VeriFactu</TremorTitle>
+              <span className="text-xs bg-[#227c9d]/10 text-[#227c9d] px-2 py-1 rounded-full font-bold live-badge">
+                Live
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center p-4 bg-[#17c3b2]/10 rounded-lg">
+                <CheckCircle className="w-6 h-6 text-[#17c3b2] mx-auto mb-2" />
+                <p className="text-2xl font-bold text-[#364f6b]">{vfMetrics.success}</p>
+                <p className="text-xs text-slate-500">Enviadas OK</p>
+              </div>
+              <div className="text-center p-4 bg-[#ffcb77]/10 rounded-lg">
+                <Clock className="w-6 h-6 text-[#ffcb77] mx-auto mb-2" />
+                <p className="text-2xl font-bold text-[#364f6b]">{vfMetrics.pending}</p>
+                <p className="text-xs text-slate-500">Pendientes</p>
+              </div>
+              <div className="text-center p-4 bg-[#fe6d73]/10 rounded-lg">
+                <AlertCircle className="w-6 h-6 text-[#fe6d73] mx-auto mb-2" />
+                <p className="text-2xl font-bold text-[#364f6b]">{vfMetrics.error}</p>
+                <p className="text-xs text-slate-500">Con Error</p>
+              </div>
+            </div>
+          </TremorCard>
+        </div>
+
+        <TremorCard className="mt-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <TremorTitle>Previsión Facturación Semanal</TremorTitle>
+              <span className="text-xs bg-[#227c9d]/10 text-[#227c9d] px-2 py-1 rounded-full font-bold live-badge">
+                Live
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* Navigation Controls */}
+              <div className="flex bg-slate-100 rounded-md p-0.5 mr-2">
+                <button
+                  onClick={() => setWeekOffset((prev) => prev - 1)}
+                  className="p-1 hover:bg-white rounded-md text-[#364f6b] transition-all shadow-sm"
+                >
+                  <ChevronLeft size={14} />
+                </button>
+                <div className="px-2 flex items-center justify-center text-xs font-medium text-slate-500 min-w-[50px]">
+                  {weekOffset === 0
+                    ? "Actual"
+                    : weekOffset === 1
+                      ? "+1 Sem"
+                      : weekOffset === -1
+                        ? "-1 Sem"
+                        : `${weekOffset > 0 ? "+" : ""}${weekOffset}`}
+                </div>
+                <button
+                  onClick={() => setWeekOffset((prev) => prev + 1)}
+                  className="p-1 hover:bg-white rounded-md text-[#364f6b] transition-all shadow-sm"
+                >
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+
+              {/* Subtarjeta Previsión Semana */}
+              <div className="bg-[#17c3b2]/10 px-3 py-1 rounded-lg text-center">
+                <span className="text-[10px] text-[#17c3b2] font-bold block">Prev. Semana</span>
+                <span className="text-lg font-bold text-[#17c3b2] leading-tight">
+                  {formatNumber(Math.round(weekRevenueTotals.previsionSemana))} €
+                </span>
+              </div>
+
+              {/* Subtarjeta Facturado */}
+              <div className="bg-[#02b1c4]/10 px-3 py-1 rounded-lg text-center">
+                <span className="text-[10px] text-[#02b1c4] font-bold block">Facturado</span>
+                <span className="text-lg font-bold text-[#02b1c4] leading-tight">
+                  {formatNumber(Math.round(weekRevenueTotals.totalFacturado))} €
+                  <span className="text-xs font-normal ml-1">({weekRevenueTotals.porcentajeTotal.toFixed(0)}%)</span>
+                </span>
+              </div>
+            </div>
+          </div>
+          {weekRevenueChartData.length > 0 ? (
+            <ChartScroll minWidth={560} className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={weekRevenueChartData} margin={{ top: 20, right: 60, bottom: 20, left: 20 }}>
+                  <CartesianGrid {...CHART_CONFIG.grid} />
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fontSize: 11, fill: "#64748b" }}
+                    axisLine={{ stroke: "#e2e8f0" }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    yAxisId="left"
+                    tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+                    tick={{ fontSize: 11, fill: "#64748b" }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={isMobile ? 38 : 50}
+                  />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    tickFormatter={(value) => `${value}%`}
+                    tick={{ fontSize: 11, fill: "#64748b" }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={isMobile ? 38 : 50}
+                    domain={[0, 150]}
+                  />
+                  <Tooltip content={<WeekRevenueTooltip />} />
+                  <Legend
+                    verticalAlign="top"
+                    height={isMobile ? 60 : 36}
+                    formatter={(value) => {
+                      const labels: Record<string, string> = {
+                        facturadoReal: "Facturado",
+                        prevision: "Previsión",
+                        porcentajeAlcanzado: "% Alcanzado",
+                      }
+                      return <span className="text-xs text-slate-600">{labels[value] || value}</span>
+                    }}
+                  />
+                  <Bar yAxisId="left" dataKey="facturadoReal" fill="#17c3b2" radius={[4, 4, 0, 0]} barSize={28} />
+                  <Bar yAxisId="left" dataKey="prevision" fill="#cbd5e1" radius={[4, 4, 0, 0]} barSize={28} />
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="porcentajeAlcanzado"
+                    stroke="#ffcb77"
+                    strokeWidth={2}
+                    dot={{ fill: "#ffcb77", strokeWidth: 0, r: 3 }}
+                    activeDot={{ r: 5, fill: "#ffcb77" }}
+                    connectNulls={false}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </ChartScroll>
+          ) : (
+            <div className="text-center py-8 text-slate-400">
+              <TrendingUp className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <p>Sin datos de facturación disponibles</p>
+            </div>
+          )}
+        </TremorCard>
+
+        {/* Progreso vs Objetivos */}
+        {kpiTargets && (
+          <TremorCard
+            className="cursor-pointer hover:shadow-xl transition-all border-white/40 bg-white/80 backdrop-blur-sm group"
+            onClick={() => window.location.hash = '#/settings'}
+          >
+            {/* Header con subtítulo (patrón WeatherCard) */}
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-[#02b1c4]" />
+                <div>
+                  <TremorTitle>Progreso vs Objetivos</TremorTitle>
+                  <p className="text-xs text-slate-400">La marca vertical en cada barra indica el ritmo esperado a estas alturas</p>
+                </div>
+              </div>
+              <span className="text-xs text-slate-400">
+                Configurar en Ajustes &rarr; Objetivos KPI
+              </span>
+            </div>
+
+            {/* Bloque 1: Este mes (con ritmo) */}
+            <div className="mb-4">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">
+                Este mes · vas por el {Math.round(monthPace * 100)}% del periodo
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <KPIProgressBar
+                  label="Ingresos del mes"
+                  periodLabel="Mes · acumulado"
+                  progress={calculateProgress(currentKPIs?.ingresos || 0, kpiTargets.monthlyRevenueTarget, false, monthPace)}
+                  suffix="€"
+                  icon={<Target className="w-4 h-4" />}
+                />
+                <KPIProgressBar
+                  label="Punto de Equilibrio"
+                  periodLabel="Mes · cubrir costes"
+                  progress={calculateProgress(currentKPIs?.ingresos || 0, breakEven?.breakEvenRevenue ?? 0, false, monthPace)}
+                  suffix="€"
+                  icon={<ShieldCheck className="w-4 h-4" />}
+                />
+                <KPIProgressBar
+                  label="Coste Laboral"
+                  periodLabel="Mes · % sobre ventas"
+                  progress={calculateProgress(laborCostMonthlyAvg, kpiTargets.laborCostTarget, true)}
+                  suffix="%"
+                  isLowerBetter
+                  icon={<Users className="w-4 h-4" />}
+                />
+              </div>
+            </div>
+
+            {/* Separador */}
+            <div className="border-t border-slate-100 my-4" />
+
+            {/* Bloque 2: Tendencia (últimos 30 días) */}
+            <div className="mb-4">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Tendencia · últimos 30 días</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <KPIProgressBar
+                  label="Food Cost"
+                  periodLabel="30 días · ponderado por ventas"
+                  progress={calculateProgress(foodCostRealPct, kpiTargets.foodCostTarget, true)}
+                  suffix="%"
+                  isLowerBetter
+                  icon={<UtensilsCrossed className="w-4 h-4" />}
+                />
+                <KPIProgressBar
+                  label="Ticket Comensal"
+                  periodLabel="30 días · gasto medio/cliente"
+                  progress={calculateProgress(ticketComensal30d, kpiTargets.ticketComensalTarget)}
+                  suffix="€"
+                  icon={<Receipt className="w-4 h-4" />}
+                />
+                <KPIProgressBar
+                  label="Facturación Semanal"
+                  periodLabel="Semana en curso"
+                  progress={calculateProgress(weeklyRevenue, weeklyRevenueTarget, false, weekPace)}
+                  suffix="€"
+                  icon={<CalendarDays className="w-4 h-4" />}
+                />
+              </div>
+            </div>
+
+            {/* Pie: desglose del punto de equilibrio (transparencia del cálculo) */}
+            {breakEven && (
+              <div className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-[11px] text-slate-500 leading-relaxed">
+                <span className="font-bold text-[#364f6b]">Punto de equilibrio</span> = costes fijos{" "}
+                {kpiTargets.breakEvenTarget.toLocaleString("es-ES")}€ ÷ margen de contribución{" "}
+                {breakEven.contributionMarginPct}% (food cost {foodCostRealPct.toFixed(1)}% + otros variables{" "}
+                {kpiTargets.otherVariableCostPct}%) = <span className="font-bold text-[#364f6b]">{breakEven.breakEvenRevenue.toLocaleString("es-ES")}€/mes</span> para no perder dinero.
+              </div>
+            )}
+          </TremorCard>
+        )}
+
+        {/* Top Productos */}
+        <TremorCard
+          className="cursor-pointer hover:shadow-xl transition-all border-white/40 bg-white/80 backdrop-blur-sm group"
+          onClick={() => window.location.hash = '#/products'}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <TremorTitle className="flex items-center gap-2 group-hover:text-[#02b1c4] transition-colors">
+              Top Productos Hoy
+            </TremorTitle>
+            <span className="text-xs bg-[#227c9d]/10 text-[#227c9d] px-2 py-1 rounded-full font-bold live-badge">
+              Live
+            </span>
+          </div>
+          {topProducts.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-200">
+                    <th className="text-left py-2 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Pos
+                    </th>
+                    <th className="text-left py-2 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Producto
+                    </th>
+                    <th className="text-left py-2 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Categoria
+                    </th>
+                    <th className="text-right py-2 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Unidades
+                    </th>
+                    <th className="text-right py-2 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Facturado
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topProducts.slice(0, 10).map((product: any, index: number) => (
+                    <tr key={index} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                      <td className="py-3 px-3">
+                        {index === 0 ? (
+                          <span className="text-xl">🥇</span>
+                        ) : index === 1 ? (
+                          <span className="text-xl">🥈</span>
+                        ) : index === 2 ? (
+                          <span className="text-xl">🥉</span>
+                        ) : (
+                          <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold bg-slate-100 text-slate-600">
+                            {index + 1}
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-3">
+                        <span className="text-sm font-medium text-[#364f6b]">{product.nombre || product.name}</span>
+                      </td>
+                      <td className="py-3 px-3">
+                        <span className="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-600">
+                          {product.categoria || product.category || "Sin categoria"}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 text-right">
+                        <span className="text-sm font-bold text-[#02b1c4]">
+                          {product.cantidad || product.unidades || product.quantity || 0}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 text-right">
+                        <span className="text-sm font-bold text-[#17c3b2]">
+                          {formatCurrency(product.revenue || product.facturado || product.total || 0)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-slate-50">
+                    <td colSpan={3} className="py-3 px-3 text-sm font-bold text-[#364f6b]">
+                      Total Top 10
+                    </td>
+                    <td className="py-3 px-3 text-right text-sm font-bold text-[#02b1c4]">
+                      {topProducts
+                        .slice(0, 10)
+                        .reduce((acc: number, p: any) => acc + (p.quantity || p.cantidad || p.unidades || 0), 0)}{" "}
+                      uds
+                    </td>
+                    <td className="py-3 px-3 text-right text-sm font-bold text-[#17c3b2]">
+                      {formatCurrency(
+                        topProducts
+                          .slice(0, 10)
+                          .reduce((acc: number, p: any) => acc + (p.revenue || p.facturado || p.total || 0), 0),
+                      )}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500 text-center py-8">Sin datos de productos</p>
+          )}
+        </TremorCard>
 
         <TremorCard
           className="cursor-pointer hover:shadow-xl transition-all border-white/40 bg-white/80 backdrop-blur-sm group"
@@ -739,488 +1221,6 @@ export function DashboardPage({ demoMode = false }: { demoMode?: boolean }) {
               <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
               <p>Sin datos de costes laborales disponibles</p>
             </div>
-          )}
-        </TremorCard>
-
-        <TremorCard className="mt-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <TremorTitle>Previsión Facturación Semanal</TremorTitle>
-              <span className="text-xs bg-[#227c9d]/10 text-[#227c9d] px-2 py-1 rounded-full font-bold live-badge">
-                Live
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {/* Navigation Controls */}
-              <div className="flex bg-slate-100 rounded-md p-0.5 mr-2">
-                <button
-                  onClick={() => setWeekOffset((prev) => prev - 1)}
-                  className="p-1 hover:bg-white rounded-md text-[#364f6b] transition-all shadow-sm"
-                >
-                  <ChevronLeft size={14} />
-                </button>
-                <div className="px-2 flex items-center justify-center text-xs font-medium text-slate-500 min-w-[50px]">
-                  {weekOffset === 0
-                    ? "Actual"
-                    : weekOffset === 1
-                      ? "+1 Sem"
-                      : weekOffset === -1
-                        ? "-1 Sem"
-                        : `${weekOffset > 0 ? "+" : ""}${weekOffset}`}
-                </div>
-                <button
-                  onClick={() => setWeekOffset((prev) => prev + 1)}
-                  className="p-1 hover:bg-white rounded-md text-[#364f6b] transition-all shadow-sm"
-                >
-                  <ChevronRight size={14} />
-                </button>
-              </div>
-
-              {/* Subtarjeta Previsión Semana */}
-              <div className="bg-[#17c3b2]/10 px-3 py-1 rounded-lg text-center">
-                <span className="text-[10px] text-[#17c3b2] font-bold block">Prev. Semana</span>
-                <span className="text-lg font-bold text-[#17c3b2] leading-tight">
-                  {formatNumber(Math.round(weekRevenueTotals.previsionSemana))} €
-                </span>
-              </div>
-
-              {/* Subtarjeta Facturado */}
-              <div className="bg-[#02b1c4]/10 px-3 py-1 rounded-lg text-center">
-                <span className="text-[10px] text-[#02b1c4] font-bold block">Facturado</span>
-                <span className="text-lg font-bold text-[#02b1c4] leading-tight">
-                  {formatNumber(Math.round(weekRevenueTotals.totalFacturado))} €
-                  <span className="text-xs font-normal ml-1">({weekRevenueTotals.porcentajeTotal.toFixed(0)}%)</span>
-                </span>
-              </div>
-            </div>
-          </div>
-          {weekRevenueChartData.length > 0 ? (
-            <ChartScroll minWidth={560} className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={weekRevenueChartData} margin={{ top: 20, right: 60, bottom: 20, left: 20 }}>
-                  <CartesianGrid {...CHART_CONFIG.grid} />
-                  <XAxis
-                    dataKey="label"
-                    tick={{ fontSize: 11, fill: "#64748b" }}
-                    axisLine={{ stroke: "#e2e8f0" }}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    yAxisId="left"
-                    tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
-                    tick={{ fontSize: 11, fill: "#64748b" }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={isMobile ? 38 : 50}
-                  />
-                  <YAxis
-                    yAxisId="right"
-                    orientation="right"
-                    tickFormatter={(value) => `${value}%`}
-                    tick={{ fontSize: 11, fill: "#64748b" }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={isMobile ? 38 : 50}
-                    domain={[0, 150]}
-                  />
-                  <Tooltip content={<WeekRevenueTooltip />} />
-                  <Legend
-                    verticalAlign="top"
-                    height={isMobile ? 60 : 36}
-                    formatter={(value) => {
-                      const labels: Record<string, string> = {
-                        facturadoReal: "Facturado",
-                        prevision: "Previsión",
-                        porcentajeAlcanzado: "% Alcanzado",
-                      }
-                      return <span className="text-xs text-slate-600">{labels[value] || value}</span>
-                    }}
-                  />
-                  <Bar yAxisId="left" dataKey="facturadoReal" fill="#17c3b2" radius={[4, 4, 0, 0]} barSize={28} />
-                  <Bar yAxisId="left" dataKey="prevision" fill="#cbd5e1" radius={[4, 4, 0, 0]} barSize={28} />
-                  <Line
-                    yAxisId="right"
-                    type="monotone"
-                    dataKey="porcentajeAlcanzado"
-                    stroke="#ffcb77"
-                    strokeWidth={2}
-                    dot={{ fill: "#ffcb77", strokeWidth: 0, r: 3 }}
-                    activeDot={{ r: 5, fill: "#ffcb77" }}
-                    connectNulls={false}
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </ChartScroll>
-          ) : (
-            <div className="text-center py-8 text-slate-400">
-              <TrendingUp className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p>Sin datos de facturación disponibles</p>
-            </div>
-          )}
-        </TremorCard>
-
-        {/* FILA 4: Facturación/Ticket/VeriFactu */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div
-            onClick={() => window.location.hash = '#/facturacion'}
-            className="cursor-pointer group"
-          >
-            <MetricGroupCard
-              title="Facturación Hoy"
-              live={true}
-              icon={<Banknote className="w-5 h-5 text-[#02b1c4]" />}
-              loading={loading}
-              decimals={2}
-              suffix=" €"
-              total={{ value: currentShift?.revenue || 0, previous: 0, delta: 0, trend: "neutral" }}
-            >
-              {liveData && liveData.prevision && liveData.prevision.prevision_facturacion > 0 && (
-                <div className="mb-4 pb-4 border-b border-slate-200">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-slate-500">Previsión del día</span>
-                    <span className="text-xs font-bold text-slate-600">
-                      {formatCurrency(liveData.prevision.prevision_facturacion)}
-                    </span>
-                  </div>
-                  <div className="relative h-3 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className="absolute left-0 top-0 h-full rounded-full transition-all duration-500"
-                      style={{
-                        width: `${Math.min(liveData.prevision.porcentaje_prevision_alcanzado, 100)}%`,
-                        backgroundColor:
-                          liveData.prevision.porcentaje_prevision_alcanzado >= 100
-                            ? "#17c3b2"
-                            : liveData.prevision.porcentaje_prevision_alcanzado >= 70
-                              ? "#ffcb77"
-                              : "#02b1c4",
-                      }}
-                    />
-                    {/* Indicador si supera el 100% */}
-                    {liveData.prevision.porcentaje_prevision_alcanzado > 100 && (
-                      <div
-                        className="absolute top-0 h-full bg-[#17c3b2]/30 rounded-r-full"
-                        style={{
-                          left: "100%",
-                          width: `${Math.min(liveData.prevision.porcentaje_prevision_alcanzado - 100, 50)}%`,
-                        }}
-                      />
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between mt-1.5">
-                    <span className="text-[10px] text-slate-400">
-                      {liveData.prevision.comensales_reservados} comensales reservados
-                    </span>
-                    <span
-                      className="text-xs font-bold"
-                      style={{
-                        color:
-                          liveData.prevision.porcentaje_prevision_alcanzado >= 100
-                            ? "#17c3b2"
-                            : liveData.prevision.porcentaje_prevision_alcanzado >= 70
-                              ? "#ffcb77"
-                              : "#02b1c4",
-                      }}
-                    >
-                      {liveData.prevision.porcentaje_prevision_alcanzado.toFixed(1)}%
-                    </span>
-                  </div>
-                </div>
-              )}
-              {/* Fin barra de progreso */}
-
-              <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-200">
-                <div className="p-3 rounded-lg bg-[#ffcb77]/20 border border-slate-100/50 flex flex-col justify-between h-full">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-1.5">
-                      <SunIcon className="w-3.5 h-3.5 text-[#ffcb77]" />
-                      <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Comida</span>
-                    </div>
-                    <span className="text-xs font-bold text-slate-500">{liveData?.lunch_percentage || 0}%</span>
-                  </div>
-                  <p className="text-lg font-bold text-[#364f6b] text-right">
-                    {formatCurrency(liveData?.lunch?.revenue || 0)}
-                  </p>
-                </div>
-
-                <div className="p-3 rounded-lg bg-[#227c9d]/15 border border-slate-100/50 flex flex-col justify-between h-full">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-1.5">
-                      <MoonIcon className="w-3.5 h-3.5 text-[#227c9d]" />
-                      <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Cena</span>
-                    </div>
-                    <span className="text-xs font-bold text-slate-500">{liveData?.dinner_percentage || 0}%</span>
-                  </div>
-                  <p className="text-lg font-bold text-[#364f6b] text-right">
-                    {formatCurrency(liveData?.dinner?.revenue || 0)}
-                  </p>
-                </div>
-              </div>
-            </MetricGroupCard>
-          </div>
-
-          <div
-            onClick={() => window.location.hash = '#/facturacion'}
-            className="cursor-pointer group"
-          >
-            <MetricGroupCard
-              title="Ticket Medio Hoy"
-              live={true}
-              icon={<Receipt className="w-5 h-5 text-[#02b1c4]" />}
-              loading={loading}
-              decimals={2}
-              suffix=" €"
-              total={{ value: currentShift?.avg_ticket_transaction || 0, previous: 0, delta: 0, trend: "neutral" }}
-            >
-              <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-200">
-                <div className="p-3 rounded-lg bg-[#ffcb77]/20 border border-slate-100/50 flex flex-col justify-between h-full">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-1.5">
-                      <SunIcon className="w-3.5 h-3.5 text-[#ffcb77]" />
-                      <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Comida</span>
-                    </div>
-                  </div>
-                  <p className="text-lg font-bold text-[#364f6b] text-right">
-                    {formatCurrency(liveData?.lunch?.avg_ticket_transaction || 0)}
-                  </p>
-                </div>
-
-                <div className="p-3 rounded-lg bg-[#227c9d]/15 border border-slate-100/50 flex flex-col justify-between h-full">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-1.5">
-                      <MoonIcon className="w-3.5 h-3.5 text-[#227c9d]" />
-                      <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Cena</span>
-                    </div>
-                  </div>
-                  <p className="text-lg font-bold text-[#364f6b] text-right">
-                    {formatCurrency(liveData?.dinner?.avg_ticket_transaction || 0)}
-                  </p>
-                </div>
-              </div>
-            </MetricGroupCard>
-          </div>
-
-          <TremorCard
-            className="lg:col-span-1 cursor-pointer hover:shadow-xl transition-all border-white/40 bg-white/80 backdrop-blur-sm group"
-            onClick={() => window.location.hash = '#/facturacion'}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <TremorTitle className="group-hover:text-[#02b1c4] transition-colors">VeriFactu</TremorTitle>
-              <span className="text-xs bg-[#227c9d]/10 text-[#227c9d] px-2 py-1 rounded-full font-bold live-badge">
-                Live
-              </span>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="text-center p-4 bg-[#17c3b2]/10 rounded-lg">
-                <CheckCircle className="w-6 h-6 text-[#17c3b2] mx-auto mb-2" />
-                <p className="text-2xl font-bold text-[#364f6b]">{vfMetrics.success}</p>
-                <p className="text-xs text-slate-500">Enviadas OK</p>
-              </div>
-              <div className="text-center p-4 bg-[#ffcb77]/10 rounded-lg">
-                <Clock className="w-6 h-6 text-[#ffcb77] mx-auto mb-2" />
-                <p className="text-2xl font-bold text-[#364f6b]">{vfMetrics.pending}</p>
-                <p className="text-xs text-slate-500">Pendientes</p>
-              </div>
-              <div className="text-center p-4 bg-[#fe6d73]/10 rounded-lg">
-                <AlertCircle className="w-6 h-6 text-[#fe6d73] mx-auto mb-2" />
-                <p className="text-2xl font-bold text-[#364f6b]">{vfMetrics.error}</p>
-                <p className="text-xs text-slate-500">Con Error</p>
-              </div>
-            </div>
-          </TremorCard>
-        </div>
-
-        {/* FILA 5: Progreso KPI vs Objetivos */}
-        {kpiTargets && (
-          <TremorCard
-            className="cursor-pointer hover:shadow-xl transition-all border-white/40 bg-white/80 backdrop-blur-sm group"
-            onClick={() => window.location.hash = '#/settings'}
-          >
-            {/* Header con subtítulo (patrón WeatherCard) */}
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-[#02b1c4]" />
-                <div>
-                  <TremorTitle>Progreso vs Objetivos</TremorTitle>
-                  <p className="text-xs text-slate-400">La marca vertical en cada barra indica el ritmo esperado a estas alturas</p>
-                </div>
-              </div>
-              <span className="text-xs text-slate-400">
-                Configurar en Ajustes &rarr; Objetivos KPI
-              </span>
-            </div>
-
-            {/* Bloque 1: Este mes (con ritmo) */}
-            <div className="mb-4">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">
-                Este mes · vas por el {Math.round(monthPace * 100)}% del periodo
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                <KPIProgressBar
-                  label="Ingresos del mes"
-                  periodLabel="Mes · acumulado"
-                  progress={calculateProgress(currentKPIs?.ingresos || 0, kpiTargets.monthlyRevenueTarget, false, monthPace)}
-                  suffix="€"
-                  icon={<Target className="w-4 h-4" />}
-                />
-                <KPIProgressBar
-                  label="Punto de Equilibrio"
-                  periodLabel="Mes · cubrir costes"
-                  progress={calculateProgress(currentKPIs?.ingresos || 0, breakEven?.breakEvenRevenue ?? 0, false, monthPace)}
-                  suffix="€"
-                  icon={<ShieldCheck className="w-4 h-4" />}
-                />
-                <KPIProgressBar
-                  label="Coste Laboral"
-                  periodLabel="Mes · % sobre ventas"
-                  progress={calculateProgress(laborCostMonthlyAvg, kpiTargets.laborCostTarget, true)}
-                  suffix="%"
-                  isLowerBetter
-                  icon={<Users className="w-4 h-4" />}
-                />
-              </div>
-            </div>
-
-            {/* Separador */}
-            <div className="border-t border-slate-100 my-4" />
-
-            {/* Bloque 2: Tendencia (últimos 30 días) */}
-            <div className="mb-4">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Tendencia · últimos 30 días</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                <KPIProgressBar
-                  label="Food Cost"
-                  periodLabel="30 días · ponderado por ventas"
-                  progress={calculateProgress(foodCostRealPct, kpiTargets.foodCostTarget, true)}
-                  suffix="%"
-                  isLowerBetter
-                  icon={<UtensilsCrossed className="w-4 h-4" />}
-                />
-                <KPIProgressBar
-                  label="Ticket Comensal"
-                  periodLabel="30 días · gasto medio/cliente"
-                  progress={calculateProgress(ticketComensal30d, kpiTargets.ticketComensalTarget)}
-                  suffix="€"
-                  icon={<Receipt className="w-4 h-4" />}
-                />
-                <KPIProgressBar
-                  label="Facturación Semanal"
-                  periodLabel="Semana en curso"
-                  progress={calculateProgress(weeklyRevenue, weeklyRevenueTarget, false, weekPace)}
-                  suffix="€"
-                  icon={<CalendarDays className="w-4 h-4" />}
-                />
-              </div>
-            </div>
-
-            {/* Pie: desglose del punto de equilibrio (transparencia del cálculo) */}
-            {breakEven && (
-              <div className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-[11px] text-slate-500 leading-relaxed">
-                <span className="font-bold text-[#364f6b]">Punto de equilibrio</span> = costes fijos{" "}
-                {kpiTargets.breakEvenTarget.toLocaleString("es-ES")}€ ÷ margen de contribución{" "}
-                {breakEven.contributionMarginPct}% (food cost {foodCostRealPct.toFixed(1)}% + otros variables{" "}
-                {kpiTargets.otherVariableCostPct}%) = <span className="font-bold text-[#364f6b]">{breakEven.breakEvenRevenue.toLocaleString("es-ES")}€/mes</span> para no perder dinero.
-              </div>
-            )}
-          </TremorCard>
-        )}
-
-        {/* FILA 6: Top Productos */}
-        <TremorCard
-          className="cursor-pointer hover:shadow-xl transition-all border-white/40 bg-white/80 backdrop-blur-sm group"
-          onClick={() => window.location.hash = '#/products'}
-        >
-          <div className="flex items-center justify-between mb-4">
-            <TremorTitle className="flex items-center gap-2 group-hover:text-[#02b1c4] transition-colors">
-              Top Productos Hoy
-            </TremorTitle>
-            <span className="text-xs bg-[#227c9d]/10 text-[#227c9d] px-2 py-1 rounded-full font-bold live-badge">
-              Live
-            </span>
-          </div>
-          {topProducts.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-slate-200">
-                    <th className="text-left py-2 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      Pos
-                    </th>
-                    <th className="text-left py-2 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      Producto
-                    </th>
-                    <th className="text-left py-2 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      Categoria
-                    </th>
-                    <th className="text-right py-2 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      Unidades
-                    </th>
-                    <th className="text-right py-2 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      Facturado
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {topProducts.slice(0, 10).map((product: any, index: number) => (
-                    <tr key={index} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
-                      <td className="py-3 px-3">
-                        {index === 0 ? (
-                          <span className="text-xl">🥇</span>
-                        ) : index === 1 ? (
-                          <span className="text-xl">🥈</span>
-                        ) : index === 2 ? (
-                          <span className="text-xl">🥉</span>
-                        ) : (
-                          <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold bg-slate-100 text-slate-600">
-                            {index + 1}
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3 px-3">
-                        <span className="text-sm font-medium text-[#364f6b]">{product.nombre || product.name}</span>
-                      </td>
-                      <td className="py-3 px-3">
-                        <span className="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-600">
-                          {product.categoria || product.category || "Sin categoria"}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-right">
-                        <span className="text-sm font-bold text-[#02b1c4]">
-                          {product.cantidad || product.unidades || product.quantity || 0}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-right">
-                        <span className="text-sm font-bold text-[#17c3b2]">
-                          {formatCurrency(product.revenue || product.facturado || product.total || 0)}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="bg-slate-50">
-                    <td colSpan={3} className="py-3 px-3 text-sm font-bold text-[#364f6b]">
-                      Total Top 10
-                    </td>
-                    <td className="py-3 px-3 text-right text-sm font-bold text-[#02b1c4]">
-                      {topProducts
-                        .slice(0, 10)
-                        .reduce((acc: number, p: any) => acc + (p.quantity || p.cantidad || p.unidades || 0), 0)}{" "}
-                      uds
-                    </td>
-                    <td className="py-3 px-3 text-right text-sm font-bold text-[#17c3b2]">
-                      {formatCurrency(
-                        topProducts
-                          .slice(0, 10)
-                          .reduce((acc: number, p: any) => acc + (p.revenue || p.facturado || p.total || 0), 0),
-                      )}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          ) : (
-            <p className="text-sm text-slate-500 text-center py-8">Sin datos de productos</p>
           )}
         </TremorCard>
       </PageContent>
