@@ -13,6 +13,7 @@ import {
   Truck,
   Tablet,
   Bot,
+  Users,
 } from "lucide-react"
 
 export const APP_NAME = "NÜA Smart Dashboard"
@@ -26,6 +27,7 @@ export const NAVIGATION_ITEMS = [
   { name: "Smart Food", icon: Calculator, path: "/costs" },
   { name: "Productos", icon: ShoppingBag, path: "/products" },
   { name: "Operaciones", icon: Clock, path: "/operations" },
+  { name: "Personal", icon: Users, path: "/personal" },
   { name: "Smart Tables", icon: Tablet, path: "/tablet-usage" },
   { name: "Facturación", icon: FileText, path: "/invoices" },
   { name: "Tesorería", icon: Landmark, path: "/treasury" },

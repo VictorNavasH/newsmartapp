@@ -15,6 +15,7 @@ const ExpensesPage = lazy(() => import("@/components/views/ExpensesPage"))
 const CostesPage = lazy(() => import("@/components/views/CostesPage"))
 const ComprasPage = lazy(() => import("@/components/views/ComprasPage"))
 const OperationsPage = lazy(() => import("@/components/views/OperationsPage"))
+const PersonalPage = lazy(() => import("@/components/views/PersonalPage"))
 const ProductsPage = lazy(() => import("@/components/views/ProductsPage"))
 const TreasuryPage = lazy(() => import("@/components/views/TreasuryPage"))
 const FacturacionPage = lazy(() => import("@/components/views/FacturacionPage"))
@@ -81,6 +82,8 @@ export default function App() {
         return <ComprasPage />
       case "/operations":
         return <OperationsPage />
+      case "/personal":
+        return <PersonalPage />
       case "/products":
         return <ProductsPage />
       case "/treasury":

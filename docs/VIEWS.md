@@ -24,6 +24,7 @@ Documentación detallada de las 15 vistas principales. Cada vista se carga con `
 14. [Conexiones Bancarias (Tab en Tesorería)](#14-conexiones-bancarias-tab-dentro-de-tesorería)
 15. [Smart Tables (`/tablet-usage`)](#15-smart-tables)
 16. [Configuración (`/settings`)](#16-configuración)
+17. [Personal (`/personal`)](#17-personal)
 
 ---
 
@@ -761,3 +762,26 @@ Secciones (tabs `MenuBar`):
 5. **Sesiones** — origen (telegram/cli/cron), modelo, tokens, preview, última actividad.
 
 Auto-refresh vía React Query (estado cada 60s). Todas las secciones manejan estados vacíos/null (las tablas se rellenan cuando el agente sincroniza).
+
+---
+
+## 17. Personal
+
+| Campo | Valor |
+|---|---|
+| Ruta | `/personal` |
+| Componente | `components/views/PersonalPage.tsx` (+ sub-componentes en `components/views/personal/`) |
+| Servicio | `lib/personalService.ts` |
+| Tipos | `types/personal.ts` |
+| Fuente | Connecteam sincronizado en Supabase (tablas `connecteam_*` + vistas `v_connecteam_*`) |
+
+Sección de plantilla y horas. Cabecera (`PageHeader`) con **selector de mes global** (chevrons ‹ junio 2026 ›) que afecta a las pestañas de periodo; **Trabajadores** es tiempo real (no usa el mes). Navegación entre pestañas con `MenuBar` (mismo patrón que Tesorería). Clave de unión de todos los datos: `connecteam_user_id`.
+
+**Pestañas:**
+1. **Trabajadores** (`TrabajadoresTab`) — KPIs de hoy (trabajan / ausentes / plantilla activa), tabla "Hoy en el restaurante" (turno programado + horario + estado de fichaje, cruzando `connecteam_scheduled_shifts` × `connecteam_time_activities` × ausencias del día), tarjetas de "Próximos 7 días" y tabla maestra de **plantilla** (puesto, equipo, contrato, horas/sem, antigüedad, estado) con toggle "Mostrar archivados". La fecha de hoy se calcula en hora local Madrid (`toLocaleDateString('en-CA', {timeZone:'Europe/Madrid'})`).
+2. **Resumen** (`ResumenTab`) — tabla empleado × mes: horas trabajadas / ausencia / computables, **horas extra** (badge) y **% cumplimiento** (barra con semáforo). Agrega las semanas ISO cuyo lunes cae en el mes (`v_connecteam_horas_extra_semana`). Empleados sin contrato se marcan "Sin contrato".
+3. **Puntualidad** (`PuntualidadTab`) — KPIs (% llegadas tarde, retraso medio) + ranking por empleado (`v_connecteam_puntualidad`; tolerancia 5 min).
+4. **Ausencias** (`AusenciasTab`) — tarjetas de días por tipo + listado del mes con rango y duración (`v_connecteam_ausencias` / `v_connecteam_ausencias_dia`).
+5. **Nocturnas** (`NocturnasTab`) — total y desglose de horas nocturnas (22:00–06:00) por empleado (`v_connecteam_horas_nocturnas`).
+
+Las columnas `date` (shift_date, dia, start_date…) ya vienen en fecha local Madrid; las `timestamptz` (clock_in/out, start_time…) se convierten a hora Madrid al mostrar (`horaMadrid()`). Todas las pestañas manejan estados de carga (`Skeleton`) y vacíos. **Pendiente fase 2:** pestaña de Coste de personal y % sobre ventas (cruce `connecteam_timesheet_daily.total_pay` × ventas Dotyk).

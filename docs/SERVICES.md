@@ -1,6 +1,6 @@
 # Servicios de Datos — NÜA Smart App
 
-Documentación de los 18 servicios/módulos en `lib/`. Cada servicio encapsula las queries a Supabase y la lógica de acceso a datos.
+Documentación de los 19 servicios/módulos en `lib/`. Cada servicio encapsula las queries a Supabase y la lógica de acceso a datos.
 
 ---
 
@@ -24,6 +24,7 @@ Documentación de los 18 servicios/módulos en `lib/`. Cada servicio encapsula l
 16. [rateLimit.ts — Rate Limiting](#16-ratelimitts)
 17. [apiAuth.ts — Autenticación API](#17-apiauthts)
 18. [bankConnectionsService.ts — Conexiones Bancarias](#18-bankconnectionsservicets)
+19. [personalService.ts — Personal (Connecteam)](#19-personalservicets)
 
 ---
 
@@ -819,3 +820,22 @@ Carga/guardado de objetivos (tabla `kpi_targets`, fallback `localStorage`) y cá
 | `calculateProgress(current, target, isLowerBetter?, paceFraction?)` | `→ KPIProgress` | Progreso vs objetivo. Si se pasa `paceFraction` (0-1), el **estado se mide vs el ritmo esperado** a estas alturas del periodo (no vs el total), y rellena `pacePercentage` y `expectedToDate`. Para `isLowerBetter` (food/labor cost) usa fórmula espejo. |
 | `monthPaceFraction(lastDataDate?)` | `→ number` (0-1) | Fracción del mes en curso transcurrida según el día actual (o la última fecha con datos). |
 | `calculateBreakEven(fixedCosts, foodCostPct, otherVariableCostPct)` | `→ BreakEvenResult` | **Punto de equilibrio real**: `Costes fijos ÷ (Margen de contribución/100)`, con `Margen de contribución % = 100 − (foodCostPct + otherVariableCostPct)`. Devuelve `{fixedCosts, variableCostPct, contributionMarginPct, breakEvenRevenue}`. |
+
+---
+
+## 19. personalService.ts
+
+Acceso a los datos de **Connecteam** sincronizados en Supabase (sección Personal, vista `/personal`). Lectura directa con el cliente `supabase` (anon key) — las tablas/vistas `connecteam_*` no tienen RLS y conceden SELECT a `anon`. Todas las funciones devuelven `[]` ante error (manejo silencioso vía `handleQueryError`, igual criterio que `treasuryService`). Clave de unión: `connecteam_user_id`.
+
+| Función | Devuelve | Fuente | Descripción |
+|---------|----------|--------|-------------|
+| `fetchWorkers()` | `Worker[]` | `connecteam_workers` | Maestro de empleados (activos primero, luego por nombre). |
+| `fetchTurnos(desde, hasta)` | `ScheduledShift[]` | `connecteam_scheduled_shifts` | Turnos programados en un rango de fechas. |
+| `fetchFichajesDia(fecha)` | `TimeActivity[]` | `connecteam_time_activities` | Fichajes reales de un día concreto (para estado "trabajando/completado"). |
+| `fetchAusenciasDia(desde, hasta)` | `AusenciaDia[]` | `v_connecteam_ausencias_dia` | Ausencias desglosadas por día (calendario / conteo). |
+| `fetchAusencias(desde, hasta)` | `Ausencia[]` | `v_connecteam_ausencias` | Ausencias legibles que solapan el rango. |
+| `fetchResumenSemanas(monthStart, monthEnd)` | `HorasExtraSemana[]` | `v_connecteam_horas_extra_semana` | Semanas ISO cuyo lunes cae en el mes (se atribuye cada semana al mes en que empieza). |
+| `fetchPuntualidad(desde, hasta)` | `Puntualidad[]` | `v_connecteam_puntualidad` | Retrasos por fichaje en el rango. |
+| `fetchNocturnas(desde, hasta)` | `HorasNocturnas[]` | `v_connecteam_horas_nocturnas` | Horas nocturnas (22:00–06:00) por turno en el rango. |
+
+> Las agregaciones cliente (resumen mensual por empleado, ranking de puntualidad, nocturnas por empleado) viven en `components/views/personal/constants.ts` (`aggregateResumen`, `aggregatePuntualidad`, `aggregateNocturnas`), junto a helpers de formato (`formatHoras`, `horaMadrid`, `displayName`, `semaforo`).

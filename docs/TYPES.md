@@ -23,7 +23,9 @@ types/
 ├── purchases.ts           # CompraPedido, CompraKPIs, CompraFacturaConciliacion, etc.
 ├── recharts.ts            # RechartsPayloadEntry, RechartsTooltipProps
 ├── kpiTargets.ts          # KPITargets, DEFAULT_KPI_TARGETS, KPIProgress
-└── bankConnections.ts     # BankAccount, BankTransaction, BankConsolidatedBalance, BankInstitution, BankConnectState, etc.
+├── bankConnections.ts     # BankAccount, BankTransaction, BankConsolidatedBalance, BankInstitution, BankConnectState, etc.
+├── hermes.ts              # tipos del Agent (hermes_*)
+└── personal.ts            # Worker, ScheduledShift, TimeActivity, Ausencia, AusenciaDia, HorasExtraSemana, Puntualidad, HorasNocturnas + agregados (ResumenEmpleadoMes, PuntualidadEmpleado, NocturnasEmpleado)
 ```
 
 ### Dependencias entre módulos
