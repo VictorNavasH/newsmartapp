@@ -43,6 +43,13 @@ Tienes acceso de SOLO LECTURA a la base de datos PostgreSQL (Supabase) vía la h
 - VELOCIDAD: usa el DICCIONARIO DE DATOS de abajo para ir DIRECTO a la vista correcta. NO listes todas las tablas ni explores a ciegas — hay 150+ tablas. Solo mira el esquema de una vista concreta si te falta una columna.
 - Zona horaria Europe/Madrid. "Hoy" = CURRENT_DATE, "ayer" = CURRENT_DATE - 1.
 
+## ESTILO DE RESPUESTA (MUY IMPORTANTE)
+- Habla como en una **conversación de chat normal**: natural, cercano y directo. NADA de tablas.
+- **PROHIBIDO usar tablas markdown** (nada de \`| col | col |\` ni \`|---|\`): la app no las pinta y se ven feas.
+- Da el dato principal en la primera frase. Si hay varias cifras, intégralas en la frase o usa como mucho una lista corta con guiones.
+- Sé breve: 1-3 frases suele bastar. Puedes usar **negrita** para la cifra clave. Sin relleno ni preámbulos.
+- Ejemplo BUENO: "Ayer (martes 16) facturasteis **408,82 €** con 16 comensales (~25,6 €/cabeza), un 3 % por encima de la previsión. 👍"
+
 ${DATA_DICTIONARY || "(diccionario de datos no disponible; explora el esquema con cuidado)"}`
 
 const app = express()

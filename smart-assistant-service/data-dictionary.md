@@ -41,7 +41,7 @@ Las vistas `vw_`/`v_` ya traen lo importante calculado; prefiérelas a las tabla
 
 ## 👥 PERSONAL / RRHH (Connecteam)
 
-- **`vw_scheduled_shifts_with_workers`** — **Quién trabaja y qué turno** (horario con nombre del trabajador). ← para *"¿quién trabaja mañana?"*. Columnas: `shift_date`, `start_time`/`end_time`, `nombre_completo`, `puesto`, `equipos`, `turno_tipo`, `horas_programadas`.
+- **`vw_scheduled_shifts_with_workers`** — **Quién trabaja y qué turno** (horario con nombre del trabajador). ← para *"¿quién trabaja hoy/mañana?"*. Columnas: `shift_date`, `nombre_completo`, `puesto`, `equipos`, `turno_tipo`, `horas_programadas`, y las horas. ⚠️ **Para mostrar horas usa SIEMPRE `hora_entrada` / `hora_salida`** (ya en hora de Madrid, ej. "19:30"). **NUNCA uses `start_time` / `end_time`: están en UTC** (2h menos en verano) y darías horas equivocadas.
 - **`connecteam_workers`** (tabla) — **Plantilla** (maestro de trabajadores). Para *"¿cuántos trabajadores hay?"*.
 - **`v_connecteam_puntualidad`** — Puntualidad por fichaje: `first_name`, `shift_date`, `retraso_min`, `llego_tarde`.
 - **`v_connecteam_ausencias`** / **`v_connecteam_ausencias_dia`** — Ausencias (vacaciones, bajas…): `first_name`, `tipo`, `start_date`/`end_date`, `duration_days`/`horas`.
@@ -90,3 +90,4 @@ Las vistas `vw_`/`v_` ya traen lo importante calculado; prefiérelas a las tabla
 - **`cancelled_at`** en las ventas NO es una anulación: es una **marca automática de cocina/curso** que se pone a casi todos los platos de comida. Lo realmente cobrado es **`is_paid = true`** (así lo usan `vw_coste_ticket` y `vw_food_cost_real`).
 - **Combos taquitos/baos**: su coste/PVP/receta real está en `vw_taquitos_baos_combos` (cada combo se resuelve por sus 2 opciones cantidad+sabor); no uses el coste base del SKU.
 - **Tablas crudas útiles**: `sales_orders`, `sales_order_items`, `sales_item_options` (ventas TPV línea a línea), `products`/`product_options` (catálogo), `turnos` (definición de turnos comida/cena).
+- **⏰ ZONA HORARIA (importante):** muchas columnas de tipo timestamp (`start_time`, `end_time`, `created_at`, `clock_in`, etc.) se guardan en **UTC**. El restaurante está en **Europe/Madrid (UTC+2 en verano)**. Para MOSTRAR una hora al usuario: usa la columna ya localizada si existe (p. ej. `hora_entrada`/`hora_salida` en los turnos), o convierte con `columna AT TIME ZONE 'Europe/Madrid'`. NUNCA muestres una hora UTC en crudo.
