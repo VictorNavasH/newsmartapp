@@ -33,6 +33,21 @@ uv run --with pdfplumber python3 /tmp/script.py
   (se pueden encadenar: `--with pandas --with openpyxl`).
 - NUNCA digas que "no puedes leer el PDF por un fallo de librerías": usa `uv run --with`.
 
+### PDF escaneado / imagen (pdfplumber no saca texto) → OCR con Claude
+
+Si el PDF es un **escaneo / imagen** (pdfplumber o pypdf devuelven vacío), NO necesitas OCR
+pesado ni decir que no puedes. **Delega la lectura en Claude Code**, que lee PDFs e imágenes
+con su **visión** (OCR de alta calidad y entiende la estructura). Guarda el archivo en `/tmp` y:
+
+```bash
+bash -lc 'set -a; . /opt/data/.env; set +a; claude -p --model opus "Lee el PDF /tmp/<archivo>.pdf y extrae en JSON: proveedor, CIF, fecha, nº factura, importe total, desglose de IVA y líneas"'
+```
+
+Funciona igual para imágenes (`.jpg`, `.png`). Es la forma preferida para facturas escaneadas.
+(Alternativa local sin Claude: Tesseract — `uv run --with pytesseract --with pdf2image` + el
+binario `tesseract-ocr` y `poppler-utils` instalados a nivel de sistema; peor calidad, solo si
+no quieres usar cuota de Claude.)
+
 ## 📁 Dónde escribir scripts y archivos temporales
 
 - **`/opt/hermes` es de SOLO LECTURA** → escribir ahí da `Permission denied`. NO escribas ahí.
