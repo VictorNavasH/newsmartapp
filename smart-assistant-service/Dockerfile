@@ -12,6 +12,7 @@ COPY package.json ./
 RUN npm install --omit=dev
 
 COPY server.mjs ./
+COPY data-dictionary.md ./
 
 # Pre-descargar el MCP de Postgres para que el primer arranque no tarde
 RUN npm install @modelcontextprotocol/server-postgres || true

@@ -8,7 +8,17 @@
 // La Smart App (Vercel) llama a este servicio desde app/api/chat/route.ts.
 
 import express from "express"
+import { readFileSync } from "node:fs"
 import { query } from "@anthropic-ai/claude-agent-sdk"
+
+// Diccionario de datos (fuente única, compartible con Hermes). Si falta, el agente
+// funciona igual pero sin mapa (más lento).
+let DATA_DICTIONARY = ""
+try {
+  DATA_DICTIONARY = readFileSync(new URL("./data-dictionary.md", import.meta.url), "utf8")
+} catch {
+  console.warn("[asistente] No se encontró data-dictionary.md — el agente irá sin mapa de datos.")
+}
 
 const PORT = process.env.PORT || 8645
 const MODEL = process.env.ASSISTANT_MODEL || "claude-sonnet-4-6"
@@ -24,15 +34,16 @@ if (!DB_URL) {
 
 const SYSTEM_PROMPT = `Eres el asistente interno de NÜA Smart Restaurant. Respondes a Víctor (gerente) preguntas sobre los datos del restaurante.
 
-Tienes acceso de SOLO LECTURA a la base de datos PostgreSQL del restaurante (Supabase) a través de la herramienta de consulta MCP. Úsala para responder con datos reales.
+Tienes acceso de SOLO LECTURA a la base de datos PostgreSQL (Supabase) vía la herramienta de consulta MCP. Úsala para responder con datos reales.
 
-Reglas:
-- Consulta la base de datos antes de responder cualquier pregunta sobre cifras, ventas, personal, reservas, gastos, etc. NUNCA inventes datos.
-- Solo lectura: jamás intentes INSERT, UPDATE, DELETE ni DDL.
+## REGLAS
+- Consulta la BD antes de responder cualquier cifra (ventas, personal, reservas, gastos…). NUNCA inventes datos.
+- Solo lectura: jamás INSERT/UPDATE/DELETE/DDL.
 - Responde en español, claro, conciso y orientado a negocio.
-- Si una consulta devuelve mucho dato, resume lo relevante.
-- Si no encuentras el dato o la pregunta es ambigua, dilo claramente y pide precisión.
-- Hay vistas útiles que empiezan por v_ y vw_ (ventas, food cost, ocupación, personal/Connecteam, compras, tesorería). Explóralas con el esquema si lo necesitas.`
+- VELOCIDAD: usa el DICCIONARIO DE DATOS de abajo para ir DIRECTO a la vista correcta. NO listes todas las tablas ni explores a ciegas — hay 150+ tablas. Solo mira el esquema de una vista concreta si te falta una columna.
+- Zona horaria Europe/Madrid. "Hoy" = CURRENT_DATE, "ayer" = CURRENT_DATE - 1.
+
+${DATA_DICTIONARY || "(diccionario de datos no disponible; explora el esquema con cuidado)"}`
 
 const app = express()
 app.use(express.json({ limit: "1mb" }))
