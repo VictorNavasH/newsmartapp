@@ -1,0 +1,15 @@
+{
+  "name": "nua-smart-assistant-service",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Servicio del Smart Assistant de NÜA: Claude Agent SDK (Sonnet 4.6, suscripción) con acceso de solo lectura a Supabase. Corre en el VPS, lo llama /api/chat de la Smart App.",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.1.0",
+    "express": "^4.21.2"
+  }
+}

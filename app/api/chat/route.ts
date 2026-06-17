@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { N8N_WEBHOOK_URL } from "@/lib/env"
+import { ASSISTANT_API_URL, ASSISTANT_API_SECRET } from "@/lib/env"
 import { verifyAuth, unauthorizedResponse } from "@/lib/apiAuth"
 import { checkRateLimit } from "@/lib/rateLimit"
 
@@ -27,8 +27,8 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // Verificar que el webhook está configurado
-  if (!N8N_WEBHOOK_URL) {
+  // Verificar que el servicio del asistente está configurado
+  if (!ASSISTANT_API_URL) {
     return NextResponse.json(
       { response: "El asistente no está configurado. Contacta al administrador." },
       { status: 503 }
@@ -42,9 +42,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ response: "No se recibió ningún mensaje." }, { status: 400 })
     }
 
-    // Crear AbortController para timeout de 30 segundos
+    // Crear AbortController para timeout de 90 segundos
+    // (el agente puede tardar: consulta la BD + razona con Sonnet)
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 30000)
+    const timeoutId = setTimeout(() => controller.abort(), 90000)
 
     let response: Response | undefined
     let retries = 0
@@ -52,9 +53,12 @@ export async function POST(request: NextRequest) {
 
     while (retries <= maxRetries) {
       try {
-        response = await fetch(N8N_WEBHOOK_URL, {
+        response = await fetch(ASSISTANT_API_URL, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...(ASSISTANT_API_SECRET && { Authorization: `Bearer ${ASSISTANT_API_SECRET}` }),
+          },
           body: JSON.stringify({
             message,
             sessionId: sessionId || `session_${Date.now()}`,

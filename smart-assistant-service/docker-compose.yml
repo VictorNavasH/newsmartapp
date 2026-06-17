@@ -1,0 +1,25 @@
+services:
+  smart-assistant:
+    build: .
+    container_name: nua-smart-assistant
+    restart: unless-stopped
+    env_file: .env
+    # Si NO usas Traefik, descomenta para exponer el puerto directamente:
+    # ports:
+    #   - "8645:8645"
+    labels:
+      - "traefik.enable=true"
+      # CAMBIA el Host por tu dominio real (debe apuntar al VPS por DNS):
+      - "traefik.http.routers.nua-assistant.rule=Host(`assistant.tudominio.com`)"
+      - "traefik.http.routers.nua-assistant.entrypoints=websecure"
+      - "traefik.http.routers.nua-assistant.tls.certresolver=letsencrypt"
+      - "traefik.http.services.nua-assistant.loadbalancer.server.port=8645"
+    networks:
+      - traefik
+
+# Usa la MISMA red externa que ya usa tu Traefik. Verifica su nombre con:
+#   docker network ls
+# y sustitúyelo abajo si no se llama "traefik".
+networks:
+  traefik:
+    external: true

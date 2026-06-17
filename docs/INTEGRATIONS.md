@@ -1,6 +1,6 @@
 # Integraciones Externas — NÜA Smart App
 
-Documentación de las 12 integraciones externas del ecosistema NÜA Smart App.
+Documentación de las 13 integraciones externas del ecosistema NÜA Smart App.
 
 ---
 
@@ -18,6 +18,7 @@ Documentación de las 12 integraciones externas del ecosistema NÜA Smart App.
 10. [Google Generative AI (Gemini)](#10-google-generative-ai)
 11. [Vercel (Hosting + Analytics)](#11-vercel)
 12. [Sentry (Error Monitoring)](#12-sentry)
+13. [Claude Agent SDK — Smart Assistant (suscripción)](#13-claude-agent-sdk)
 
 ---
 
@@ -562,3 +563,46 @@ Error en la app
 | Conexiones Bancarias | GoCardless (mock actualmente) |
 | Uso de Mesas | Power BI + Smart Performance (externos) |
 | Configuración | Supabase meta-datos (logs, tablas, capacidad) |
+
+---
+
+## 13. Claude Agent SDK — Smart Assistant (suscripción)
+
+**Qué es:** el cerebro del chat **Smart Assistant** de la app. Un servicio Node propio
+alojado en el **VPS** (carpeta `smart-assistant-service/`, contenedor Docker
+`nua-smart-assistant`) que usa el **Claude Agent SDK** (`@anthropic-ai/claude-agent-sdk`,
+función `query()`) con **Claude Sonnet 4.6** autenticado con la **suscripción de Claude**
+(token `CLAUDE_CODE_OAUTH_TOKEN` generado con `claude setup-token`, válido ~1 año).
+
+**Por qué en el VPS y no en Vercel:** la auth de suscripción necesita un proceso
+persistente; Vercel es serverless. El servicio vive en el VPS y la app (Vercel) lo llama.
+
+**Flujo:**
+```
+Chat (Vercel) → app/api/chat/route.ts → POST https://smartassistant.nuasmartrestaurant.com/chat
+   (Authorization: Bearer ASSISTANT_API_SECRET)
+        → Claude Agent SDK (Sonnet 4.6, suscripción)
+        → MCP Postgres SOLO LECTURA → Supabase (backend.nuasmartrestaurant.com:5433)
+   ← { output } síncrono
+```
+
+**Detalles clave:**
+- **Síncrono**: responde en la misma petición (`{ output }`). No usa webhooks ni Supabase Realtime.
+- **Acceso a datos**: MCP `@modelcontextprotocol/server-postgres` apuntando al **puerto directo 5433**
+  (el pooler Supavisor 6543 devolvía `queue_timeout` en el reto de autenticación).
+- **Seguridad**: el agente está restringido a la herramienta de consulta (`allowedTools: ["mcp__db__query"]`),
+  sin Bash, escritura ni internet. Llamada protegida por secreto `Bearer` compartido.
+- **Exposición**: HTTPS vía Traefik (entrypoint `websecure`, cert resolver `letsencrypt`),
+  subdominio `smartassistant.nuasmartrestaurant.com` → IP del VPS.
+
+**Variables de entorno:**
+- App (Vercel): `ASSISTANT_API_URL` (`…/chat`), `ASSISTANT_API_SECRET`.
+- Servicio (VPS `.env`): `CLAUDE_CODE_OAUTH_TOKEN`, `SUPABASE_DB_URL` (puerto 5433),
+  `ASSISTANT_SHARED_SECRET`, `ASSISTANT_MODEL` (def. `claude-sonnet-4-6`), `PORT` (8645).
+
+**Mantenimiento:** el token de suscripción caduca al año → regenerar con `claude setup-token`
+y recrear el contenedor (`docker rm -f` + `docker run`; `docker restart` NO recarga `--env-file`).
+Ver `smart-assistant-service/README.md`.
+
+**Pendiente / mejoras:** usuario Postgres de solo lectura dedicado; optimizar latencia
+(MCP persistente, enrutar preguntas simples a Haiku); streaming de respuesta en el chat.
