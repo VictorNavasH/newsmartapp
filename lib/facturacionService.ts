@@ -443,3 +443,26 @@ export async function marcarPendiente(
 
   return { success: true }
 }
+
+// --- Errores VeriFactu/Cuentica del día operativo (para el card Live del Dashboard) ---
+export interface VerifactuErrorHoy {
+  transaction_id: string
+  cuentica_identifier: string | null
+  total_amount: number
+  cuentica_error_message: string | null
+  created_at: string
+}
+
+// Devuelve los tickets de HOY (día operativo) cuyo envío a Cuentica falló.
+// Lee la vista vw_verifactu_errores_hoy (solo lectura).
+export async function fetchVerifactuErroresHoy(): Promise<VerifactuErrorHoy[]> {
+  const { data, error } = await supabase
+    .from("vw_verifactu_errores_hoy")
+    .select("transaction_id, cuentica_identifier, total_amount, cuentica_error_message, created_at")
+
+  if (error) {
+    console.error("[facturacionService] Error cargando errores VeriFactu del día:", error.message)
+    return []
+  }
+  return (data as VerifactuErrorHoy[]) || []
+}

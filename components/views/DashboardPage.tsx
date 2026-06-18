@@ -5,6 +5,7 @@ import { WeekReservationsCard } from "@/components/features/WeekReservationsCard
 import { MetricGroupCard } from "@/components/ui/MetricGroupCard"
 import { TremorCard, TremorTitle } from "@/components/ui/TremorCard"
 import { fetchRealTimeData, fetchFinancialKPIs, fetchLaborCostAnalysis, fetchWeekRevenue, fetchFoodCostAverage, fetchFoodCostReal, fetchConciliacionResumen } from "@/lib/dataService"
+import { fetchVerifactuErroresHoy, type VerifactuErrorHoy } from "@/lib/facturacionService"
 import { useAlerts } from "@/hooks/useAlerts"
 import { useIsMobile } from "@/hooks/useIsMobile"
 import type { AlertContext } from "@/lib/alertEngine"
@@ -151,6 +152,20 @@ export function DashboardPage({ demoMode = false }: { demoMode?: boolean }) {
   const currentKPIs = useMemo(() => {
     return financialKPIs.find((k) => k.periodo === financialPeriod) || null
   }, [financialKPIs, financialPeriod])
+
+  // VeriFactu: detalle de errores del día (carga al pulsar "Con Error")
+  const [showVfErrors, setShowVfErrors] = useState(false)
+  const [vfErrors, setVfErrors] = useState<VerifactuErrorHoy[]>([])
+  const [vfErrorsLoading, setVfErrorsLoading] = useState(false)
+  const toggleVfErrors = useCallback(async () => {
+    const next = !showVfErrors
+    setShowVfErrors(next)
+    if (next && vfErrors.length === 0) {
+      setVfErrorsLoading(true)
+      setVfErrors(await fetchVerifactuErroresHoy())
+      setVfErrorsLoading(false)
+    }
+  }, [showVfErrors, vfErrors.length])
 
   const currentShift = liveData?.total
   const topProducts = currentShift?.sales_data?.top_products || []
@@ -683,12 +698,47 @@ export function DashboardPage({ demoMode = false }: { demoMode?: boolean }) {
                 <p className="text-2xl font-bold text-[#364f6b]">{vfMetrics.pending}</p>
                 <p className="text-xs text-slate-500">Pendientes</p>
               </div>
-              <div className="text-center p-4 bg-[#fe6d73]/10 rounded-lg">
+              <div
+                className={`text-center p-4 bg-[#fe6d73]/10 rounded-lg ${vfMetrics.error > 0 ? "cursor-pointer hover:bg-[#fe6d73]/20 ring-1 ring-transparent hover:ring-[#fe6d73]/40 transition-all" : ""}`}
+                onClick={vfMetrics.error > 0 ? (e) => { e.stopPropagation(); toggleVfErrors() } : undefined}
+              >
                 <AlertCircle className="w-6 h-6 text-[#fe6d73] mx-auto mb-2" />
                 <p className="text-2xl font-bold text-[#364f6b]">{vfMetrics.error}</p>
-                <p className="text-xs text-slate-500">Con Error</p>
+                <p className="text-xs text-slate-500">Con Error{vfMetrics.error > 0 ? (showVfErrors ? " ▴" : " ▾") : ""}</p>
               </div>
             </div>
+
+            {showVfErrors && vfMetrics.error > 0 && (
+              <div className="mt-4 pt-4 border-t border-slate-100 text-left" onClick={(e) => e.stopPropagation()}>
+                <p className="text-xs font-semibold text-slate-600 mb-2">
+                  Tickets que fallaron al crearse en Cuentica (importe del cobro descuadrado):
+                </p>
+                <div className="space-y-2">
+                  {vfErrorsLoading && <p className="text-xs text-slate-400">Cargando…</p>}
+                  {!vfErrorsLoading && vfErrors.length === 0 && (
+                    <p className="text-xs text-slate-400">No se pudo cargar el detalle.</p>
+                  )}
+                  {vfErrors.map((e) => {
+                    const m = e.cuentica_error_message?.match(/got\s+([\d.]+),\s*expected\s+([\d.]+)/i)
+                    const detalle = m
+                      ? `Cobro ${formatCurrency(Number(m[1]))} ≠ total ${formatCurrency(Number(m[2]))}`
+                      : "Importe descuadrado"
+                    return (
+                      <div
+                        key={e.transaction_id}
+                        className="flex items-center justify-between text-xs bg-[#fe6d73]/5 rounded-md px-3 py-2"
+                      >
+                        <span className="text-slate-700">
+                          <span className="font-medium">Ticket {e.transaction_id}</span>
+                          <span className="text-slate-500"> · {detalle}</span>
+                        </span>
+                        <span className="text-slate-400 shrink-0 ml-2">{formatTime(e.created_at)}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </TremorCard>
         </div>
 
