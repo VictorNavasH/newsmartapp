@@ -732,7 +732,7 @@ export function DashboardPage({ demoMode = false }: { demoMode?: boolean }) {
                           <span className="font-medium">Ticket {e.transaction_id}</span>
                           <span className="text-slate-500"> · {detalle}</span>
                         </span>
-                        <span className="text-slate-400 shrink-0 ml-2">{formatTime(e.created_at)}</span>
+                        <span className="text-slate-400 shrink-0 ml-2">{e.hora_madrid ?? ""}</span>
                       </div>
                     )
                   })}

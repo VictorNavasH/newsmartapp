@@ -451,6 +451,7 @@ export interface VerifactuErrorHoy {
   total_amount: number
   cuentica_error_message: string | null
   created_at: string
+  hora_madrid: string | null
 }
 
 // Devuelve los tickets de HOY (día operativo) cuyo envío a Cuentica falló.
@@ -458,7 +459,7 @@ export interface VerifactuErrorHoy {
 export async function fetchVerifactuErroresHoy(): Promise<VerifactuErrorHoy[]> {
   const { data, error } = await supabase
     .from("vw_verifactu_errores_hoy")
-    .select("transaction_id, cuentica_identifier, total_amount, cuentica_error_message, created_at")
+    .select("transaction_id, cuentica_identifier, total_amount, cuentica_error_message, created_at, hora_madrid")
 
   if (error) {
     console.error("[facturacionService] Error cargando errores VeriFactu del día:", error.message)
